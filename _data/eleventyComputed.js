@@ -16,26 +16,53 @@
 // feed's <title>, bypassing bookmark.liquid's fallback entirely; without
 // this, a titleless bookmark's feed entry ships as <title></title>, the
 // exact bug this fallback exists to prevent.
+import siteData from "./site.json" with { type: "json" };
+import { resolveDate } from "../_11ty/dateResolver.js";
+
+// Same TIME_ZONE fallback as eleventy.config.js — see that file's comment.
+const TIME_ZONE = siteData.timezone || "utc";
+
 export default {
   title(data) {
     if (data.title || !data.postType) {
       return data.title;
     }
 
+    const label = data.postType.charAt(0).toUpperCase() + data.postType.slice(1);
+
     if (data.postType === "bookmark") {
-      return data.bookmarkOf;
+      // bookmark.liquid already falls back to bookmarkOf on its own
+      // (`{{ title | default: bookmarkOf }}`) — match that here too, since
+      // @11ty/eleventy-plugin-rss reads data.title directly for the Atom
+      // feed and bypasses the template fallback. A bookmark with neither
+      // title nor bookmarkOf has nothing to fall back to — use the same
+      // synthetic label every other titleless post type gets, rather than
+      // shipping the empty <title></title> this fallback exists to avoid.
+      if (data.bookmarkOf) {
+        return data.bookmarkOf;
+      }
     }
 
-    const label = data.postType.charAt(0).toUpperCase() + data.postType.slice(1);
     if (!data.date) {
       return label;
     }
 
-    const formatted = new Date(data.date).toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+    // resolveDate() is the same function addDateParsing and the
+    // isoInstant/humanDate filters use — a JS Date has no zone of its own,
+    // so formatting data.date with the process's local TZ (the previous
+    // approach here) rendered a different calendar day depending on the
+    // machine that built the site, the exact defect the rest of Task 11
+    // fixed for the visible dt-published text. `data.page?.inputPath` may
+    // still be unset on eleventyComputed's first dependency-resolution
+    // pass (before `page` itself is computed) — resolveDate() falls back to
+    // its zone-less treatment in that case, and a later pass with the real
+    // inputPath supplies the correct one.
+    const parsed = resolveDate(data.date, data.page?.inputPath, TIME_ZONE);
+    if (!parsed) {
+      return label;
+    }
+
+    const formatted = parsed.setZone(TIME_ZONE).toFormat("d MMM yyyy");
     return `${label} · ${formatted}`;
   },
 };

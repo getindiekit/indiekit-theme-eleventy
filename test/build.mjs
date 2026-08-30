@@ -559,6 +559,239 @@ check("human-readable date text is anchored to site.json's timezone, not the bui
   }
 });
 
+check("a zone-less date resolves to the same instant on the page and in the feed, not a naive UTC-midnight reading", () => {
+  // Task 11's addDateParsing fix (Date branch, keepLocalTime) was never
+  // exercised by isoInstant/humanDate — those filters had their own Date
+  // branch that unconditionally treated any Date as an already-correct UTC
+  // instant, with no explicit-offset detection at all. Every existing
+  // fixture carries an explicit Z, so that divergence had zero coverage:
+  // page and feed could (and did) disagree on the very instant they both
+  // describe. 2026-08-30 (bare, no zone) is a wall-clock reading in
+  // site.json's Europe/Brussels (UTC+2 in August): the true instant is
+  // 2026-08-29T22:00:00Z. The unfixed filters instead stamped
+  // 2026-08-30T00:00:00Z (trusting YAML's UTC-midnight read verbatim) while
+  // addDateParsing correctly produced 2026-08-29T22:00:00Z — the feed
+  // reporting the previous day relative to the page.
+  const fixturePath = "content/notes/fixture-note.md";
+  const outDir = "_site-zoneless-check";
+  const original = readFileSync(fixturePath, "utf8");
+  assert.ok(/^date: /m.test(original), "fixture-note.md has no `date:` front-matter line to patch");
+  const patched = original.replace(/^date: .*$/m, "date: 2026-08-30");
+
+  writeFileSync(fixturePath, patched);
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(
+      process.execPath,
+      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe" },
+    );
+
+    const expectedInstant = "2026-08-29T22:00:00Z";
+
+    const html = readFileSync(`${outDir}/notes/fixture-note/index.html`, "utf8");
+    const pageMatch = html.match(/dt-published" datetime="([^"]*)"/);
+    assert.ok(pageMatch, "page has no dt-published datetime attribute");
+    assert.equal(
+      Date.parse(pageMatch[1]),
+      Date.parse(expectedInstant),
+      `page datetime "${pageMatch[1]}" is not the wall-clock instant ${expectedInstant} — isoInstant is not applying the same zone-anchoring as addDateParsing`,
+    );
+
+    const xml = readFileSync(`${outDir}/feed.xml`, "utf8");
+    const entryXml = xml.split("<entry>").find((e) => e.includes("/notes/fixture-note/"));
+    assert.ok(entryXml, "feed has no entry for /notes/fixture-note/");
+    const feedMatch = entryXml.match(/<updated>([^<]+)<\/updated>/);
+    assert.ok(feedMatch, "feed entry has no <updated>");
+    assert.equal(
+      Date.parse(feedMatch[1]),
+      Date.parse(expectedInstant),
+      `feed <updated> "${feedMatch[1]}" is not the wall-clock instant ${expectedInstant}`,
+    );
+
+    assert.equal(
+      pageMatch[1],
+      feedMatch[1],
+      `page datetime "${pageMatch[1]}" and feed <updated> "${feedMatch[1]}" disagree on a zone-less date`,
+    );
+  } finally {
+    writeFileSync(fixturePath, original);
+    rmSync(outDir, { recursive: true, force: true });
+    assert.equal(
+      readFileSync(fixturePath, "utf8"),
+      original,
+      "content/notes/fixture-note.md was not restored to its original contents",
+    );
+  }
+});
+
+check("offset detection recognises YAML-legal forms beyond strict T...Z", () => {
+  // hasExplicitOffset (_11ty/dateResolver.js) used to be
+  // /T.*(?:Z|[+-]\d{2}:?\d{2})$/ — it requires a literal T immediately
+  // before the time, so it missed three forms js-yaml's own timestamp
+  // parser accepts and parses *correctly* into the true UTC instant: a
+  // space instead of T, a space before the offset, and a two-digit offset
+  // with no minutes part. Missing the offset makes resolveDate() treat an
+  // already-unambiguous instant as zone-less and re-anchor it via
+  // keepLocalTime — the exact regression this task's earlier commits fixed
+  // for strict T...Z forms, reappearing for these three.
+  //
+  // Expected instants below are computed by hand, not derived from any
+  // shared regex, so this check can't inherit the bug it's testing for.
+  const forms = [
+    ["2026-08-30 10:00:00Z", "2026-08-30T10:00:00Z"],
+    ["2026-08-30 10:00:00 +02:00", "2026-08-30T08:00:00Z"],
+    ["2026-08-30 10:00:00 +02", "2026-08-30T08:00:00Z"],
+  ];
+
+  const fixturePath = "content/notes/fixture-note.md";
+  const outDir = "_site-offset-form-check";
+  const original = readFileSync(fixturePath, "utf8");
+  assert.ok(/^date: /m.test(original), "fixture-note.md has no `date:` front-matter line to patch");
+
+  try {
+    for (const [rawDate, expectedInstant] of forms) {
+      writeFileSync(fixturePath, original.replace(/^date: .*$/m, `date: ${rawDate}`));
+      rmSync(outDir, { recursive: true, force: true });
+      execFileSync(
+        process.execPath,
+        ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe" },
+      );
+
+      const html = readFileSync(`${outDir}/notes/fixture-note/index.html`, "utf8");
+      const pageMatch = html.match(/dt-published" datetime="([^"]*)"/);
+      assert.ok(pageMatch, `"${rawDate}": page has no dt-published datetime attribute`);
+      assert.equal(
+        Date.parse(pageMatch[1]),
+        Date.parse(expectedInstant),
+        `"${rawDate}": page datetime "${pageMatch[1]}" is not ${expectedInstant} — offset was not detected, keepLocalTime re-anchored it`,
+      );
+
+      const xml = readFileSync(`${outDir}/feed.xml`, "utf8");
+      const entryXml = xml.split("<entry>").find((e) => e.includes("/notes/fixture-note/"));
+      assert.ok(entryXml, `"${rawDate}": feed has no entry for /notes/fixture-note/`);
+      const feedMatch = entryXml.match(/<updated>([^<]+)<\/updated>/);
+      assert.ok(feedMatch, `"${rawDate}": feed entry has no <updated>`);
+      assert.equal(
+        Date.parse(feedMatch[1]),
+        Date.parse(expectedInstant),
+        `"${rawDate}": feed <updated> "${feedMatch[1]}" is not ${expectedInstant} — offset was not detected, keepLocalTime re-anchored it`,
+      );
+    }
+  } finally {
+    writeFileSync(fixturePath, original);
+    rmSync(outDir, { recursive: true, force: true });
+    assert.equal(
+      readFileSync(fixturePath, "utf8"),
+      original,
+      "content/notes/fixture-note.md was not restored to its original contents",
+    );
+  }
+});
+
+check("synthetic post-type title label is anchored to site.json's timezone, not the build process's TZ", () => {
+  // _data/eleventyComputed.js's title() fallback used to build the
+  // "<Type> · <date>" label with `new Date(data.date).toLocaleDateString(
+  // "en-GB", …)` — process-local, the same host-dependence Task 11 fixed for
+  // the visible dt-published text (humanDate). Build the same content twice
+  // under two TZs chosen so a naive process-local render *would* disagree
+  // (23:30 UTC on 2026-08-30 is already 2026-08-31 in Brussels — the site's
+  // configured zone — but still 2026-08-30 elsewhere), and assert the
+  // rendered day is identical and matches the configured zone regardless of
+  // which TZ built it.
+  const fixturePath = "content/likes/fixture-like.md";
+  const original = readFileSync(fixturePath, "utf8");
+  assert.ok(/^date: /m.test(original), "fixture-like.md has no `date:` front-matter line to patch");
+  const patched = original.replace(/^date: .*$/m, "date: 2026-08-30T23:30:00.000Z");
+
+  const expectedTitle = "Like · 31 Aug 2026"; // 2026-08-30T23:30:00Z is 2026-08-31 01:30 in Europe/Brussels
+  const zones = [
+    ["_site-tz-title-check-brussels", "Europe/Brussels"],
+    ["_site-tz-title-check-chicago", "America/Chicago"],
+  ];
+  const rendered = {};
+
+  writeFileSync(fixturePath, patched);
+  try {
+    for (const [outDir, tz] of zones) {
+      rmSync(outDir, { recursive: true, force: true });
+      execFileSync(
+        process.execPath,
+        ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe", env: { ...process.env, TZ: tz } },
+      );
+
+      const html = readFileSync(`${outDir}/likes/fixture-like/index.html`, "utf8");
+      const match = html.match(/<title>([^<]*)—/);
+      assert.ok(match, `${outDir} (TZ=${tz}): page has no <title> to check`);
+      rendered[tz] = match[1];
+    }
+
+    for (const [outDir, tz] of zones) {
+      assert.equal(
+        rendered[tz],
+        expectedTitle,
+        `TZ=${tz} rendered "${rendered[tz]}", expected "${expectedTitle}" (site.json's Europe/Brussels)`,
+      );
+    }
+    assert.equal(
+      rendered["Europe/Brussels"],
+      rendered["America/Chicago"],
+      `synthetic title label depends on the build's TZ: Europe/Brussels got "${rendered["Europe/Brussels"]}", America/Chicago got "${rendered["America/Chicago"]}"`,
+    );
+  } finally {
+    writeFileSync(fixturePath, original);
+    for (const [outDir] of zones) {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+    assert.equal(
+      readFileSync(fixturePath, "utf8"),
+      original,
+      "content/likes/fixture-like.md was not restored to its original contents",
+    );
+  }
+});
+
+check("a bookmark with neither title nor bookmarkOf falls back to the synthetic label, not an empty title", () => {
+  // eleventyComputed.js's bookmark branch returned data.bookmarkOf
+  // unconditionally, restoring `undefined` — and so an empty
+  // <title></title> in the Atom feed, the exact bug this task's title
+  // fallback exists to prevent — for a bookmark fixture that sets neither
+  // `title` nor `bookmarkOf`. No existing fixture exercises that
+  // combination.
+  const fixturePath = "content/bookmarks/_probe-titleless-bookmark.md";
+  const outDir = "_site-titleless-bookmark-check";
+  const fixture = `---
+eleventyExcludeFromCollections: true
+date: 2026-08-30T10:00:00.000Z
+---
+
+MARKER_titleless_bookmark
+`;
+
+  writeFileSync(fixturePath, fixture);
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(
+      process.execPath,
+      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe" },
+    );
+
+    const outFile = `${outDir}/bookmarks/_probe-titleless-bookmark/index.html`;
+    assert.ok(existsSync(outFile), `${outFile} was not built`);
+    const html = readFileSync(outFile, "utf8");
+    assert.ok(
+      html.includes("<title>Bookmark · 30 Aug 2026—"),
+      `expected the synthetic label in <title>, got: ${html.match(/<title>[^<]*<\/title>/)?.[0]}`,
+    );
+  } finally {
+    rmSync(fixturePath, { force: true });
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
 check("no .webc source template is published into _site", () => {
   // addPassthroughCopy({ _components: "/" }) previously copied the whole
   // _components dir verbatim, shipping .webc build-input templates (e.g.

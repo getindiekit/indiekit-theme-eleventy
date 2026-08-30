@@ -3,6 +3,11 @@ layout: layouts/default.liquid
 enableWebmentions: true
 tmpl: page
 ---
+{# Unused: nothing in this repo references "layouts/post" (verified
+   repo-wide). It also calls dateToISO and readableDate below, neither of
+   which is registered as a filter anywhere in this theme — they would throw
+   if this layout were ever wired up. Left in place rather than deleted (not
+   this task's call to make); fix both before adopting it. #}
 <article class="h-entry">
 	<h1 class="p-name primary-title{% if smalltitle %} primary-title-smalltitle{% endif %}">{% if titleHtml %}{{ titleHtml }}{% else %}{{ title }}{% endif %}</h1>
 {% if posterImage.showOnPage and seo.openGraphBackgroundImage %}

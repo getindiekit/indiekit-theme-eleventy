@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { DateTime } from "luxon";
+import { readFileSync } from "node:fs";
+import { resolveDate } from "./_11ty/dateResolver.js";
 import pluginSass from "./_11ty/sassPlugin.js";
 import pluginSyntaxHighlight from "./_11ty/syntaxHighlightPlugin.js";
 import pluginImage from "./_11ty/imagePlugin.js";
@@ -87,60 +87,16 @@ export default function (eleventyConfig) {
   // to give configured-timezone sites.
   const TIME_ZONE = siteData.timezone || "utc";
 
-  // An ISO string that already carries an explicit offset or `Z` names an
-  // unambiguous instant — `keepLocalTime` must never touch it, that would
-  // re-anchor the instant to a different moment. Only a zone-less value (a
-  // bare YYYY-MM-DD, or a time with no offset) is meant as a wall-clock
-  // reading that should land on the same day in TIME_ZONE.
-  const hasExplicitOffset = (isoString) => /T.*(?:Z|[+-]\d{2}:?\d{2})$/.test(isoString.trim());
-
+  // addDateParsing, and the isoInstant/humanDate filters below, all resolve
+  // a page's `date` the same way — through the shared resolveDate() in
+  // _11ty/dateResolver.js. They used to each hand-roll their own Date/string
+  // branches; the filters' copy never grew the explicit-offset detection
+  // addDateParsing did (see the task-11 coverage-gap report), so a zone-less
+  // date rendered one instant on the page and a different one in the feed.
+  // One function, one set of rules, called from every site this data flows
+  // through.
   eleventyConfig.addDateParsing(function (dateValue) {
-    let localDate;
-    if (dateValue instanceof Date) {
-      // js-yaml auto-parses an unquoted front-matter timestamp into a JS
-      // Date, which has no zone of its own — by the time it gets here there
-      // is no way to tell whether the original string had an explicit
-      // offset/Z (Micropub's ISO output, via
-      // `@rmdes/indiekit-preset-eleventy` — always unquoted, so this is the
-      // branch real Indiekit content actually hits) or was zone-less. Read
-      // the file's own front matter to recover that distinction — the same
-      // technique the fallback branch below already uses for `published:`.
-      const raw = existsSync(this.page.inputPath) ? readFileSync(this.page.inputPath, "utf8") : "";
-      const dateMatch = raw.match(/^date:\s*["']?([^"'\n]+?)["']?\s*$/m);
-
-      if (dateMatch && hasExplicitOffset(dateMatch[1])) {
-        // Explicit offset/Z: trust the instant js-yaml already parsed
-        // correctly — no re-anchoring.
-        localDate = DateTime.fromJSDate(dateValue, { zone: "utc" });
-      } else {
-        // Zone-less (bare date, or no front-matter line to check): treat
-        // the UTC-midnight reading js-yaml produced as a wall-clock time in
-        // TIME_ZONE instead, so the calendar day the author meant doesn't
-        // shift.
-        localDate = DateTime.fromJSDate(dateValue, { zone: "utc" }).setZone(TIME_ZONE, {
-          keepLocalTime: true,
-        });
-      }
-    } else if (typeof dateValue === "string") {
-      // override String dates. `zone: TIME_ZONE` only affects display for a
-      // string that already carries an offset/Z — the instant survives
-      // untouched (verified: `.toUTC()` matches regardless of this option).
-      // For a zone-less string it supplies the missing zone, same intent as
-      // the Date branch above.
-      localDate = DateTime.fromISO(dateValue, { zone: TIME_ZONE });
-    } else if (existsSync(this.page.inputPath)) {
-      // Virtual templates (e.g. the RSS feed plugin's generated .njk) have
-      // no real file to read — existsSync guards against those.
-      const raw = readFileSync(this.page.inputPath, "utf8");
-      const publishedMatch = raw.match(/^published:\s*["']?([^"'\n]+?)["']?\s*$/m);
-      if (publishedMatch) {
-        localDate = DateTime.fromISO(publishedMatch[1], { zone: TIME_ZONE });
-      }
-    }
-
-    if (localDate?.isValid) {
-      return localDate;
-    }
+    return resolveDate(dateValue, this.page.inputPath, TIME_ZONE);
   });
 
   // _includes/types/*.liquid's `dt-published` datetime attribute used to be
@@ -151,16 +107,16 @@ export default function (eleventyConfig) {
   // asserted it was UTC. Emits true UTC instead, via Luxon rather than the
   // process's ambient timezone — correct regardless of what machine the
   // build runs on. Templates read the data cascade's raw `date` value
-  // (addDateParsing's resolved value is never copied back onto it — see
-  // eleventy.config.js's addDateParsing comment above), which is a JS Date
-  // for the common unquoted-front-matter case and a string otherwise;
-  // handle both the same way the addDateParsing branches above do.
-  eleventyConfig.addLiquidFilter("isoInstant", (dateValue) => {
-    const parsed =
-      dateValue instanceof Date
-        ? DateTime.fromJSDate(dateValue, { zone: "utc" })
-        : DateTime.fromISO(String(dateValue), { zone: TIME_ZONE });
-    return parsed.isValid ? parsed.toUTC().toISO({ suppressMilliseconds: true }) : "";
+  // (addDateParsing's resolved value is never copied back onto it, only
+  // onto `page.date` — see the addDateParsing comment above), which is a JS
+  // Date for the common unquoted-front-matter case and a string otherwise;
+  // resolveDate() handles both, and — via `this.page.inputPath`, which
+  // LiquidJS filters get the same way addDateParsing's callback does — reads
+  // the same front matter addDateParsing reads, so a zone-less date resolves
+  // to the identical instant in both places.
+  eleventyConfig.addLiquidFilter("isoInstant", function (dateValue) {
+    const parsed = resolveDate(dateValue, this.page?.inputPath, TIME_ZONE);
+    return parsed ? parsed.toUTC().toISO({ suppressMilliseconds: true }) : "";
   });
 
   // The human-readable date text next to `isoInstant`'s machine-readable
@@ -168,17 +124,13 @@ export default function (eleventyConfig) {
   // partial) has the identical defect isoInstant was written to fix: LiquidJS's
   // `date` filter reads the JS Date's fields in the *build process's local*
   // timezone, so the same content renders a different calendar day depending
-  // on where it's built. Same instant, same TIME_ZONE, same Date/string
-  // branches as isoInstant above — only the output format and target zone
-  // (TIME_ZONE for display, not UTC) differ. Luxon's "d MMMM yyyy" is the
-  // token-for-token equivalent of strftime's "%-d %B %Y" (unpadded day, full
-  // month name, 4-digit year).
-  eleventyConfig.addLiquidFilter("humanDate", (dateValue) => {
-    const parsed =
-      dateValue instanceof Date
-        ? DateTime.fromJSDate(dateValue, { zone: "utc" })
-        : DateTime.fromISO(String(dateValue), { zone: TIME_ZONE });
-    return parsed.isValid ? parsed.setZone(TIME_ZONE).toFormat("d MMMM yyyy") : "";
+  // on where it's built. Same resolveDate() call as isoInstant above — only
+  // the output format and target zone (TIME_ZONE for display, not UTC)
+  // differ. Luxon's "d MMMM yyyy" is the token-for-token equivalent of
+  // strftime's "%-d %B %Y" (unpadded day, full month name, 4-digit year).
+  eleventyConfig.addLiquidFilter("humanDate", function (dateValue) {
+    const parsed = resolveDate(dateValue, this.page?.inputPath, TIME_ZONE);
+    return parsed ? parsed.setZone(TIME_ZONE).toFormat("d MMMM yyyy") : "";
   });
 
   return {
