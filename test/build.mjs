@@ -460,6 +460,35 @@ check("the page links a stylesheet that actually exists", () => {
   }
 });
 
+check("JS_ENABLED is defined and its guarded blocks emit", () => {
+  const html = readFileSync("_site/index.html", "utf8");
+  assert.ok(
+    html.includes('src="/static/defer.js"'),
+    "deferred module bundle not emitted — JS_ENABLED is falsy or undefined",
+  );
+});
+
+check("the deferred bundle inlines the is-land loader", () => {
+  assert.ok(existsSync("_site/static/defer.js"), "_site/static/defer.js missing");
+  const js = readFileSync("_site/static/defer.js", "utf8");
+  // Deviation from the task-13 brief's literal regex
+  // (/customElements\.define\(\s*["']is-land["']/): verified empirically that
+  // the installed @11ty/is-land@5.0.1 never contains that substring — its
+  // static define() takes `registry = win.customElements` as a *default
+  // parameter* and calls `registry.define(tagName, this)`, with `tagName`
+  // assigned separately as the literal "is-land". A regex requiring the
+  // literal text "customElements.define(" would fail forever against this
+  // real dependency, indistinguishable from is-land never being included at
+  // all — the false-negative trap this suite's own preamble warns about.
+  // Pinned instead to the two statements the real source actually contains,
+  // which only appear together if is-land.js's Island.define() body is
+  // genuinely present (not merely a same-named stub or an empty file).
+  assert.ok(
+    /tagName\s*=\s*["']is-land["']/.test(js) && /registry\.define\(\s*tagName\s*,\s*this\s*\)/.test(js),
+    "defer.js does not define the is-land custom element — islands will stay inert",
+  );
+});
+
 check("navigation has an accessible mobile toggle", () => {
   const html = readFileSync("_site/index.html", "utf8");
   assert.ok(html.includes('class="navigation-toggle"'), "no nav toggle button");

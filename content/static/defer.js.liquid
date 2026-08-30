@@ -1,0 +1,23 @@
+---
+permalink: /static/defer.js
+---
+{%- comment %} Ported from /home/rmdes/zachleat.com/static/defer.js.liquid.
+Source dropped this file at project root (dir.input = "."), so its
+`{% include "../node_modules/..." %}` resolved one level up, straight into
+node_modules. This theme's dir.input is "content" (eleventy.config.js), and
+Eleventy only template-processes files under dir.input — a `static/` dir at
+the project root (where the passthrough-only "static/js/*" assets already
+live, see eleventyConfig.addPassthroughCopy({ static: "/" })) would just be
+copied verbatim as an unprocessed ".liquid" file, front matter and all,
+never landing at /static/defer.js. Placed under content/static/ instead —
+the same pattern this theme already uses for content/_css/ to reach a
+top-level output path — so Liquid's engine actually renders it. That adds
+one extra directory of depth versus the source, so the include climbs two
+levels (content/static/ -> content/ -> project root) instead of one.
+
+Source also concatenates two @zachleat/* npm widgets (filter-container,
+fundraising-status) after is-land.js — neither is a dependency of this
+theme (package.json has no reference to either), and nothing here uses
+<filter-container> or fundraising-status markup, so only the island loader
+is ported. {% endcomment -%}
+{% include "../../node_modules/@11ty/is-land/is-land.js" %}

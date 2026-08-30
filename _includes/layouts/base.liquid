@@ -68,8 +68,15 @@ built. Restore a split here only alongside something that produces both files. {
 {%- if JS_ENABLED %}
 		{% comment %} TODO(unresolved shortcode): the source also gated a goatcounter analytics `<script>` on runMode == "build" here — analytics dropped per scope. {% endcomment %}
 		{% comment %} Known gap, not a pending task: same as the CSS bundle above —
-		the WebC plugin is registered but this `{% getBundle 'js' %}` call is left
-		unwired, so any .webc component's bundled <script> is silently dropped.
+		the WebC plugin registers the "js" bundle (eleventy.config.js's
+		pluginWebc call triggers eleventyConfig.addBundle("js", ...)), so this
+		shortcode would resolve, not error. Left commented out anyway (task-13
+		audit, 2026-08-30): the only .webc component in this theme
+		(toggle-button.webc) links its script via a plain <script src>, not
+		`webc:bundle="js"` — nothing feeds this bundle today, so wiring it now
+		would render an empty <script type="module"></script> with no
+		observable effect. Wire it together with whichever future component
+		first uses webc:bundle="js".
 		<script type="module">{% getBundle 'js' %}</script><!-- WebC -->
 		{% endcomment %}
 		<script src="/static/defer.js" type="module"></script>

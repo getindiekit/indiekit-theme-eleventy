@@ -16,7 +16,37 @@ import fontAwesomePlugin from "@11ty/font-awesome";
 const siteData = JSON.parse(readFileSync(new URL("./_data/site.json", import.meta.url)));
 const feedBase = siteData.url.endsWith("/") ? siteData.url : `${siteData.url}/`;
 
+// Source (zachleat.com, eleventy.config.js:28,71) registers this as global
+// data rather than a plain boolean so templates can read it through the data
+// cascade like any other value. Our layouts (base.liquid, default.liquid)
+// already carry the three `{% if JS_ENABLED %}` guards ported from the
+// source — this was the missing half: the guards existed with nothing ever
+// defining the name, so every guarded block was permanently suppressed.
+const JS_ENABLED = true;
+
 export default function (eleventyConfig) {
+  eleventyConfig.addGlobalData("JS_ENABLED", () => JS_ENABLED);
+
+  // content/static/defer.js.liquid `{% include %}`s a dependency out of
+  // node_modules (see that file's own comment for why it lives under
+  // content/static/ rather than the source's project-root static/). Confirmed
+  // empirically (not assumed): LiquidJS's Loader rejects a resolved include
+  // path unless it is a descendant of one of the configured `root` entries
+  // (liquidjs's fs.containsSync, via realpathSync) — this check runs
+  // regardless of how many "../" segments are used or which subdirectory the
+  // including template lives in. Eleventy's Liquid engine defaults `root` to
+  // [dir.includes, dir.input] (Engines/Liquid.js) — neither contains
+  // node_modules, because dir.input here is "content", not the project root.
+  // The source's dir.input IS the project root, so node_modules is already a
+  // descendant of one of its two default roots and no override was needed
+  // there. Adding "." (the project root, which does contain node_modules) as
+  // a third entry restores that same reachability for this one legitimate,
+  // documented use — nothing else in this theme relies on relative Liquid
+  // includes reaching outside _includes/content.
+  eleventyConfig.setLiquidOptions({
+    root: ["_includes", "content", "."],
+  });
+
   eleventyConfig.addPlugin(pluginSass);
   eleventyConfig.addPlugin(pluginSyntaxHighlight);
   eleventyConfig.addPlugin(pluginImage);
