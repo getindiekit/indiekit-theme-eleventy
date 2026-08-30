@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
-import { existsSync, readFileSync, globSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, rmSync, globSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 
 const checks = [];
 const check = (name, fn) => {
@@ -164,6 +165,51 @@ check("each post type builds a directory index", () => {
 check("speedlify is absent when disabled", () => {
   const html = readFileSync("_site/index.html", "utf8");
   assert.ok(!html.includes("speedlify2-score"), "element rendered while disabled");
+});
+
+check("speedlify renders with the configured url on every page when enabled", () => {
+  // The disabled-state check above only proves the widget can be hidden — it
+  // would still pass if the whole integration were deleted. Build a second,
+  // throwaway output with speedlify turned on and assert the widget actually
+  // renders, carrying the real configured url, everywhere the layout puts it.
+  const sitePath = "_data/site.json";
+  const outDir = "_site-speedlify-check";
+  const testUrl = "https://speedlify.example/api";
+  const original = readFileSync(sitePath);
+
+  try {
+    const config = JSON.parse(original.toString("utf8"));
+    config.speedlify = { url: testUrl, enabled: true };
+    writeFileSync(sitePath, JSON.stringify(config, null, 2) + "\n");
+
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(
+      process.execPath,
+      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe" },
+    );
+
+    const files = globSync(`${outDir}/**/*.html`);
+    assert.ok(files.length > 0, "no HTML produced for the speedlify-enabled build");
+    for (const file of files) {
+      const html = readFileSync(file, "utf8");
+      assert.ok(
+        html.includes(`<speedlify2-score theme="light" speedlify-url="${testUrl}"`),
+        `speedlify widget missing or url does not match configured value in ${file}`,
+      );
+      assert.ok(
+        html.includes('<script type="module" src="/js/speedlify2-score.js"></script>'),
+        `speedlify script tag missing in ${file}`,
+      );
+    }
+  } finally {
+    writeFileSync(sitePath, original);
+    rmSync(outDir, { recursive: true, force: true });
+    assert.ok(
+      readFileSync(sitePath).equals(original),
+      "_data/site.json was not restored to its original bytes",
+    );
+  }
 });
 
 let skipped = 0;
