@@ -1844,6 +1844,195 @@ if (process.env.WEBMENTIONS_FIXTURE) {
   );
 }
 
+// Task 16 (§2.3 of the best-practices doc / port source imagePlugin.js:19,150-175).
+// Placed last: both checks below wipe and rebuild the real _site (and, for the
+// durability check, the real .cache/) to exercise the actual contract rather
+// than a throwaway stand-in. Every earlier check that reads _site/ has already
+// run and recorded its result by the time these mutate it.
+
+await checkAsync(
+  "transformOnRequest defers image work to request time under serve mode",
+  async () => {
+    // eleventy-img's own eleventyImageTransformPlugin defaults
+    // `transformOnRequest: process.env.ELEVENTY_RUN_MODE === "serve"` internally
+    // (@11ty/eleventy-img/src/transform-plugin.js:146) — our imagePlugin.js
+    // never sets this option on the plugin itself, because the library already
+    // gates on the same run-mode idiom used everywhere else in this project
+    // (imagePlugin.js:19 sets it explicitly only for the separate `imageFactory`
+    // helper behind the `getUrlForImage` shortcode). When true, the plugin also
+    // wires in `imageOnRequestDuringServePlugin` (transform-plugin.js:149-151),
+    // which serves images from a `/.11ty/image/?src=...` route instead of
+    // writing files at build/write time — confirmed by reading both files.
+    //
+    // As with the run-mode probe above, `new Eleventy(..., { runMode: "serve" })`
+    // is the only way to reach real serve-mode behaviour without starting a dev
+    // server (forbidden here). Unlike that probe, contaminating this process's
+    // `process.env.ELEVENTY_RUN_MODE` is NOT a hazard for checks that run later:
+    // Eleventy sets `this.runMode = options.runMode || "build"` purely from the
+    // options passed to its own constructor (CoreMinimal.js:152) — it never
+    // reads back the ambient env to decide its own mode — so every later
+    // `new Eleventy(...)` call, in this process or a spawned child, resets
+    // ELEVENTY_RUN_MODE correctly regardless of what a prior build left behind.
+    const buildOutDir = "_site-image-transform-build-check";
+    const serveOutDir = "_site-image-transform-serve-check";
+    rmSync(buildOutDir, { recursive: true, force: true });
+    rmSync(serveOutDir, { recursive: true, force: true });
+    try {
+      const build = new Eleventy(undefined, buildOutDir, { source: "cli", quietMode: true });
+      await build.write();
+
+      const serve = new Eleventy(undefined, serveOutDir, {
+        source: "cli",
+        quietMode: true,
+        runMode: "serve",
+      });
+      await serve.write();
+
+      const buildBuilt = globSync(`${buildOutDir}/img/built/**/*`).filter((f) => statSync(f).isFile());
+      const serveBuilt = globSync(`${serveOutDir}/img/built/**/*`).filter((f) => statSync(f).isFile());
+
+      assert.ok(
+        buildBuilt.length > 0,
+        "build mode wrote no files under img/built/ — the baseline for this comparison is broken",
+      );
+      assert.equal(
+        serveBuilt.length,
+        0,
+        `serve mode wrote ${serveBuilt.length} file(s) under img/built/ — transformOnRequest did not defer image generation`,
+      );
+
+      const buildHtml = readFileSync(`${buildOutDir}/index.html`, "utf8");
+      const serveHtml = readFileSync(`${serveOutDir}/index.html`, "utf8");
+
+      assert.ok(
+        /<source[^>]+srcset="\/img\/built\//.test(buildHtml),
+        "build-mode HTML does not link a static /img/built/ URL",
+      );
+      assert.ok(
+        !buildHtml.includes("/.11ty/image/"),
+        "build-mode HTML unexpectedly routes through the on-request image handler",
+      );
+      assert.ok(
+        serveHtml.includes("/.11ty/image/"),
+        "serve-mode HTML does not route through the on-request image handler — transformOnRequest had no observable effect",
+      );
+      assert.ok(
+        !/<source[^>]+srcset="\/img\/built\//.test(serveHtml),
+        "serve-mode HTML links a static /img/built/ URL — images were generated eagerly instead of deferred to request time",
+      );
+    } finally {
+      rmSync(buildOutDir, { recursive: true, force: true });
+      rmSync(serveOutDir, { recursive: true, force: true });
+    }
+  },
+);
+
+await checkAsync(
+  "optimised images survive a wiped _site without re-encoding",
+  async () => {
+    // Port source imagePlugin.js:150-175, ported unchanged: on `build`,
+    // eleventyImageTransformPlugin's outputDir is `.cache/@11ty/img/` (TEMP_DIR),
+    // not `_site/img/built/` directly, and an `eleventy.after` hook `fs.cpSync`s
+    // TEMP_DIR into the real output afterwards. `rm -rf _site` never touches
+    // `.cache/`, so wiping and rebuilding _site should reuse whatever TEMP_DIR
+    // already holds instead of re-encoding every image from scratch.
+    //
+    // Timing is a weak signal here (flaky, machine-dependent), so this drives
+    // eleventy-img's own bookkeeping instead of a stopwatch. Its internal
+    // DiskCache (src/disk-cache.js, exposed via src/caches.js) counts a `hit`
+    // when `isOutputCached()` finds the target file already on disk — the exact
+    // branch that SKIPS the Sharp encode entirely (src/image.js:710, `continue`
+    // with no `fsp.writeFile` for that output) — and a `miss` otherwise. A build
+    // that reused .cache for every image is observable as hits > 0 and
+    // misses === 0; a build against an empty cache is observable as misses > 0.
+    // Confirmed by hand before wiring this in: a fresh (.cache-empty) build of
+    // this site reports 1 miss, 0 hits; rebuilding _site alone against that
+    // same warm .cache reports 0 misses, 1 hit, in 0.5s vs 4.9s, and the built
+    // .avif file's bytes are byte-for-byte identical across both builds.
+    //
+    // Each build below runs in its own child process (like the run-mode probe
+    // above) so the DiskCache singleton — module-scoped, persists for a
+    // process's lifetime — starts counting from zero every time, rather than
+    // accumulating hits left over from earlier checks in this same file that
+    // also build against the shared `.cache/@11ty/img/`.
+    const probeScript = "_probe-image-cache-durability.mjs";
+    const probeSource = `import Eleventy from "@11ty/eleventy";
+import { diskCache } from "@11ty/eleventy-img/src/caches.js";
+
+const outDir = process.argv[2];
+
+const start = Date.now();
+const elev = new Eleventy(undefined, outDir, { source: "cli", quietMode: true });
+await elev.write();
+const elapsedMs = Date.now() - start;
+
+const [hits, misses] = diskCache.getCount();
+process.stdout.write("\\nPROBE_RESULT:" + JSON.stringify({ hits, misses, elapsedMs }) + "\\n");
+`;
+
+    const runBuild = () => {
+      const stdout = execFileSync(process.execPath, [probeScript, "_site"], {
+        stdio: "pipe",
+        env: process.env,
+      }).toString("utf8");
+      const match = /PROBE_RESULT:(\{.*\})/.exec(stdout);
+      assert.ok(match, `image-cache probe produced no PROBE_RESULT — got: ${stdout.slice(0, 500)}`);
+      return JSON.parse(match[1]);
+    };
+
+    writeFileSync(probeScript, probeSource);
+    try {
+      // Cold: wipe both _site and .cache so DiskCache starts genuinely empty.
+      // This doubles as the red proof for the "misses === 0" assertion below —
+      // a build with nothing cached MUST show misses, or that assertion would
+      // be trivially true regardless of whether the durability behaviour works.
+      rmSync("_site", { recursive: true, force: true });
+      rmSync(".cache", { recursive: true, force: true });
+      const cold = runBuild();
+      assert.ok(
+        cold.misses > 0,
+        `cold build (.cache empty) recorded 0 disk-cache misses (${JSON.stringify(cold)}) — this check would be vacuous`,
+      );
+
+      const sample = globSync("_site/img/built/*.avif")[0];
+      assert.ok(sample, "cold build produced no built .avif files under _site/img/built/");
+      const beforeBytes = readFileSync(sample);
+
+      // Warm: wipe _site ONLY, keep .cache — the actual contract under test.
+      rmSync("_site", { recursive: true, force: true });
+      const warm = runBuild();
+
+      assert.ok(
+        existsSync(sample),
+        `${sample} did not reappear after rebuilding with _site wiped but .cache intact`,
+      );
+      assert.deepEqual(
+        readFileSync(sample),
+        beforeBytes,
+        `${sample} has different bytes after rebuild — it was re-encoded, not restored from .cache`,
+      );
+      assert.equal(
+        warm.misses,
+        0,
+        `warm rebuild (_site wiped, .cache kept) recorded ${warm.misses} disk-cache miss(es) — some images were re-encoded instead of reused from .cache`,
+      );
+      assert.ok(
+        warm.hits > 0,
+        `warm rebuild recorded 0 disk-cache hits (${JSON.stringify(warm)}) — expected every built image to be served from .cache`,
+      );
+
+      console.log(
+        `    cold build (.cache empty): ${cold.elapsedMs}ms (${cold.hits} hits, ${cold.misses} misses)`,
+      );
+      console.log(
+        `    warm build (_site wiped, .cache kept): ${warm.elapsedMs}ms (${warm.hits} hits, ${warm.misses} misses)`,
+      );
+    } finally {
+      rmSync(probeScript, { force: true });
+    }
+  },
+);
+
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;
 const skipNote = skipped ? `, ${skipped} skipped` : "";

@@ -3,6 +3,8 @@ _site/
 _site-speedlify-check/
 _site-webc-check/
 _site-serve-check/
+_site-image-transform-build-check/
+_site-image-transform-serve-check/
 .cache/
 .env
 package-lock.json
