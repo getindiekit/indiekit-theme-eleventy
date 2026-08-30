@@ -17,5 +17,6 @@
   <img class="u-photo" src="{{ image.url }}" alt="{{ image.alt | default: '' }}" loading="lazy" decoding="async" eleventy:optional="keep">
   {%- endif %}
   {%- endfor %}
-  <div class="e-content">{{ content }}</div>
+  {%- comment %} Task 18 (§7.4): see types/article.liquid for why h2,h3. {% endcomment -%}
+  <div class="e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
 </article>

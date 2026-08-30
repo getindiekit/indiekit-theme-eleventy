@@ -2185,6 +2185,158 @@ process.stdout.write("\\nPROBE_RESULT:" + JSON.stringify({ hits, misses, elapsed
   },
 );
 
+// Task 18 (§7.4): default.liquid's `modules:` list referenced two files that
+// don't exist in this repo (/static/heading-anchors.js,
+// /static/js/time-difference.js) — a 404 on every page routed through
+// default.liquid, invisible to every check above because nothing here
+// asserted a *referenced* asset actually *exists*. The three checks below
+// close both the specific bug (heading-anchors is now wired to real
+// headings) and the general class of defect it belongs to — this is the
+// third time a reference to a path this theme never builds has slipped
+// through (/static/defer.css, the toggle-button asset paths, now this); the
+// last check asserts every same-origin <script src> / <link
+// rel="stylesheet" href> on every built page resolves to a real file.
+check("heading-anchors wraps the real e-content body in every post type that has one", () => {
+  // Confirms the markup wiring, not just that the module file exists: a
+  // <script src> that resolves to a real file which is never applied to any
+  // heading would still pass every check above. Source (page.liquid:9-11,
+  // post.liquid:55-57) wraps its content div's body in
+  // <heading-anchors selector="h2,h3"> — h2,h3 because h1 is reserved for
+  // the page/post title (this partial's own <h1 class="p-name">), so body
+  // content headings start at h2. "like" has no e-content div (its body is
+  // just a URL, see types/like.liquid) — deliberately excluded, not missed.
+  const types = ["article", "note", "bookmark", "reply", "photo"];
+  for (const type of types) {
+    const source = readFileSync(`_includes/types/${type}.liquid`, "utf8");
+    assert.ok(
+      source.includes('<heading-anchors selector="h2,h3">{{ content }}</heading-anchors>'),
+      `_includes/types/${type}.liquid does not wrap {{ content }} in <heading-anchors selector="h2,h3">`,
+    );
+  }
+});
+
+await checkAsync(
+  "heading-anchors' selector matches a real h2 in post body content, carrying the id IdAttributePlugin gave it",
+  async () => {
+    // The wiring check above only proves the markup is present in the
+    // template source — not that it survives rendering with a real heading,
+    // or that "h2,h3" actually matches ids IdAttributePlugin stamps on BODY
+    // content, as opposed to only the h1 title (already covered by "…render
+    // their microformats" above). Build one throwaway fixture with a real
+    // markdown heading and confirm both land together, nested correctly.
+    const fixturePath = "content/articles/_heading-anchors-check.md";
+    const outDir = "_site-heading-anchors-check";
+    const heading = "A Real Section Heading";
+    const fixture = `---
+date: 2026-08-30T10:00:00.000Z
+title: Heading anchors check
+eleventyExcludeFromCollections: true
+---
+
+## ${heading}
+
+Body text.
+`;
+
+    writeFileSync(fixturePath, fixture);
+    try {
+      rmSync(outDir, { recursive: true, force: true });
+      execFileSync(
+        process.execPath,
+        ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe" },
+      );
+
+      const outFile = `${outDir}/articles/_heading-anchors-check/index.html`;
+      assert.ok(existsSync(outFile), `${outFile} was not built`);
+      const html = readFileSync(outFile, "utf8");
+      assert.ok(
+        /<heading-anchors selector="h2,h3">\s*<h2 id="[a-z0-9-]+">A Real Section Heading<\/h2>/.test(html),
+        "the body's h2 either has no id (IdAttributePlugin not reaching body content) or is not nested inside <heading-anchors selector=\"h2,h3\">",
+      );
+    } finally {
+      rmSync(fixturePath, { force: true });
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  },
+);
+
+check("every same-origin script src and stylesheet href emitted by any built page resolves to a real file in _site", () => {
+  // Scoped to same-origin absolute paths (starts with "/", not "//") —
+  // external URLs (https://…) and data: URIs are never built by this theme
+  // and are out of scope. Scans every built .html page, not just index.html
+  // (the pre-existing "the page links a stylesheet that actually exists"
+  // check above only covers index.html and would have missed this bug,
+  // which only reached the six post-type permalink pages after Task 18
+  // routed them through default.liquid).
+  //
+  // One known, pre-existing exception: /static/infinity-burger.js
+  // (default.liquid's decorative "hamburger" easter egg). Verified against
+  // task-13-report.md and the port source itself: this reference is broken
+  // even in /home/rmdes/zachleat.com's own checkout — no infinity-burger.js
+  // exists there either, so there is no source file to port and this is not
+  // a regression this theme introduced. Task 13 deliberately left it
+  // unmodified as out of scope; fixing it now would be scope creep on a
+  // finding about two specific, different, and now-fixed module paths. It
+  // is exempted BY PATH — see the attributionExempt pattern above — rather
+  // than by weakening the check, so the exemption is auditable and a NEW
+  // dead reference elsewhere still fails this check.
+  const referenceExempt = new Set(["/static/infinity-burger.js"]);
+
+  const files = globSync("_site/**/*.html");
+  assert.ok(files.length > 0, "no HTML built — this check scanned nothing");
+
+  let scriptCount = 0;
+  let stylesheetCount = 0;
+  const seenExempt = new Set();
+
+  for (const file of files) {
+    const html = readFileSync(file, "utf8");
+
+    const scriptSrcs = [...html.matchAll(/<script[^>]+src="([^"]+)"[^>]*>/g)].map((m) => m[1]);
+    const stylesheetHrefs = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]*>/g)]
+      .map((m) => m[0].match(/href="([^"]+)"/)?.[1])
+      .filter(Boolean);
+
+    for (const src of scriptSrcs) {
+      if (!src.startsWith("/") || src.startsWith("//")) continue; // external / protocol-relative
+      scriptCount++;
+      if (referenceExempt.has(src)) {
+        seenExempt.add(src);
+        continue;
+      }
+      const cleanPath = src.split(/[?#]/)[0];
+      assert.ok(
+        existsSync(`_site${cleanPath}`),
+        `${file} references script ${src}, which does not exist in _site`,
+      );
+    }
+
+    for (const href of stylesheetHrefs) {
+      if (!href.startsWith("/") || href.startsWith("//")) continue;
+      stylesheetCount++;
+      const cleanPath = href.split(/[?#]/)[0];
+      assert.ok(
+        existsSync(`_site${cleanPath}`),
+        `${file} references stylesheet ${href}, which does not exist in _site`,
+      );
+    }
+  }
+
+  // Non-vacuous: a change that stopped this check from finding any scripts
+  // or stylesheets at all must fail loudly, not pass by having nothing left
+  // to inspect.
+  assert.ok(scriptCount > 0, "no same-origin scripts found across any built page — this check is vacuous");
+  assert.ok(stylesheetCount > 0, "no same-origin stylesheets found across any built page — this check is vacuous");
+
+  // The exemption must not rot: it has to actually be exercised (still
+  // referenced somewhere) so a future cleanup that removes the reference
+  // also has to remove the now-dead exemption entry.
+  for (const exempt of referenceExempt) {
+    assert.ok(seenExempt.has(exempt), `${exempt} is exempted but no page references it — remove the stale exemption`);
+  }
+});
+
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;
 const skipNote = skipped ? `, ${skipped} skipped` : "";

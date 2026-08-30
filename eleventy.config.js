@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { resolveDate } from "./_11ty/dateResolver.js";
 import pluginSass from "./_11ty/sassPlugin.js";
 import pluginSyntaxHighlight from "./_11ty/syntaxHighlightPlugin.js";
@@ -23,6 +24,14 @@ const feedBase = siteData.url.endsWith("/") ? siteData.url : `${siteData.url}/`;
 // source — this was the missing half: the guards existed with nothing ever
 // defining the name, so every guarded block was permanently suppressed.
 const JS_ENABLED = true;
+
+// Source (zachleat.com, eleventy.config.js:30-32) resolves its npm-package
+// static assets (e.g. @zachleat/pagefind-search, @zachleat/heading-anchors)
+// through real module resolution rather than a hand-built node_modules path
+// — reproduced verbatim, same idiom used for both packages there.
+function resolveModule(name) {
+  return fileURLToPath(import.meta.resolve(name));
+}
 
 export default function (eleventyConfig) {
   eleventyConfig.addGlobalData("JS_ENABLED", () => JS_ENABLED);
@@ -148,6 +157,19 @@ export default function (eleventyConfig) {
   // /static/ convention would exist for one unused component), so
   // toggle-button.webc's own asset links point at "/toggle-button.*" below.
   eleventyConfig.addPassthroughCopy({ "_components/*.{css,js}": "/" });
+
+  // Task 18 (§7.4): @zachleat/heading-anchors is a pinned dependency
+  // (package.json) that nothing referenced until now. Source
+  // (eleventy.config.js:181) copies it via resolveModule() into its own
+  // "static/" output tree; this theme's {static: "/"} mapping above already
+  // strips that "static/" prefix for every other vendored asset (see the
+  // speedlify2-score.js comment above — `/js/...`, not `/static/js/...`), so
+  // the equivalent output here is the bare root, not "static/heading-anchors.js".
+  // default.liquid's `modules:` list is adapted to match (`/heading-anchors.js`,
+  // not the source's `/static/heading-anchors.js`).
+  eleventyConfig.addPassthroughCopy({
+    [resolveModule("@zachleat/heading-anchors")]: "heading-anchors.js",
+  });
 
   // Source (zachleat.com, eleventy.config.js:656-674) pins one timezone
   // across three date-parsing branches so YAML dates, ISO strings and a

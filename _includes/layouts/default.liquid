@@ -4,8 +4,16 @@ classes:
   html: page-gradient
   body: body-grid
 modules:
-  - "/static/heading-anchors.js"
-  - "/static/js/time-difference.js"
+  # Task 18 (§7.4): source (zachleat.com default.liquid:6-8) declares these
+  # as "/static/heading-anchors.js" and "/static/js/time-difference.js" —
+  # this theme's {static: "/"} passthrough mapping (eleventy.config.js)
+  # strips the "static/" prefix from every vendored asset it copies (see
+  # speedlify2-score.js, served at /js/... not /static/js/...), so the
+  # equivalent real paths here drop that prefix too. Neither file existed
+  # under either path before this task — see eleventy.config.js and
+  # static/js/time-difference.js for how each is now built.
+  - "/heading-anchors.js"
+  - "/js/time-difference.js"
 ---
 <a href="#skiplink-content" id="skiplink-top" class="skiplink skiplink-fn" data-pagefind-ignore>Skip to Content</a>
 <div class="rail" data-pagefind-ignore>

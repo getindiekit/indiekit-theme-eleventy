@@ -1,5 +1,6 @@
 <article class="h-entry">
   <a class="u-url" href="{{ page.url }}">{{ title }}</a>
   {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
-  <div class="e-content">{{ content }}</div>
+  {%- comment %} Task 18 (§7.4): see types/article.liquid for why h2,h3. {% endcomment -%}
+  <div class="e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
 </article>
