@@ -52,6 +52,17 @@ check("image transform plugin produces optimised output", () => {
   );
 });
 
+check("pages render through the base layout", () => {
+  const html = readFileSync("_site/index.html", "utf8");
+  assert.ok(html.startsWith("<!doctype html"), "output is not a full document");
+  assert.ok(html.includes("</html>"), "output is not a full document");
+});
+
+check("no zachleat.com references leak into output", () => {
+  const html = readFileSync("_site/index.html", "utf8");
+  assert.ok(!html.includes("zachleat"), "found a zachleat reference in output");
+});
+
 const failed = checks.filter((c) => !c).length;
 console.log(`\n${checks.length - failed}/${checks.length} checks passed`);
 process.exit(failed === 0 ? 0 : 1);

@@ -1,0 +1,88 @@
+{%- capture fullUrl %}{{ site.url }}{{ page.url }}{% endcapture -%}
+<!doctype html>
+<html lang="en"{% if tmpl or templateclass or classes.html %} class="{% if tmpl %}tmpl-{{ tmpl }}{% endif %}{% if templateclass %} {{ templateclass }}{% endif %}{%- if classes.html %} {{ classes.html }}{% endif -%}"{% endif %}{% if eleventy.env.runMode == "serve" %} data-eleventy-runmode="{{ eleventy.env.runMode }}"{% endif %}>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>{% if title %}{% if titleOverride %}{{ titleOverride }}{% else %}{{ title }}{% endif %}—{{ site.name }}{% else %}{{ site.name }}{% endif %}</title>
+
+		<link rel="preload" href="/static/fonts/lato/2.0/latolatin-regular-subset.woff2" as="font" type="font/woff2" crossorigin>
+		<link rel="preload" href="/static/fonts/hex-franklin/HEX_Franklin_v0.2_Tyght_Variable-subset.woff2" as="font" type="font/woff2" crossorigin>
+
+		<meta name="author" content="{{ site.author.name }}">
+		<meta name="description" content="{% if description %}{{ description }}, {% endif %}{% if title %}A post by {% endif %}{{ site.author.name }}">
+		<meta name="generator" content="{{ eleventy.generator }}">
+
+{%- if noindex %}
+		{% comment %}For OpenGraph image pages{% endcomment %}
+		<meta name="robots" content="noindex">
+{%- endif %}
+
+		<!-- Social -->
+		<meta property="og:title" content="{% if title %}{{ title }}—{{ site.name }}{% else %}{{ site.name }}{% endif %}">
+		<meta property="og:type" content="website">
+		<meta property="og:site_name" content="{{ site.name }}">
+		<meta property="og:description" content="{% if description %}{{ description }}, {% endif %}{% if title %}A post by {% endif %}{{ site.author.name }}">
+		<meta property="og:url" content="{{ site.url }}{{ page.url }}">
+
+		<!-- SEO/Feeds -->
+		<link rel="canonical" href="{{ fullUrl }}">
+{% if rssFeedUrl and rssFeedTitle %}
+		<link rel="alternate" href="{{ rssFeedUrl }}" title="{{ rssFeedTitle }}" type="application/atom+xml">
+{% else %}
+		<link rel="alternate" href="/web/feed/" title="{{ site.name }} Posts Feed" type="application/atom+xml">
+		<link rel="alternate" href="/follow/" title="{{ site.name }} Activity Feed" type="application/rss+xml">
+{% endif %}
+
+{% comment %}Critical CSS in production, blocking stylesheet for local dev for better livereload{% endcomment %}
+{% if eleventy.env.runMode == "serve" %}
+		<link rel="stylesheet" href="/static/initial.css">
+{% endif %}
+		{% comment %} TODO(unresolved shortcodes): the source used `{% renderFile %}` (inline-compiled critical CSS) and `{% getBundle 'css' %}` (WebC bundle) here for the "build" runMode branch — neither shortcode is registered by this theme's eleventy.config.js. See task-4-report.md. {% endcomment %}
+
+		<!-- Preconnect to Eleventy services -->
+		<link href="https://v1.opengraph.11ty.dev" rel="preconnect" crossorigin>
+		<link href="https://v1.indieweb-avatar.11ty.dev" rel="preconnect" crossorigin>
+
+{%- if JS_ENABLED %}
+		<link rel="stylesheet" href="/static/defer.css" media="print" onload="this.media='all'">
+		<noscript>
+			<link href="/static/defer.css" rel="stylesheet">
+		</noscript>
+{%- else %}
+		<link href="/static/defer.css" rel="stylesheet">
+{%- endif %}
+{%- for url in stylesheets -%}
+		<link href="{{ url }}" rel="stylesheet">
+{%- endfor %}
+{%- for stylesheet in stylesheetsDist -%}
+		<link href="/static/{{ stylesheet }}" rel="stylesheet">
+{%- endfor %}
+
+{%- if JS_ENABLED %}
+		{% comment %} TODO(unresolved shortcode): the source wrapped this in `{% getBundle 'js' %}` (WebC bundle) — not registered by this theme's eleventy.config.js. Analytics script dropped per scope. {% endcomment %}
+		<script src="/static/defer.js" type="module"></script>
+{%- endif %}
+
+		<meta property="eleventy:path" content="{{ page.inputPath }}">
+
+		<!-- IndieAuth -->
+{% if site.author.url %}
+		<link href="{{ site.author.url }}" rel="me">
+{% endif %}
+		{% comment %} TODO(Task 7): webmention/pingback discovery links restored when the webmention endpoint is ported. {% endcomment %}
+	</head>
+	<body class="{%- if classes and classes.body %} {{ classes.body }}{% endif -%}"
+		{% unless excludeFromSearch %} data-pagefind-body{% endunless %}>
+		{{ content }}
+{%- if JS_ENABLED %}
+{%- for url in scripts -%}
+		<script src="{{ url }}" defer></script>
+{%- endfor %}
+{%- for url in modules -%}
+		<script src="{{ url }}" type="module"></script>
+{%- endfor %}
+{%- endif %}
+	</body>
+</html>

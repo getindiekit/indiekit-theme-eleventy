@@ -1,4 +1,5 @@
 ---
+layout: layouts/page.liquid
 title: Indiekit reference theme
 ---
 

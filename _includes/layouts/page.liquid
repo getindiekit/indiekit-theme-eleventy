@@ -1,0 +1,20 @@
+---
+layout: layouts/default.liquid
+tmpl: page
+disableComments: true
+---
+<article class="h-entry">
+	<h1 class="p-name primary-title{% if removeTitle %} sr-only{% endif %}{% if smalltitle %} primary-title-smalltitle{% endif %}{% if primaryTitleExemptWidth %} primary-title-exempt{% endif %}">{{ title }}</h1>
+	<div class="content-grid e-content">
+		<heading-anchors selector="h2,h3">
+			{{ content }}
+		</heading-anchors>
+	</div>
+</article>
+
+{% comment %} TODO(Task 7): webmentionlist include restored when the webmention endpoint is ported.
+{% unless disableComments %}
+	{%- capture absoluteUrl -%}{{ page.url | absoluteUrl }}{%- endcapture -%}
+	{% include "webmentionlist", absoluteUrl: absoluteUrl %}
+{% endunless %}
+{% endcomment %}
