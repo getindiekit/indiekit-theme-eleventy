@@ -27,6 +27,52 @@ const JS_ENABLED = true;
 export default function (eleventyConfig) {
   eleventyConfig.addGlobalData("JS_ENABLED", () => JS_ENABLED);
 
+  // Task 17 (§1.6, source eleventy.config.js:75-88). Micropub sends
+  // `post-status: draft` as a JF2 property, but that string never reaches a
+  // file under content/: verified against @indiekit/preset-eleventy's
+  // getFrontMatter() (indiekit-origin/packages/preset-eleventy/lib/
+  // post-template.js, the unpublished fork at ~/indiekit/
+  // indiekit-preset-eleventy/lib/post-template.js, and the beta.28 build
+  // actually installed in ~/indiekit/example-config-local/node_modules —
+  // all three agree) — it converts `postStatus === "draft"` into a boolean
+  // `draft: true` front-matter key and deletes `postStatus` before the file
+  // is ever written. So this keys on `data.draft`, the same field name the
+  // port source already uses, not `data["post-status"]`.
+  //
+  // Source always drops a draft, in every run mode. Its own commented-out
+  // alternative at :84 is strictly better and is what this adopts instead:
+  // a draft stays visible under `--serve`/`--watch` so an author can preview
+  // it, and is dropped only from a `build` — keyed on the real
+  // process.env.ELEVENTY_RUN_MODE (confirmed live in this project's own
+  // Task 15 probe, not assumed), not a hand-maintained flag.
+  eleventyConfig.addPreprocessor("drafts", "*", (data) => {
+    if (data.draft) {
+      if (data.draft === "ignore") {
+        return false;
+      }
+      // Source unconditionally appends " (Draft)" to data.title. Several
+      // Indiekit post types are titleless by design (_data/
+      // eleventyComputed.js) and carry no `title` front matter at this
+      // point — preprocessors run before eleventyComputed. Appending to
+      // `undefined` would ship a literal "undefined (Draft)" title, so only
+      // append when a real title exists.
+      if (data.title) {
+        data.title = `${data.title} (Draft)`;
+      }
+    }
+
+    if (data.draft && process.env.ELEVENTY_RUN_MODE === "build") {
+      return false;
+    }
+  });
+
+  // Source also dev-gates eleventyConfig.ignores.add() for expensive page
+  // sets outside production (:91-94: a network feed-aggregation page and an
+  // OG-image page). This theme has neither yet — no equivalent aggregation
+  // page, and Task 20's OG-image page set doesn't exist. Nothing here
+  // qualifies, so no ignore is added; inventing one for a page set that
+  // doesn't exist would be dead configuration.
+
   // content/static/defer.js.liquid `{% include %}`s a dependency out of
   // node_modules (see that file's own comment for why it lives under
   // content/static/ rather than the source's project-root static/). Confirmed

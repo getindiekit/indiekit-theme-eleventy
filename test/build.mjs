@@ -1043,6 +1043,69 @@ check("every h-entry in the homepage listing carries its own u-url", () => {
   );
 });
 
+check("a Micropub draft is dropped from pages, the feed and the h-feed in a production build", () => {
+  // Task 17. content/notes/fixture-draft-note.md carries `draft: true` (the
+  // field @indiekit/preset-eleventy actually writes for a Micropub
+  // `post-status: draft` post — see eleventy.config.js's Task 17 comment)
+  // and a unique marker string. Checking absence alone would trivially pass
+  // if the fixture were ever deleted — the matching "present under serve"
+  // check below is what makes that impossible: deleting the fixture fails
+  // THAT check, not this one. Together they prove the drop is real, not
+  // "nothing to find".
+  assert.ok(
+    !existsSync("_site/notes/fixture-draft-note/index.html"),
+    "draft note built its own page in a production build",
+  );
+  const feed = readFileSync("_site/feed.xml", "utf8");
+  assert.ok(!feed.includes("MARKER_draft_note"), "draft note's marker leaked into feed.xml");
+  const homepage = readFileSync("_site/index.html", "utf8");
+  assert.ok(!homepage.includes("MARKER_draft_note"), "draft note's marker leaked into the h-feed homepage listing");
+  assert.ok(
+    !homepage.includes("/notes/fixture-draft-note/"),
+    "draft note has an h-feed entry linking to its (nonexistent) page",
+  );
+});
+
+await checkAsync("the same Micropub draft is present under serve mode", async () => {
+  // The mirror of the check above, driving a real serve-mode build the same
+  // way the Task 13/14 "under serve mode, critical CSS is linked" check
+  // does (in-process `new Eleventy(..., { runMode: "serve" })` — a later
+  // `new Eleventy(...)` call, in this process or a spawned child, resets
+  // process.env.ELEVENTY_RUN_MODE regardless of what this leaves behind,
+  // per that check's own comment). Proves the preprocessor's
+  // ELEVENTY_RUN_MODE === "build" condition actually varies by mode, rather
+  // than dropping drafts unconditionally like the port source's un-adapted
+  // default (which would leave this check red forever).
+  const outDir = "_site-draft-serve-check";
+  rmSync(outDir, { recursive: true, force: true });
+  try {
+    const elev = new Eleventy(undefined, outDir, {
+      source: "cli",
+      quietMode: true,
+      runMode: "serve",
+    });
+    await elev.write();
+
+    assert.ok(
+      existsSync(`${outDir}/notes/fixture-draft-note/index.html`),
+      "draft note did not build its own page under serve mode",
+    );
+    const feed = readFileSync(`${outDir}/feed.xml`, "utf8");
+    assert.ok(feed.includes("MARKER_draft_note"), "draft note's marker is missing from feed.xml under serve mode");
+    const homepage = readFileSync(`${outDir}/index.html`, "utf8");
+    assert.ok(
+      homepage.includes("MARKER_draft_note"),
+      "draft note's marker is missing from the h-feed homepage listing under serve mode",
+    );
+    assert.ok(
+      homepage.includes("/notes/fixture-draft-note/"),
+      "draft note has no h-feed entry linking to its page under serve mode",
+    );
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
 check("photo renders a URL, not an object", () => {
   const files = globSync("_site/photos/**/index.html");
   const html = readFileSync(files[0], "utf8");
