@@ -143,6 +143,13 @@ check("photo renders a URL, not an object", () => {
   assert.ok(html.includes("/media/sample.png"), "photo src missing");
 });
 
+check("each post type builds a directory index", () => {
+  for (const type of Object.keys(mf2)) {
+    const files = globSync(`_site/${type}/*/index.html`);
+    assert.ok(files.length > 0, `${type} did not build <slug>/index.html`);
+  }
+});
+
 const failed = checks.filter((c) => !c).length;
 console.log(`\n${checks.length - failed}/${checks.length} checks passed`);
 process.exit(failed === 0 ? 0 : 1);

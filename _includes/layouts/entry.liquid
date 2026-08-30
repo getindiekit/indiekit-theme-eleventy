@@ -1,0 +1,11 @@
+---
+layout: layouts/base.liquid
+---
+{% case postType %}
+  {% when "article" %}{% include "types/article.liquid" %}
+  {% when "bookmark" %}{% include "types/bookmark.liquid" %}
+  {% when "like" %}{% include "types/like.liquid" %}
+  {% when "photo" %}{% include "types/photo.liquid" %}
+  {% when "reply" %}{% include "types/reply.liquid" %}
+  {% else %}{% include "types/note.liquid" %}
+{% endcase %}

@@ -38,87 +38,21 @@ tmpl: page
 			</div>
 		</article>
 {% endif %}
-{% if external_url and external_url_location != "end" %}
-		<article class="content-sibling">
-			{%- unless ignoreExternalLinkInLayoutFile %}
-			<p>
-				<em class="text-ellipsis">Via: <a href="{{ external_url }}">{%- icon "fa:arrow-up-right-from-square" -%}<span>{{ external_url }}</span></a></em>
-				{%- originalPostEmbed external_url, external_url_skipicon, external_url_screenshotmode %}
-			</p>
-			{%- endunless %}
-		</article>
-{% endif %}
 	</div>
 	<div class="content-grid e-content favicon-optin">
 		<heading-anchors selector="h2,h3">
 			{{ content }}
 		</heading-anchors>
 	</div>
-{% if external_url_location == "end" %}
-	<div class="content-grid-sibling">
-		<article class="content-sibling">
-			<hr>
-			<p>
-				<em class="text-ellipsis">Via: <a href="{{ external_url }}"><span>{{ external_url }}</span></a></em>
-				{%- originalPostEmbed external_url %}
-			</p>
-		</article>
-	</div>
-{% endif %}
 </article>
 
 <hr>
 <article class="content-grid-sibling">
 	<p class="post-metadata">
-		{%- if tags contains "web-components" or tags contains "eleventy" or tags contains "web-fonts" or tags contains "project" or tags contains "speaking" %}
-		<em>{% icon "fas:tag" %}Tags:
-			{% if tags contains "eleventy" %}<a href="/web/?category=eleventy">Eleventy</a>{% endif %}
-			{% if tags contains "project" %}<a href="/web/?category=project">Project</a>{% endif %}
-			{% if tags contains "speaking" %}<a href="/web/?category=speaking">Speaking</a>{% endif %}
-			{% if tags contains "web-components" %}<a href="/web/?category=web-components">Web Components</a>{% endif %}
-			{% if tags contains "web-fonts" %}<a href="/web/?category=web-fonts">Web Fonts</a>{% endif %}
-			{% if tags contains "jamstack" %}<a href="/web/?category=jamstack">Jamstack</a>{% endif %}
-		</em>
-		{%- endif %}
 		{%- if metadata.speaking.country %}
 		<span>{{ metadata.speaking.country | nameToFlag }} <em>{{ metadata.speaking.country }}</em></span>
 		{%- endif %}
 	</p>
-	{%- if posterImage.source %}
-	<p><a href="{{ posterImage.source }}"><em>{% indieAvatar "https://unsplash.com/" "z-avatar" %}Poster image{% if posterImage.name %} by {{ posterImage.name }}{% endif %}</em></a></p>
-	{%- endif %}
-</article>
-
-<article class="content-grid-sibling" data-pagefind-ignore>
-	{% assign previousPost = collections.activePosts | getPreviousCollectionItem: page %}
-	{% assign nextPost = collections.activePosts | getNextCollectionItem: page %}
-
-	<dl class="nextprev">
-		<dt class="nextprev-next">
-			{%- if nextPost %}
-			<span>&lt; Older</span>
-			{%- endif %}
-		</dt>
-		<dd class="nextprev-next">
-			{%- if nextPost %}
-			<a href="{{ nextPost.url }}">
-				<img src="{% ogImageSource nextPost %}"  alt="{{ nextPost.data.title }}" decoding="async" loading="lazy"class="project_img" eleventy:widths="650"{% if nextPost | shouldSkipOpenGraphImageOptimization %} eleventy:ignore{% endif %}>
-			</a>
-			{%- endif -%}
-		</dd>
-		<dt class="nextprev-prev">
-			{%- if previousPost %}
-			<span>Newer &gt;</span>
-			{%- endif %}
-		</dt>
-		<dd class="nextprev-prev">
-			{%- if previousPost %}
-			<a href="{{ previousPost.url }}">
-				<img src="{% ogImageSource previousPost %}"  alt="{{ previousPost.data.title }}" decoding="async" loading="lazy"class="project_img" eleventy:widths="650"{% if previousPost | shouldSkipOpenGraphImageOptimization %} eleventy:ignore{% endif %}>
-			</a>
-			{%- endif -%}
-		</dd>
-	</dl>
 </article>
 
 {% comment %} TODO(Task 7): webmentionlist include restored when the webmention endpoint is ported.
@@ -127,15 +61,6 @@ tmpl: page
 	{% include "webmentionlist", absoluteUrl: absoluteUrl %}
 {% endunless %}
 {% endcomment %}
-
-<div id="opengraph-preview" class="share content-grid-sibling" data-pagefind-ignore>
-	<details>
-		<summary class="hed-h4"><strong>Sharing on social media?</strong></summary>
-		<p>This is what will show up when you share this post on Social Media:</p>
-		<img class="share-img" src="{% ogImageSource page %}" decoding="async" loading="lazy" width="1200" height="630" alt="{{ title }}" eleventy:ignore>
-		<p>How did you do this? <a href="/web/automatic-opengraph/">I automated my Open Graph images.</a> (<a href="/opengraph{{ page.url }}">Peer behind the curtain at the test page</a>)</p>
-	</details>
-</div>
 
 <script type="module" src="/static/line-numbers.js"></script>
 <script type="module">
