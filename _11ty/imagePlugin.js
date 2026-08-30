@@ -5,7 +5,18 @@ import { getImageColors } from "@11ty/image-color";
 
 const SIZES_INLINE = "(min-width: 75em) 44.5625em, (min-width: 61.25em) 40.6875em, (min-width: 41.25em) 36.8125em, 96vw";
 
-const CACHE_DURATION = process.env.ELEVENTY_RUN_MODE === "serve" ? "30d" : "1d";
+// Deviation from the port source: zachleat.com/_11ty/imagePlugin.js:12 keys
+// this the same run-mode idiom as webmentions/npm downloads (1d build / 30d
+// serve). Task 15 brief calls for a flat "*" here instead, and that's the
+// right call for this input: webmentions/npm downloads are time-varying data
+// fetched from a remote API that can change independently of the cache key,
+// so a stale cache genuinely goes stale. `imageFactory`'s Image() calls are
+// keyed by eleventy-img on the source file's own content/stat — a changed
+// source image gets a different cache key regardless of duration, so there
+// is nothing external to go stale against. A permanent cache is therefore
+// both safe and simpler. Exported (not just a local const) so test/build.mjs
+// can assert the real value used, not scan source text for a keyword.
+export const IMAGE_CACHE_DURATION = "*";
 
 async function imageFactory(src, options = {}) {
 	options = Object.assign({},{
@@ -17,7 +28,7 @@ async function imageFactory(src, options = {}) {
 		outputDir: "./_site/img/built/",
 		sharpAvifOptions: {},
 		cacheOptions: {
-			duration: CACHE_DURATION,
+			duration: IMAGE_CACHE_DURATION,
 		},
 	}, options);
 

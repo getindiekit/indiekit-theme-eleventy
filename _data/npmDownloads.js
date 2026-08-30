@@ -3,6 +3,8 @@ import EleventyFetch from "@11ty/eleventy-fetch";
 
 const NPM_PKG_NAME = "@indiekit/indiekit";
 const START_YEAR = 2020;
+// See _data/webmentions.js for how process.env.ELEVENTY_RUN_MODE is verified
+// to actually carry Eleventy's real run mode here (not a guessed env var).
 const CACHE_DURATION = process.env.ELEVENTY_RUN_MODE === "serve" ? "30d" : "1d";
 
 async function getDownloadsForYear(year) {
@@ -17,7 +19,13 @@ async function getDownloadsForYear(year) {
 	return json.downloads;
 }
 
-export default async function() {
+// Named (not anonymous) solely so CACHE_DURATION can be attached below as a
+// property of the exported function — see the identical comment in
+// _data/webmentions.js for why this must NOT be a second `export const`
+// (Eleventy's data-file loader only auto-invokes a module whose sole export
+// is `default`; a second export makes it hand back the whole namespace
+// object as this file's global data instead of calling the function).
+export default async function getNpmDownloadsData() {
 	// CI and fresh clones must not need the network — same offline contract
 	// as _data/webmentions.js. NPM_DOWNLOADS_OFFLINE is hardcoded by Task 11's
 	// CI workflow; this is the exact name it sets.
@@ -51,3 +59,9 @@ export default async function() {
 		};
 	}
 };
+
+// test/build.mjs reads this off the default export (not a separate named
+// export — see the comment above the function for why) to assert the real
+// computed value against real builds in both run modes, not just scan
+// source text for the string "ELEVENTY_RUN_MODE".
+getNpmDownloadsData.CACHE_DURATION = CACHE_DURATION;

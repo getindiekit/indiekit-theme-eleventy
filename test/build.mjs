@@ -77,6 +77,152 @@ await checkAsync("npmDownloads data module returns a well-formed contract", asyn
   }
 });
 
+await checkAsync(
+  "cache durations are keyed to Eleventy's real run mode, not a source-scanned constant",
+  async () => {
+    // Task 15: _data/webmentions.js, _data/npmDownloads.js and
+    // _11ty/imagePlugin.js each export a cache-duration constant keyed off
+    // process.env.ELEVENTY_RUN_MODE (or, for images, deliberately NOT keyed
+    // — see the comment above IMAGE_CACHE_DURATION). A build-output
+    // assertion can't see a cache duration, and a source-text scan for the
+    // string "ELEVENTY_RUN_MODE" would pass even if the ternary read the
+    // wrong branch, used the wrong variable, or the variable were never
+    // actually set by Eleventy — exactly the class of vacuous check this
+    // project has been burned by before ("setting an env var the code never
+    // reads proves nothing" cuts the same way in reverse: finding the string
+    // in source proves nothing about what value it evaluates to at runtime).
+    //
+    // process.env.ELEVENTY_RUN_MODE genuinely is Eleventy's real run mode
+    // here, not a guessed/no-op var: verified by reading CoreMinimal.js
+    // (initializeConfig -> initializeEnvironmentVariables ->
+    // EnvironmentVars.cjs's setEnvValue("RUN_MODE", this.runMode)), which
+    // runs before any _data/*.js file is imported, and independently by
+    // probing it live — a throwaway _data/*.js file printed this var's value
+    // from inside both a real CLI build and a real
+    // `new Eleventy(input, output, { runMode: "serve" })` build, and both
+    // matched the mode that produced them.
+    //
+    // So this drives two REAL Eleventy builds — one plain "build" mode, one
+    // programmatic "serve" mode (same mechanism the "under serve mode" check
+    // above uses) — and reads back the actual exported constants the
+    // modules computed, sourced from the exact module instances Eleventy
+    // itself imported for that build. Each build runs in its OWN child
+    // process via a throwaway probe script, not inline here: Eleventy's
+    // setEnvValue mutates process.env for the rest of THIS process's
+    // lifetime, and doing that here would silently change
+    // transformOnRequest/outputDir behaviour (_11ty/imagePlugin.js) for
+    // every later execFileSync-spawned build in this file, which inherits
+    // env by default — the same trap the "under serve mode" check's own
+    // comment flags for why it uses the programmatic API in the first place.
+    const probeScript = "_probe-run-mode.mjs";
+    const probeSource = `import Eleventy from "@11ty/eleventy";
+
+const mode = process.argv[2]; // "build" or "serve"
+const outDir = process.argv[3];
+
+const options = { source: "cli", quietMode: true };
+if (mode === "serve") {
+  options.runMode = "serve";
+}
+// mode === "build": omit runMode, matching a plain CLI invocation with no
+// --serve/--watch flag (cmd.cjs:106 defaults to "build" the same way).
+
+const elev = new Eleventy(undefined, outDir, options);
+await elev.write();
+
+const webmentions = await import("./_data/webmentions.js");
+const npmDownloads = await import("./_data/npmDownloads.js");
+const imagePlugin = await import("./_11ty/imagePlugin.js");
+
+process.stdout.write("\\nPROBE_RESULT:" + JSON.stringify({
+  webmentions: webmentions.default.CACHE_DURATION,
+  npmDownloads: npmDownloads.default.CACHE_DURATION,
+  image: imagePlugin.IMAGE_CACHE_DURATION,
+}) + "\\n");
+`;
+
+    const buildOutDir = "_site-runmode-probe-build";
+    const serveOutDir = "_site-runmode-probe-serve";
+
+    const runProbe = (mode, outDir) => {
+      rmSync(outDir, { recursive: true, force: true });
+      const stdout = execFileSync(
+        process.execPath,
+        [probeScript, mode, outDir],
+        {
+          stdio: "pipe",
+          // Force offline regardless of how this test file itself was
+          // invoked — this check must never touch the network.
+          env: {
+            ...process.env,
+            WEBMENTIONS_FIXTURE: "test/fixtures/webmentions.json",
+            NPM_DOWNLOADS_OFFLINE: "1",
+          },
+        },
+      ).toString("utf8");
+      const match = /PROBE_RESULT:(\{.*\})/.exec(stdout);
+      assert.ok(match, `${mode}-mode probe produced no PROBE_RESULT line — got: ${stdout.slice(0, 500)}`);
+      return JSON.parse(match[1]);
+    };
+
+    writeFileSync(probeScript, probeSource);
+    try {
+      const build = runProbe("build", buildOutDir);
+      const serve = runProbe("serve", serveOutDir);
+
+      assert.equal(
+        build.webmentions,
+        "2h",
+        `build-mode webmentions cache duration: expected "2h", got ${JSON.stringify(build.webmentions)}`,
+      );
+      assert.equal(
+        serve.webmentions,
+        "30d",
+        `serve-mode webmentions cache duration: expected "30d", got ${JSON.stringify(serve.webmentions)}`,
+      );
+      assert.notEqual(
+        build.webmentions,
+        serve.webmentions,
+        "webmentions cache duration did not vary by run mode — it's a constant, not a switch",
+      );
+
+      assert.equal(
+        build.npmDownloads,
+        "1d",
+        `build-mode npm downloads cache duration: expected "1d", got ${JSON.stringify(build.npmDownloads)}`,
+      );
+      assert.equal(
+        serve.npmDownloads,
+        "30d",
+        `serve-mode npm downloads cache duration: expected "30d", got ${JSON.stringify(serve.npmDownloads)}`,
+      );
+      assert.notEqual(
+        build.npmDownloads,
+        serve.npmDownloads,
+        "npm downloads cache duration did not vary by run mode — it's a constant, not a switch",
+      );
+
+      // Images are the deliberate exception (_11ty/imagePlugin.js): always
+      // "*", in BOTH modes — proving the Task 15 deviation from the port
+      // source was actually applied, not left as source's own keyed 1d/30d.
+      assert.equal(
+        build.image,
+        "*",
+        `build-mode image cache duration: expected "*", got ${JSON.stringify(build.image)}`,
+      );
+      assert.equal(
+        serve.image,
+        "*",
+        `serve-mode image cache duration: expected "*", got ${JSON.stringify(serve.image)}`,
+      );
+    } finally {
+      rmSync(probeScript, { force: true });
+      rmSync(buildOutDir, { recursive: true, force: true });
+      rmSync(serveOutDir, { recursive: true, force: true });
+    }
+  },
+);
+
 check("compiles sass to css", () => {
   const css = globSync("_site/**/*.css");
   assert.ok(css.length > 0, "no .css file produced in _site");

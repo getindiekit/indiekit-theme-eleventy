@@ -12,6 +12,14 @@ import getHostname from "../_includes/getHostname.js";
 const domain = getHostname(siteData.url);
 const API_ORIGIN = 'https://webmention.io/api/mentions.jf2';
 const TOKEN = process.env.WEBMENTION_IO_TOKEN;
+// process.env.ELEVENTY_RUN_MODE is not a guess: Eleventy's own CoreMinimal.js
+// (initializeConfig -> initializeEnvironmentVariables -> EnvironmentVars.cjs's
+// setEnvValue("RUN_MODE", ...)) sets this exact var from its internal runMode
+// ("build"/"watch"/"serve") before any _data/*.js file is imported — verified
+// by reading that source and, separately, by probing it live: a data file
+// printed this var's value from inside a real `--serve`-style build
+// (`new Eleventy(input, output, { runMode: "serve" })`) and from a real CLI
+// build with no flags, and both matched exactly.
 const CACHE_DURATION = process.env.ELEVENTY_RUN_MODE === "serve" ? "30d" : "2h";
 
 async function getWebmentionPage(pageNumber = 0) {
@@ -66,7 +74,16 @@ async function fetchWebmentions() {
 	return results;
 }
 
-export default async function({ eleventy }) {
+// Named (not anonymous) solely so CACHE_DURATION can be attached below as a
+// property of the exported function, rather than as a second named export —
+// Eleventy's data-file loader (Util/Require.js's dynamicImportAbsolutePath)
+// only unwraps a module straight to its default export when `default` is
+// the module's ONLY key; a second top-level export makes it hand the whole
+// `{ default, CACHE_DURATION }` namespace to the template as this file's
+// global data instead of calling the function, silently breaking every page
+// (verified: this is exactly what happened when CACHE_DURATION was first
+// tried as `export const`).
+export default async function getWebmentionsData({ eleventy }) {
 	// A build with no token — CI, a fresh clone, an offline machine — must
 	// still produce pages, and must never touch the network. Both offline
 	// paths below skip fetchWebmentions() (and therefore the network fetch)
@@ -117,3 +134,9 @@ export default async function({ eleventy }) {
 		mentions,
 	};
 }
+
+// test/build.mjs reads this off the default export (not a separate named
+// export — see the comment above the function for why) to assert the real
+// computed value against real builds in both run modes, not just scan
+// source text for the string "ELEVENTY_RUN_MODE".
+getWebmentionsData.CACHE_DURATION = CACHE_DURATION;
