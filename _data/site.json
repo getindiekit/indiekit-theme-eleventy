@@ -3,5 +3,6 @@
   "url": "http://localhost:8080",
   "description": "A reference Eleventy theme for Indiekit.",
   "author": { "name": "", "url": "" },
-  "speedlify": { "url": "", "enabled": false }
+  "speedlify": { "url": "", "enabled": false },
+  "timezone": "Europe/Brussels"
 }

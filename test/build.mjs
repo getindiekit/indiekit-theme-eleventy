@@ -283,10 +283,12 @@ check("feed contains every post-tagged fixture, not just any entry", () => {
   // made it into the feed, or if the collection name were wrong and picked up
   // some unrelated single page. Confirm all 6 post-type fixtures are present,
   // proving the `post` collection tag from Task 6's cascades actually feeds
-  // this plugin's `collection.name: "post"` option.
+  // this plugin's `collection.name: "post"` option. 7, not 6: Task 11 added a
+  // second bookmark fixture (fixture-untitled-bookmark.md) to exercise the
+  // titleless-bookmark fallback.
   const xml = readFileSync("_site/feed.xml", "utf8");
   const entryCount = (xml.match(/<entry>/g) || []).length;
-  assert.equal(entryCount, 6, `expected 6 feed entries (one per post-type fixture), got ${entryCount}`);
+  assert.equal(entryCount, 7, `expected 7 feed entries (one per post-type fixture, plus the untitled-bookmark fixture), got ${entryCount}`);
   for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos"]) {
     assert.ok(
       xml.includes(`http://localhost:8080/${type}/`),
@@ -329,16 +331,43 @@ check("every feed entry has a non-empty title", () => {
   // and the plugin renders `post.data.title` verbatim — an unhandled
   // fallback ships as literal <title></title>, which most feed readers
   // render as a blank row. This is the majority case: 4 of the 6 post
-  // types produce no title of their own.
+  // types produce no title of their own. 7, not 6: see the entry-count
+  // check above.
   const xml = readFileSync("_site/feed.xml", "utf8");
   const titles = [...xml.matchAll(/<title>([\s\S]*?)<\/title>/g)]
     .map((m) => m[1].trim())
     // the feed's own <title> (site name) is not an entry title
     .slice(1);
-  assert.equal(titles.length, 6, `expected 6 entry titles, found ${titles.length}`);
+  assert.equal(titles.length, 7, `expected 7 entry titles, found ${titles.length}`);
   for (const title of titles) {
     assert.ok(title.length > 0, "a feed entry has an empty <title>");
   }
+});
+
+check("titleless bookmark falls back to its bookmarked URL, not the synthetic date label", () => {
+  // eleventyComputed.js's synthetic "<Type> · <date>" fallback used to apply
+  // to every titleless postType, including bookmark — even though
+  // bookmark.liquid already has a better fallback of its own
+  // (`{{ title | default: bookmarkOf }}`, the bookmarked URL). No fixture
+  // exercised a titleless bookmark before this check, so the worse label won
+  // silently. Assert both the entry page and the feed use the URL.
+  const bookmarkUrl = "https://example.com/untitled-bookmark-fixture";
+
+  const html = readFileSync("_site/bookmarks/fixture-untitled-bookmark/index.html", "utf8");
+  assert.ok(
+    html.includes(`>${bookmarkUrl}<`),
+    "bookmark page does not show the bookmarked URL as its link text",
+  );
+  assert.ok(
+    !/Bookmark\s*(&#183;|·)/.test(html),
+    "bookmark page still carries the synthetic '<Type> · <date>' label",
+  );
+
+  const xml = readFileSync("_site/feed.xml", "utf8");
+  assert.ok(
+    xml.includes(`<title>${bookmarkUrl}</title>`),
+    "feed entry for the titleless bookmark does not use the bookmarked URL as its title",
+  );
 });
 
 check("no .webc source template is published into _site", () => {
@@ -404,6 +433,67 @@ eleventyExcludeFromCollections: true
     rmSync(outDir, { recursive: true, force: true });
   }
 });
+
+await checkAsync(
+  "addDateParsing's fallback branch reads a literal `published:` field, not file birthtime",
+  async () => {
+    // Indiekit filenames are slug-based, so the addDateParsing fallback
+    // branch (eleventy.config.js) can't derive a date from a YYYY-MM-DD
+    // filename prefix the way the port source does — it reads a literal
+    // `published:` key from the file's own front matter instead.
+    //
+    // This has to be checked through the Atom feed, not the entry page's own
+    // HTML: page templates (e.g. _includes/types/note.liquid) read the bare
+    // `date` variable, which is the data cascade's *raw* front-matter value
+    // — Eleventy never copies addDateParsing's resolved value back onto it,
+    // only onto `page.date`. @11ty/eleventy-plugin-rss is what actually
+    // reads `page.date` (via the collection item), so it is the one place
+    // in this theme where addDateParsing's output is observable at all.
+    //
+    // A page with neither `date` nor a filename date falls through
+    // Eleventy's own defaults to the file's on-disk birthtime (today,
+    // whatever day this test happens to run) — asserting on an unambiguous
+    // date from another year is what makes a missing/broken implementation
+    // provably wrong regardless of the machine's clock. (A near-midnight
+    // *offset* value on an existing `date`-bearing fixture would not prove
+    // anything here: Eleventy's own default ISO parsing already respects an
+    // explicit offset and lands on the correct instant with no
+    // addDateParsing at all — see the task report for why.)
+    const fixturePath = "content/notes/fixture-note.md";
+    const outDir = "_site-date-parsing-check";
+    const original = readFileSync(fixturePath, "utf8");
+    assert.ok(/^date: /m.test(original), "fixture-note.md has no `date:` front-matter line to patch");
+    const patched = original.replace(/^date: .*$/m, 'published: "2024-03-15T14:00:00+01:00"');
+
+    writeFileSync(fixturePath, patched);
+    try {
+      rmSync(outDir, { recursive: true, force: true });
+      execFileSync(
+        process.execPath,
+        ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe" },
+      );
+
+      const xml = readFileSync(`${outDir}/feed.xml`, "utf8");
+      const entry = xml.split("<entry>").find((e) => e.includes("/notes/fixture-note/"));
+      assert.ok(entry, "feed has no entry for /notes/fixture-note/");
+      // 2024-03-15T14:00:00+01:00 is 2024-03-15T13:00:00Z (Brussels is CET,
+      // +01:00, in mid-March — DST hasn't started yet).
+      assert.ok(
+        entry.includes("2024-03-15T13:00:00"),
+        `expected the fallback published date (2024-03-15T14:00+01:00 = 13:00 UTC) in the feed entry, got: ${entry}`,
+      );
+    } finally {
+      writeFileSync(fixturePath, original);
+      rmSync(outDir, { recursive: true, force: true });
+      assert.equal(
+        readFileSync(fixturePath, "utf8"),
+        original,
+        "content/notes/fixture-note.md was not restored to its original contents",
+      );
+    }
+  },
+);
 
 let skipped = 0;
 const skip = (name, reason) => {
