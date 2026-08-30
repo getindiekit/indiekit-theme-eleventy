@@ -8,7 +8,11 @@ eleventyImport:
 
 <h1 class="primary-title">{{ title }}</h1>
 
-<img src="./_fixtures/sample.png" alt="A sample image">
+{%- comment %} Task 18 (§7.4): this is the first (and only) image ahead of the
+   h-feed, so it's this page's LCP candidate — the counterpart of the port
+   source's own site avatar (default.liquid:16), which this theme has none
+   of. {% endcomment -%}
+<img src="./_fixtures/sample.png" alt="A sample image" loading="eager" fetchpriority="high">
 
 <p>downloads: {{ npmDownloads.downloads }}</p>
 

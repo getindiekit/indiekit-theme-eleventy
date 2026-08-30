@@ -28,7 +28,11 @@
     overflow: hidden;
     box-sizing: content-box;
 }
-.webmentions__facepile > a:hover {
+/* Task 18 (§7.4): :focus-within beside every :hover affordance, so keyboard
+   users tabbing to a facepile avatar link get the same visual as a mouse
+   hover — the port source's own idiom (_theme.scss:117,856,866,869). */
+.webmentions__facepile > a:hover,
+.webmentions__facepile > a:focus-within {
     position: relative;
     z-index: 1;
 }

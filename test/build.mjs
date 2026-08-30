@@ -1123,6 +1123,90 @@ check("each post type builds a directory index", () => {
   }
 });
 
+check("every page has a skip link targeting main content", () => {
+  // Task 18 (§7.4): the skip link is the accessibility floor, not an
+  // enhancement — a leak guard that reads only index.html would have missed
+  // that entry.liquid (six post types) never carried it at all, exactly the
+  // failure mode this project has already recorded once. Glob every built
+  // page, not the homepage alone.
+  const files = globSync("_site/**/*.html");
+  assert.ok(files.length > 0, "no .html produced in _site — this check scanned nothing");
+  for (const file of files) {
+    const html = readFileSync(file, "utf8");
+    assert.ok(/href="#skiplink-content"/.test(html), `no skip link in ${file}`);
+    assert.ok(/id="skiplink-content"/.test(html), `no skip link target in ${file}`);
+  }
+});
+
+check("the skip link is the first element in the body", () => {
+  // Not just present anywhere on the page — it has to be reachable by the
+  // very first Tab press, which requires it to precede everything else in
+  // body content (default.liquid:11).
+  const files = globSync("_site/**/*.html");
+  for (const file of files) {
+    const html = readFileSync(file, "utf8");
+    const bodyMatch = /<body[^>]*>([\s\S]*)/.exec(html);
+    assert.ok(bodyMatch, `no <body> found in ${file}`);
+    const afterBody = bodyMatch[1].trimStart();
+    assert.ok(
+      /^<a href="#skiplink-content"/.test(afterBody),
+      `skip link is not the first element in <body> of ${file}`,
+    );
+  }
+});
+
+check("every target=\"_blank\" link carries rel=\"noopener noreferrer\"", () => {
+  // Mechanically checkable per §7.4 — a target="_blank" without noopener
+  // lets the opened page's window.opener reach back into this one.
+  const files = globSync("_site/**/*.html");
+  assert.ok(files.length > 0, "no .html produced in _site — this check scanned nothing");
+  for (const file of files) {
+    const html = readFileSync(file, "utf8");
+    // Match each <a ...> tag that carries target="_blank" and assert THAT
+    // tag's own attribute string carries rel="noopener noreferrer" — not a
+    // bare substring search across the whole file, which would pass if the
+    // rel sat on some unrelated tag elsewhere on the page.
+    const anchors = html.matchAll(/<a\b[^>]*>/g);
+    for (const [tag] of anchors) {
+      if (!/target="_blank"/.test(tag)) continue;
+      assert.ok(
+        /rel="noopener noreferrer"/.test(tag),
+        `target="_blank" anchor missing rel="noopener noreferrer" in ${file}: ${tag}`,
+      );
+    }
+  }
+});
+
+check("scrollbar-gutter and the img[width][height] reset reach the compiled CSS", () => {
+  const css = globSync("_site/**/*.css").map((f) => readFileSync(f, "utf8")).join("");
+  assert.ok(css.length > 0, "no CSS produced in _site — this check scanned nothing");
+  assert.ok(
+    /scrollbar-gutter\s*:\s*stable/.test(css),
+    "scrollbar-gutter: stable did not reach the compiled CSS",
+  );
+  assert.ok(
+    /img\[width\]\[height\]\s*\{[^}]*height\s*:\s*auto/.test(css),
+    "img[width][height] { height: auto } did not reach the compiled CSS",
+  );
+});
+
+check(".sr-only is a real, visually-hidden rule — not just a class name in markup", () => {
+  // This project has eleven recorded defects that passed their tests while
+  // being wrong. A check that only greps for the string ".sr-only" in the
+  // CSS would pass even if the rule body were empty or unrelated. Assert
+  // the compiled rule actually carries the a11y-only clipping technique.
+  const css = globSync("_site/**/*.css").map((f) => readFileSync(f, "utf8")).join("");
+  const rule = /\.sr-only\s*\{([^}]*)\}/.exec(css);
+  assert.ok(rule, ".sr-only has no compiled CSS rule at all");
+  assert.ok(
+    /position\s*:\s*absolute/.test(rule[1]) &&
+      /width\s*:\s*1px/.test(rule[1]) &&
+      /height\s*:\s*1px/.test(rule[1]) &&
+      /overflow\s*:\s*hidden/.test(rule[1]),
+    `.sr-only rule does not carry the a11y-only clipping technique: ${rule[1]}`,
+  );
+});
+
 check("speedlify is absent when disabled", () => {
   const html = readFileSync("_site/index.html", "utf8");
   assert.ok(!html.includes("speedlify2-score"), "element rendered while disabled");

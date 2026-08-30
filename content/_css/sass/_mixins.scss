@@ -14,6 +14,18 @@
 	overflow: visible;
 	clip: auto;
 }
+
+// Task 18 (§7.4): the port source wires this mixin up to a real .sr-only
+// class in _theme.scss:17-19 — no _theme.scss exists in this port (see
+// initial.scss's own comment on that), so the class rule is applied
+// directly here instead. Without it, .sr-only was used in two places in
+// markup (page.liquid's removeTitle heading, webmentionlist.liquid's form
+// label) with no CSS backing it at all — a class name that did nothing.
+// undo-a11y-only is not wired to anything: this theme has no focus-revealed
+// element (e.g. footnote backlinks) to pair it with — see task-18-report.md.
+.sr-only {
+	@include a11y-only;
+}
 @mixin webfont {
 	& {
 		font-family: Lato, Numero, config.$fallbackSystemFont;

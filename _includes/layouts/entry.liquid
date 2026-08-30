@@ -1,6 +1,19 @@
 ---
-layout: layouts/base.liquid
+layout: layouts/default.liquid
 ---
+{% comment %} Task 18 (§7.4): was layouts/base.liquid, which skips the rail/nav
+   AND the skip link (default.liquid:10-46) entirely — the six post-type
+   permalink pages built through this layout had no skip link and no
+   id="skiplink-content" target at all, only the homepage did. Routing
+   through default.liquid instead of duplicating the skip link/main markup
+   here fixes it once for every post type, matching how page.liquid already
+   does it. default.liquid adds no wrapper around {{ content }} besides
+   <main>, so the h-entry markup below is unaffected. {% endcomment %}
+{%- comment %} This render is the whole point of the page (unlike
+   post-list-entry.liquid, which renders the same type partials in a loop
+   further down the homepage) — its own image, if it has one, is the page's
+   LCP candidate. See types/photo.liquid. {% endcomment -%}
+{%- assign lcp = true -%}
 {% case postType %}
   {% when "article" %}{% include "types/article.liquid" %}
   {% when "bookmark" %}{% include "types/bookmark.liquid" %}
