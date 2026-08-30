@@ -7,8 +7,13 @@
       "wm-target": "http://localhost:8080/notes/fixture-note/",
       "url": "https://example.com/a-reply",
       "published": "2026-08-30T11:00:00Z",
-      "content": { "text": "WEBMENTION_FIXTURE_MARKER" },
-      "author": { "name": "A Commenter", "url": "https://example.com/" }
+      "content": {
+        "text": "WEBMENTION_FIXTURE_MARKER"
+      },
+      "author": {
+        "name": "A Commenter",
+        "url": "https://example.com/"
+      }
     },
     {
       "type": "entry",
@@ -17,8 +22,29 @@
       "wm-target": "http://localhost:8080/notes/fixture-note/",
       "url": "https://example.com/a-long-reply",
       "published": "2026-08-30T12:00:00Z",
-      "content": { "text": "This comment is deliberately longer than the LiquidJS built-in truncate filter's 50-character default cutoff TRUNCATE_TAIL_MARKER" },
-      "author": { "name": "A Verbose Commenter", "url": "https://example.com/verbose" }
+      "content": {
+        "text": "This comment is deliberately longer than the LiquidJS built-in truncate filter's 50-character default cutoff TRUNCATE_TAIL_MARKER"
+      },
+      "author": {
+        "name": "A Verbose Commenter",
+        "url": "https://example.com/verbose"
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 999999,
+      "wm-property": "in-reply-to",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "not-a-url\" onload=\"XSS_BREAKOUT_MARKER",
+      "published": "2026-08-30T11:00:00Z",
+      "content": {
+        "text": "Hostile-url mention used to prove the avatar alt attribute is escaped."
+      },
+      "author": {
+        "name": "Hostile",
+        "url": "https://example.com/",
+        "photo": ""
+      }
     }
   ]
 }

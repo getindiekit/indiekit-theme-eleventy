@@ -216,9 +216,32 @@ if (process.env.WEBMENTIONS_FIXTURE) {
       "long fixture comment's tail marker did not survive — truncate silently fell back to LiquidJS's built-in 50-char default",
     );
   });
+  check(
+    "avatar alt attribute escapes hostile webmention urls",
+    () => {
+      // indieAvatarBare falls back to the RAW url string when new URL() throws,
+      // and that string lands in alt="IndieWeb Avatar for ${url}". The fixture
+      // carries an invalid url containing a quote + onload=, so an unescaped
+      // build breaks out of the attribute and ships an event handler.
+      const html = readFileSync("_site/notes/fixture-note/index.html", "utf8");
+      assert.ok(
+        html.includes("XSS_BREAKOUT_MARKER"),
+        "hostile fixture mention did not render — the check is not exercising the sink",
+      );
+      assert.ok(
+        !/onload="XSS_BREAKOUT_MARKER/.test(html),
+        "hostile webmention url broke out of the alt attribute — avatar alt is unescaped",
+      );
+    },
+  );
+
 } else {
   skip(
     "webmentions render from fixture data",
+    "WEBMENTIONS_FIXTURE not set",
+  );
+  skip(
+    "avatar alt attribute escapes hostile webmention urls",
     "WEBMENTIONS_FIXTURE not set",
   );
   skip(

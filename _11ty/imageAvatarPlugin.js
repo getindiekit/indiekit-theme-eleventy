@@ -45,9 +45,19 @@ export default function(eleventyConfig) {
 	// this will no longer generate new images so don’t use it
 	eleventyConfig.addAsyncShortcode("twitterImageAvatar", twitterImageAvatar);
 
+	// DELIBERATE DIVERGENCE FROM SOURCE: `url` reaches `alt` unescaped upstream.
+	// indieAvatarBare falls back to the raw string when `new URL()` throws, so a
+	// webmention url of `x" onload="…` breaks out of the attribute. Webmention
+	// data is untrusted remote input, so escape it. Do not "restore" this.
+	function escapeAttr(value) {
+		return String(value).replace(/[&<>"']/g, (char) => ({
+			"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+		})[char]);
+	}
+
 	function indieAvatarHtml(url = "", classes = "z-avatar", onerror = "") {
 		let screenshotUrl = getIndieAvatarUrl(url);
-		return `<img alt="IndieWeb Avatar for ${url}" class="${classes}" loading="lazy" decoding="async" src="${screenshotUrl}" width="60" height="60"${onerror ? ` onerror="${onerror}"`: ""} eleventy:ignore>`;
+		return `<img alt="IndieWeb Avatar for ${escapeAttr(url)}" class="${classes}" loading="lazy" decoding="async" src="${screenshotUrl}" width="60" height="60"${onerror ? ` onerror="${onerror}"`: ""} eleventy:ignore>`;
 	}
 
 	eleventyConfig.addLiquidShortcode("indieAvatar", indieAvatarHtml);
