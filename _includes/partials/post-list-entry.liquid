@@ -1,0 +1,59 @@
+{%- comment -%}
+Adapted from /home/rmdes/zachleat.com/_includes/post-list-entry.html. That
+source is title-centric (year subheads with sparklines, popularity ranking,
+og-image previews) built for a single post shape that always has a title.
+None of that applies here: four of Indiekit's six post types (note, bookmark,
+like, reply) are titleless by IndieWeb design and are the majority of what
+gets published, not an edge case — a listing built around headlines would
+silently drop or blank them (the same mistake that produced empty <title>
+elements in the Atom feed earlier in this project, see eleventyComputed.js).
+
+So this partial does NOT reimplement per-type rendering: it dispatches to the
+same _includes/types/*.liquid partials entry.liquid already uses (Task 6),
+via the identical {% case postType %} switch, so every list entry renders
+exactly what its own permalink page renders — title for article, content for
+note, the target link for bookmark/like/reply, the image for photo. The only
+things genuinely new here are the <li> wrapper and the permalink <a>, which
+no type partial provides (a post's own page has no reason to link itself).
+
+The permalink's link text is `post.data.title` — not conditionally branched
+per type — because _data/eleventyComputed.js already computes a non-empty
+title for every post (a real title for article/bookmark, the bookmarked URL
+for a titleless bookmark, "<Type> · <date>" for note/like/reply/photo). Using
+it here gives every entry a meaningful, unique label for free and matches
+what @11ty/eleventy-plugin-rss already puts in the Atom feed's <title> for
+the same post — one fallback, reused, not a second one invented for the
+listing.
+
+Expects a local `post` (one `collections.post` item) AND `page` overridden to
+that same `post` — both passed by the caller (content/index.liquid). The
+`page` override matters: isoInstant/humanDate (eleventy.config.js) re-read
+the *current* page's own front matter via `this.page.inputPath` to detect an
+explicit UTC offset. Looped straight from the homepage with no override,
+`this.page` would stay bound to content/index.liquid (no `date:` line at
+all), every post would be mis-detected as zone-less, and each already-correct
+instant would be re-anchored by the configured timezone's offset — wrong, but
+not obviously so (still a plausible-looking ISO string). Passing `page: post`
+on the include (LiquidJS locals shadow the parent scope for that render only)
+makes the filters read each post's own file, exactly as they do when that
+page renders itself.
+{%- endcomment -%}
+{%- assign date = post.data.date -%}
+{%- assign title = post.data.title -%}
+{%- assign content = post.templateContent -%}
+{%- assign bookmarkOf = post.data.bookmarkOf -%}
+{%- assign likeOf = post.data.likeOf -%}
+{%- assign inReplyTo = post.data.inReplyTo -%}
+{%- assign photo = post.data.photo -%}
+{%- assign postType = post.data.postType -%}
+<li>
+	<a class="u-url" href="{{ post.url }}">{{ title }}</a>
+	{% case postType %}
+		{% when "article" %}{% include "types/article.liquid" %}
+		{% when "bookmark" %}{% include "types/bookmark.liquid" %}
+		{% when "like" %}{% include "types/like.liquid" %}
+		{% when "photo" %}{% include "types/photo.liquid" %}
+		{% when "reply" %}{% include "types/reply.liquid" %}
+		{% else %}{% include "types/note.liquid" %}
+	{% endcase %}
+</li>

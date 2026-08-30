@@ -514,6 +514,102 @@ for (const [type, classes] of Object.entries(mf2)) {
   });
 }
 
+check("the homepage is an h-feed listing every post", () => {
+  // Task 12a: found during Task 12 — the theme built 8 pages and the
+  // homepage linked to none of them. This asserts every post type is
+  // represented, so a listing that silently drops the titleless types
+  // (note/bookmark/like/reply — the majority of Indiekit's post types)
+  // fails, not just a listing that shows articles alone.
+  const html = readFileSync("_site/index.html", "utf8");
+  assert.ok(/class="[^"]*\bh-feed\b/.test(html), "homepage is not marked up as an h-feed");
+  for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos"]) {
+    assert.ok(
+      new RegExp(`href="/${type}/[^"]+/"`).test(html),
+      `homepage h-feed has no entry linking into /${type}/`,
+    );
+  }
+});
+
+check("h-feed entries carry h-entry, not bare links", () => {
+  // The check above would also pass if the listing were a plain <a> list
+  // with no microformats at all — assert each entry is itself a valid
+  // h-entry, one per post-tagged fixture (7: see the feed entry-count
+  // check above for why it's 7, not 6).
+  const html = readFileSync("_site/index.html", "utf8");
+  const entryCount = (html.match(/class="h-entry"/g) || []).length;
+  assert.equal(entryCount, 7, `expected 7 h-entry listing entries, found ${entryCount}`);
+});
+
+check("h-feed lists posts newest first", () => {
+  // Would pass trivially if the listing were unordered and happened to
+  // match — compare the actual href order against fixture dates sorted
+  // descending, not just "some order exists".
+  const html = readFileSync("_site/index.html", "utf8");
+  const feedSection = html.split(/class="[^"]*\bh-feed\b[^"]*"/)[1] ?? "";
+  const hrefs = [...feedSection.matchAll(/href="(\/(?:articles|notes|bookmarks|likes|replies|photos)\/[^"]+\/)"/g)]
+    .map((m) => m[1]);
+  assert.equal(hrefs.length, 7, `expected 7 entry links inside the h-feed, found ${hrefs.length}`);
+
+  const fixtures = [
+    ["articles", "fixture-article"],
+    ["notes", "fixture-note"],
+    ["bookmarks", "fixture-bookmark"],
+    ["bookmarks", "fixture-untitled-bookmark"],
+    ["likes", "fixture-like"],
+    ["replies", "fixture-reply"],
+    ["photos", "fixture-photo"],
+  ];
+  const byHref = new Map(
+    fixtures.map(([type, slug]) => [
+      `/${type}/${slug}/`,
+      Date.parse(readFileSync(`content/${type}/${slug}.md`, "utf8").match(/^date:\s*["']?([^"'\n]+?)["']?\s*$/m)[1]),
+    ]),
+  );
+  const actualOrder = hrefs.map((href) => byHref.get(href));
+  assert.ok(actualOrder.every((d) => Number.isFinite(d)), "a listed href did not match any known fixture");
+  const expectedOrder = [...actualOrder].sort((a, b) => b - a);
+  assert.deepEqual(actualOrder, expectedOrder, "h-feed entries are not sorted newest-first");
+});
+
+check("h-feed entry dates match the same instant as the post's own page", () => {
+  // The listing reuses the isoInstant/humanDate filters (_11ty/dateResolver.js)
+  // via the Task 6 type partials. Those filters re-read the *current* page's
+  // own front matter (`this.page.inputPath`) to detect an explicit UTC
+  // offset — a naive reuse from within a `{% for post in collections.post %}`
+  // loop on the homepage leaves `this.page` bound to content/index.liquid
+  // (which has no `date:` line at all), silently mis-detecting every post as
+  // zone-less and re-anchoring an already-correct instant by the configured
+  // timezone's offset (+2h for Europe/Brussels in August) — a plausible
+  // string that is simply wrong. Compare real instants (epoch ms), not
+  // string shape, against each fixture's own permalink page.
+  const html = readFileSync("_site/index.html", "utf8");
+  const fixtures = [
+    ["articles", "fixture-article"],
+    ["notes", "fixture-note"],
+    ["bookmarks", "fixture-bookmark"],
+    ["bookmarks", "fixture-untitled-bookmark"],
+    ["likes", "fixture-like"],
+    ["replies", "fixture-reply"],
+    ["photos", "fixture-photo"],
+  ];
+  for (const [type, slug] of fixtures) {
+    const pageHtml = readFileSync(`_site/${type}/${slug}/index.html`, "utf8");
+    const pageMatch = pageHtml.match(/dt-published" datetime="([^"]*)"/);
+    assert.ok(pageMatch, `${type}/${slug}: page has no dt-published datetime attribute`);
+
+    const entry = html.split(`href="/${type}/${slug}/"`)[0].split(/<li/).pop() +
+      `href="/${type}/${slug}/"` +
+      html.split(`href="/${type}/${slug}/"`)[1].split(/<\/li>/)[0];
+    const listingMatch = entry.match(/dt-published" datetime="([^"]*)"/);
+    assert.ok(listingMatch, `${type}/${slug}: no dt-published datetime attribute in its h-feed entry`);
+    assert.equal(
+      Date.parse(listingMatch[1]),
+      Date.parse(pageMatch[1]),
+      `${type}/${slug}: h-feed entry datetime "${listingMatch[1]}" is not the same instant as the page's "${pageMatch[1]}"`,
+    );
+  }
+});
+
 check("photo renders a URL, not an object", () => {
   const files = globSync("_site/photos/**/index.html");
   const html = readFileSync(files[0], "utf8");

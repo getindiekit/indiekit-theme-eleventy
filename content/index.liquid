@@ -1,0 +1,33 @@
+---
+layout: layouts/default.liquid
+tmpl: page
+title: Indiekit reference theme
+eleventyImport:
+  collections: ["post"]
+---
+
+<h1 class="primary-title">{{ title }}</h1>
+
+<img src="./_fixtures/sample.png" alt="A sample image">
+
+<p>downloads: {{ npmDownloads.downloads }}</p>
+
+{%- comment -%}
+Task 12a: an h-feed listing every post, newest first. Deliberately NOT
+layouts/page.liquid (the placeholder homepage this replaces used it) — that
+layout wraps its whole `{{ content }}` in a single `<article class="h-entry">`,
+which would mark the entire homepage as one h-entry containing this h-feed's
+own h-entry children: a nested-entry relationship that means something
+specific in microformats2 (a post's children, e.g. comments) and is wrong for
+a top-level listing. layouts/default.liquid carries no such wrapper.
+
+collections.post is already sorted oldest-first (Eleventy's own default sort,
+ascending by date) — `reverse` here, not a second sort, is what gives
+newest-first.
+{%- endcomment -%}
+<ol class="h-feed">
+	{%- assign posts = collections.post | reverse -%}
+	{%- for post in posts -%}
+		{%- include "partials/post-list-entry.liquid", post: post, page: post -%}
+	{%- endfor -%}
+</ol>
