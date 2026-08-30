@@ -15,6 +15,13 @@ export default function (eleventyConfig) {
   // ships the same file at the same path via the same passthrough pattern.
   eleventyConfig.addPassthroughCopy("web/img");
 
+  // Speedlify 2: the score widget footer.liquid links (static/js/*) and the
+  // health-score badge component (_components/*) — source merges both into
+  // its "static/" output tree via the same passthrough pattern; do the same
+  // so health-score.js is actually reachable, not just copied into the repo.
+  eleventyConfig.addPassthroughCopy({ static: "/" });
+  eleventyConfig.addPassthroughCopy({ _components: "/" });
+
   return {
     dir: {
       input: "content",

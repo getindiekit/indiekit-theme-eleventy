@@ -1,0 +1,8 @@
+// Ported from static/sass/_theme.scss (source repo) — the one speedlify2-score
+// rule in an otherwise unported 1927-line file. speedlify2-score is a custom
+// element with its own shadow-DOM styles baked into static/js/speedlify2-score.js;
+// this is only the light-DOM sizing the host page controls.
+speedlify2-score {
+	font-style: normal;
+	font-size: 0.9375em; /* 15px /16 */
+}

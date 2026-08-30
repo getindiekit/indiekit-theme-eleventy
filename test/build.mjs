@@ -161,6 +161,11 @@ check("each post type builds a directory index", () => {
   }
 });
 
+check("speedlify is absent when disabled", () => {
+  const html = readFileSync("_site/index.html", "utf8");
+  assert.ok(!html.includes("speedlify2-score"), "element rendered while disabled");
+});
+
 let skipped = 0;
 const skip = (name, reason) => {
   skipped++;

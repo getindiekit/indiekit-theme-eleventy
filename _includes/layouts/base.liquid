@@ -79,6 +79,11 @@ built. Restore a split here only alongside something that produces both files. {
 	<body class="{%- if classes and classes.body %} {{ classes.body }}{% endif -%}"
 		{% unless excludeFromSearch %} data-pagefind-body{% endunless %}>
 		{{ content }}
+{%- if site.speedlify.enabled %}
+{%- capture urlWithOrigin %}{{ site.url }}{{ page.url }}{% endcapture -%}
+		<script type="module" src="/js/speedlify2-score.js"></script>
+		<speedlify2-score theme="light" speedlify-url="{{ site.speedlify.url }}" url="{{ urlWithOrigin }}"></speedlify2-score>
+{%- endif %}
 {%- if JS_ENABLED %}
 {%- for url in scripts -%}
 		<script src="{{ url }}" defer></script>
