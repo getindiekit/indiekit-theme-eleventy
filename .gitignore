@@ -2,6 +2,7 @@ node_modules/
 _site/
 _site-speedlify-check/
 _site-webc-check/
+_site-serve-check/
 .cache/
 .env
 package-lock.json

@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { existsSync, readFileSync, writeFileSync, rmSync, globSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import Eleventy from "@11ty/eleventy";
 import npmDownloads from "../_data/npmDownloads.js";
 
 const checks = [];
@@ -575,6 +576,74 @@ check("deferred CSS loads non-blocking with a noscript fallback", () => {
   );
   assert.ok(/<noscript>\s*<link[^>]*defer\.css/.test(html), "no <noscript> fallback for the deferred stylesheet");
 });
+
+await checkAsync(
+  "under serve mode, critical CSS is linked (not inlined) and the linked file exists",
+  async () => {
+    // The two checks above only ever see build-mode output, where the
+    // critical bundle is inlined and base.liquid's serve-only
+    // `<link rel="stylesheet" href="/_css/initial.css">` branch is never
+    // reached. If initial.css stopped being emitted, serve mode would 404
+    // on that link while the suite stayed green. Drive a real serve-mode
+    // build to exercise that branch.
+    //
+    // `--serve` on the CLI starts a dev server (watcher + port) — forbidden
+    // here. `ELEVENTY_RUN_MODE` is read nowhere in this pinned alpha, so
+    // setting it as an env var is a no-op (confirmed by hand, that's how
+    // this exact branch was mistested before). The only way to reach
+    // runMode "serve" without a server is programmatic: construct Eleventy
+    // directly and call `.write()`, which CoreMinimal.js:152 takes as a
+    // plain option with no watcher/socket/port attached.
+    //
+    // `source: "cli"` is not literal CLI invocation — it only tells
+    // ProjectDirectories to freeze the explicit input/output we pass here
+    // so eleventy.config.js's `dir.output: "_site"` can't win the race
+    // (ProjectDirectories.js: "If input/output are set via CLI, they take
+    // precedence over all other configuration values."). Confirmed by hand:
+    // without it, this call silently writes into the real `_site` instead
+    // of the throwaway dir below.
+    const outDir = "_site-serve-check";
+    rmSync(outDir, { recursive: true, force: true });
+    try {
+      const elev = new Eleventy(undefined, outDir, {
+        source: "cli",
+        quietMode: true,
+        runMode: "serve",
+      });
+      await elev.write();
+
+      const files = globSync(`${outDir}/**/*.html`);
+      // Non-vacuous: a serve build that produced no HTML must fail this
+      // check, not pass it by having nothing left to inspect.
+      assert.ok(files.length > 0, "serve-mode build produced no HTML at all");
+
+      const html = readFileSync(`${outDir}/index.html`, "utf8");
+      const linkMatch = html.match(/<link[^>]+href="([^"]+_css\/initial\.css)"[^>]*>/);
+      assert.ok(linkMatch, "serve-mode index.html does not link /_css/initial.css");
+      const linkedFile = `${outDir}${linkMatch[1]}`;
+      assert.ok(existsSync(linkedFile), `serve mode links ${linkMatch[1]}, which does not exist in ${outDir}`);
+
+      // Distinguish the critical bundle from default.liquid's unrelated
+      // "infinity-burger" <style> block (a hardcoded @media rule that also
+      // renders on every page) by a marker unique to initial.scss's
+      // compiled output — a CSS custom property from sass/_config.scss,
+      // pulled in transitively by every partial initial.scss @uses, and
+      // absent from defer.css.
+      const criticalMarker = "--z-border-radius-1";
+      assert.ok(
+        readFileSync(linkedFile, "utf8").includes(criticalMarker),
+        `linked ${linkMatch[1]} does not contain the critical CSS — wrong file, or bundle regressed`,
+      );
+      const inlinedStyles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1]);
+      assert.ok(
+        !inlinedStyles.some((s) => s.includes(criticalMarker)),
+        "critical CSS is inlined under serve mode — livereload can't hot-swap this, defeating the point of the link",
+      );
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  },
+);
 
 check("JS_ENABLED is defined and its guarded blocks emit", () => {
   const html = readFileSync("_site/index.html", "utf8");
