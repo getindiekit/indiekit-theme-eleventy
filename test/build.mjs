@@ -140,7 +140,10 @@ check("photo renders a URL, not an object", () => {
   const files = globSync("_site/photos/**/index.html");
   const html = readFileSync(files[0], "utf8");
   assert.ok(!html.includes("[object Object]"), "photo stringified an object");
-  assert.ok(html.includes("/media/sample.png"), "photo src missing");
+  assert.ok(
+    /\bsrc="\/media\/sample\.png"/.test(html),
+    "photo src is not the exact site-absolute URL Indiekit wrote — the image transform likely resolved it against content/ (e.g. src=\"content/media/sample.png\")",
+  );
 });
 
 check("each post type builds a directory index", () => {
