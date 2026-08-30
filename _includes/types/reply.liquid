@@ -1,4 +1,5 @@
 <article class="h-entry">
+  <a class="u-url" href="{{ page.url }}">{{ title }}</a>
   {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
   {%- if inReplyTo %}<p>In reply to <a class="u-in-reply-to" href="{{ inReplyTo }}">{{ inReplyTo }}</a></p>{% endif %}
   <div class="e-content">{{ content }}</div>

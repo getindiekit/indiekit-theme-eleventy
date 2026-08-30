@@ -13,17 +13,36 @@ same _includes/types/*.liquid partials entry.liquid already uses (Task 6),
 via the identical {% case postType %} switch, so every list entry renders
 exactly what its own permalink page renders — title for article, content for
 note, the target link for bookmark/like/reply, the image for photo. The only
-things genuinely new here are the <li> wrapper and the permalink <a>, which
-no type partial provides (a post's own page has no reason to link itself).
+genuinely new thing here is the <li> wrapper.
 
-The permalink's link text is `post.data.title` — not conditionally branched
-per type — because _data/eleventyComputed.js already computes a non-empty
-title for every post (a real title for article/bookmark, the bookmarked URL
-for a titleless bookmark, "<Type> · <date>" for note/like/reply/photo). Using
-it here gives every entry a meaningful, unique label for free and matches
-what @11ty/eleventy-plugin-rss already puts in the Atom feed's <title> for
-the same post — one fallback, reused, not a second one invented for the
-listing.
+The permalink <a class="u-url"> itself is NOT rendered by this partial — it
+was originally placed here, as a sibling *before* the <article
+class="h-entry"> each type partial emits, which put it outside the h-entry
+entirely. A real mf2 parser confirmed the consequence: all 7 permalinks
+collapsed onto the h-feed root's own `url` property and every h-entry child
+had none, defeating the entire point of publishing an h-feed (microsub
+readers/webmention senders/aggregators have nothing to link back to). Fixed
+by moving the anchor INTO each _includes/types/*.liquid partial, immediately
+inside its own <article class="h-entry"> (article.liquid wraps its existing
+h1 title in it instead of adding a second visible link; the other five had
+no title text on display at all, so they gained one). Type partials are
+shared with the standalone permalink page (via layouts/entry.liquid), so the
+anchor's href is `page.url`, not `post.url` — `page` is already correctly
+scoped to the post being rendered (see the `page: post` override discussed
+below), so it resolves to the right permalink from both call sites with no
+new parameter needed. This also means standalone permalink pages now carry a
+`u-url` on their own h-entry for the first time — they had none before
+either.
+
+The link text is `title`, likewise already in scope inside the type
+partials because LiquidJS `{% include %}` shares the caller's scope — not
+conditionally branched per type — because _data/eleventyComputed.js already
+computes a non-empty title for every post (a real title for article/bookmark,
+the bookmarked URL for a titleless bookmark, "<Type> · <date>" for
+note/like/reply/photo). Using it here gives every entry a meaningful, unique
+label for free and matches what @11ty/eleventy-plugin-rss already puts in the
+Atom feed's <title> for the same post — one fallback, reused, not a second
+one invented for the listing.
 
 Expects a local `post` (one `collections.post` item) AND `page` overridden to
 that same `post` — both passed by the caller (content/index.liquid). The
@@ -47,7 +66,6 @@ page renders itself.
 {%- assign photo = post.data.photo -%}
 {%- assign postType = post.data.postType -%}
 <li>
-	<a class="u-url" href="{{ post.url }}">{{ title }}</a>
 	{% case postType %}
 		{% when "article" %}{% include "types/article.liquid" %}
 		{% when "bookmark" %}{% include "types/bookmark.liquid" %}

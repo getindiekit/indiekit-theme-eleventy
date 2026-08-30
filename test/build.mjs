@@ -610,6 +610,79 @@ check("h-feed entry dates match the same instant as the post's own page", () => 
   }
 });
 
+// Extracts the full source text of every top-level `<article class="h-entry">
+// ...</article>` block from an HTML string, respecting nesting. The four
+// checks above are all regex/string matches over flat HTML — none of them
+// can tell whether a `u-url` anchor is a property of an h-entry or merely
+// somewhere else on the same page (this is exactly how the h-feed permalink
+// bug shipped with a green suite: the anchor sat as a sibling *before* each
+// <article>, and every flat check still matched). A naive non-greedy scan
+// (`/<article[^>]*>.*?<\/article>/gs`) would also mismatch here: nothing in
+// this file's <article> markup nests another <article>, but relying on that
+// silently is how "a check that matches the wrong span" (this project's own
+// stated failure mode) gets written — so this walks open/close tags with an
+// explicit depth counter instead of trusting non-greedy regex to stop at the
+// right boundary.
+function extractHEntryBlocks(html) {
+  const tagRe = /<article\b[^>]*>|<\/article>/g;
+  const blocks = [];
+  let openStart = -1;
+  let depth = 0;
+  let match;
+  while ((match = tagRe.exec(html))) {
+    const isOpen = match[0].startsWith("<article");
+    if (isOpen) {
+      if (depth === 0) {
+        openStart = match.index;
+        // Only h-entry-classed <article> opens are collected — a plain
+        // <article> with no h-entry class (none exist in this theme today,
+        // but the check should not silently start counting one if it ever
+        // does) is tracked for depth only, not returned as a block.
+      }
+      depth++;
+    } else {
+      depth--;
+      if (depth === 0 && openStart !== -1) {
+        const block = html.slice(openStart, match.index + match[0].length);
+        if (/^<article class="h-entry"/.test(block)) {
+          blocks.push(block);
+        }
+        openStart = -1;
+      }
+    }
+  }
+  return blocks;
+}
+
+check("every h-entry in the homepage listing carries its own u-url", () => {
+  // The bug this guards against: the permalink <a class="u-url"> rendered
+  // as a sibling *before* each <article class="h-entry">, not inside it. A
+  // real mf2 parser confirmed the consequence — all 7 permalinks collapsed
+  // onto the h-feed root's `url` property and every h-entry child had none.
+  // Flat regex/string checks (the four `h-feed ...` checks above) cannot
+  // see this: they all matched a `u-url` and an `h-entry` existing
+  // *somewhere* on the page, never whether one is nested inside the other.
+  const html = readFileSync("_site/index.html", "utf8");
+  const blocks = extractHEntryBlocks(html);
+
+  // Guards against the "scan matching no files passes forever" false-green
+  // pattern: if the extractor's boundary logic were broken and found zero
+  // blocks, `blocks.every(...)` below would vacuously pass on an empty
+  // array. Pin the count to the known fixture total (see "h-feed entries
+  // carry h-entry" above for why it's 7) so a broken extractor fails loudly
+  // instead of silently checking nothing.
+  assert.equal(blocks.length, 7, `expected 7 h-entry blocks, found ${blocks.length}`);
+
+  const missing = blocks
+    .map((block, i) => ({ i, hasUrl: /\bu-url\b/.test(block) }))
+    .filter((b) => !b.hasUrl);
+  assert.equal(
+    missing.length,
+    0,
+    `${missing.length} of ${blocks.length} h-entry blocks have no u-url within their own boundaries (indices: ${missing.map((m) => m.i).join(", ")})`,
+  );
+});
+
 check("photo renders a URL, not an object", () => {
   const files = globSync("_site/photos/**/index.html");
   const html = readFileSync(files[0], "utf8");

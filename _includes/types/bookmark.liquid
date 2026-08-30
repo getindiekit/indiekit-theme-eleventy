@@ -1,4 +1,5 @@
 <article class="h-entry">
+  <a class="u-url" href="{{ page.url }}">{{ title }}</a>
   {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
   {%- if bookmarkOf %}<a class="u-bookmark-of" href="{{ bookmarkOf }}">{{ title | default: bookmarkOf }}</a>{% endif %}
   <div class="e-content">{{ content }}</div>
