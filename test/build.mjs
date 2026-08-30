@@ -370,6 +370,129 @@ check("titleless bookmark falls back to its bookmarked URL, not the synthetic da
   );
 });
 
+check("feed and page timestamps round-trip to the exact source instant, not just a similar-looking string", () => {
+  // Task 11's addDateParsing regression shifted the feed's <updated> by the
+  // configured timezone's offset while still producing a plausible-looking
+  // ISO string — a string-shape assertion would pass on both the correct
+  // and the shifted output. Compare actual instants (epoch ms via
+  // Date.parse) against each fixture's own front-matter date instead, and
+  // cross-check the page and the feed against each other: the regression
+  // left the feed wrong and the page wrong by a *different* amount (two
+  // independent code paths), and nothing noticed they disagreed.
+  const fixtures = [
+    ["articles", "fixture-article"],
+    ["notes", "fixture-note"],
+    ["bookmarks", "fixture-bookmark"],
+    ["bookmarks", "fixture-untitled-bookmark"],
+    ["likes", "fixture-like"],
+    ["replies", "fixture-reply"],
+    ["photos", "fixture-photo"],
+  ];
+
+  const xml = readFileSync("_site/feed.xml", "utf8");
+
+  for (const [type, slug] of fixtures) {
+    const source = readFileSync(`content/${type}/${slug}.md`, "utf8");
+    const dateMatch = source.match(/^date:\s*["']?([^"'\n]+?)["']?\s*$/m);
+    assert.ok(dateMatch, `content/${type}/${slug}.md has no date: front matter to compare against`);
+    const sourceEpoch = Date.parse(dateMatch[1]);
+    assert.ok(Number.isFinite(sourceEpoch), `content/${type}/${slug}.md's date: is not parseable`);
+
+    const html = readFileSync(`_site/${type}/${slug}/index.html`, "utf8");
+    const pageMatch = html.match(/dt-published" datetime="([^"]*)"/);
+    assert.ok(pageMatch, `${type}/${slug}: page has no dt-published datetime attribute`);
+    const pageEpoch = Date.parse(pageMatch[1]);
+    assert.equal(
+      pageEpoch,
+      sourceEpoch,
+      `${type}/${slug}: page datetime "${pageMatch[1]}" is not the same instant as source date "${dateMatch[1]}"`,
+    );
+
+    const entryXml = xml.split("<entry>").find((e) => e.includes(`/${type}/${slug}/`));
+    assert.ok(entryXml, `${type}/${slug}: no feed entry found`);
+    const feedMatch = entryXml.match(/<updated>([^<]+)<\/updated>/);
+    assert.ok(feedMatch, `${type}/${slug}: feed entry has no <updated>`);
+    const feedEpoch = Date.parse(feedMatch[1]);
+    assert.equal(
+      feedEpoch,
+      sourceEpoch,
+      `${type}/${slug}: feed <updated> "${feedMatch[1]}" is not the same instant as source date "${dateMatch[1]}"`,
+    );
+
+    assert.equal(
+      pageEpoch,
+      feedEpoch,
+      `${type}/${slug}: page datetime "${pageMatch[1]}" and feed <updated> "${feedMatch[1]}" disagree`,
+    );
+  }
+});
+
+check("a near-midnight offset date lands on the author's real calendar day, not a naive UTC/local shift", () => {
+  // Brussels is UTC+2 in August. 2026-08-31T02:30:00+02:00 is chosen so the
+  // *broken* addDateParsing Date branch (keepLocalTime re-anchoring an
+  // already-unambiguous instant) doesn't just land 2 hours off — it crosses
+  // a calendar day boundary entirely: the true instant is
+  // 2026-08-31T00:30:00Z, but the pre-fix code produced
+  // 2026-08-30T22:30:00Z (verified by temporarily reverting the fix). A
+  // fixture further from midnight would have let a broken implementation
+  // pass this check by accident.
+  const fixturePath = "content/notes/fixture-note.md";
+  const outDir = "_site-midnight-check";
+  const original = readFileSync(fixturePath, "utf8");
+  assert.ok(/^date: /m.test(original), "fixture-note.md has no `date:` front-matter line to patch");
+  const patched = original.replace(/^date: .*$/m, "date: 2026-08-31T02:30:00+02:00");
+
+  writeFileSync(fixturePath, patched);
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(
+      process.execPath,
+      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe" },
+    );
+
+    const expectedInstant = "2026-08-31T00:30:00Z";
+
+    const html = readFileSync(`${outDir}/notes/fixture-note/index.html`, "utf8");
+    const pageMatch = html.match(/dt-published" datetime="([^"]*)"/);
+    assert.ok(pageMatch, "page has no dt-published datetime attribute");
+    assert.equal(
+      Date.parse(pageMatch[1]),
+      Date.parse(expectedInstant),
+      `page datetime "${pageMatch[1]}" is not the true instant ${expectedInstant}`,
+    );
+    assert.ok(
+      html.includes("31 August 2026"),
+      `page human-readable date is not the author's local day (31 August 2026): ${html.match(/dt-published"[^>]*>([^<]*)</)?.[1]}`,
+    );
+
+    const xml = readFileSync(`${outDir}/feed.xml`, "utf8");
+    const entryXml = xml.split("<entry>").find((e) => e.includes("/notes/fixture-note/"));
+    assert.ok(entryXml, "feed has no entry for /notes/fixture-note/");
+    const feedMatch = entryXml.match(/<updated>([^<]+)<\/updated>/);
+    assert.ok(feedMatch, "feed entry has no <updated>");
+    assert.equal(
+      Date.parse(feedMatch[1]),
+      Date.parse(expectedInstant),
+      `feed <updated> "${feedMatch[1]}" is not the true instant ${expectedInstant}`,
+    );
+
+    assert.equal(
+      Date.parse(pageMatch[1]),
+      Date.parse(feedMatch[1]),
+      `page datetime "${pageMatch[1]}" and feed <updated> "${feedMatch[1]}" disagree`,
+    );
+  } finally {
+    writeFileSync(fixturePath, original);
+    rmSync(outDir, { recursive: true, force: true });
+    assert.equal(
+      readFileSync(fixturePath, "utf8"),
+      original,
+      "content/notes/fixture-note.md was not restored to its original contents",
+    );
+  }
+});
+
 check("no .webc source template is published into _site", () => {
   // addPassthroughCopy({ _components: "/" }) previously copied the whole
   // _components dir verbatim, shipping .webc build-input templates (e.g.

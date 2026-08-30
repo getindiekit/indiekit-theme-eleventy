@@ -1,4 +1,4 @@
 <article class="h-entry">
-  {%- if date %}<time class="dt-published" datetime="{{ date | date: '%Y-%m-%dT%H:%M:%SZ' }}">{{ date | date: "%-d %B %Y" }}</time>{% endif %}
+  {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | date: "%-d %B %Y" }}</time>{% endif %}
   <div class="e-content">{{ content }}</div>
 </article>
