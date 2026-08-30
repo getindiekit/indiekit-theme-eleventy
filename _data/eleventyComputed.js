@@ -30,6 +30,14 @@ export default {
 
     const label = data.postType.charAt(0).toUpperCase() + data.postType.slice(1);
 
+    // A draft only renders under --serve (eleventy.config.js drops drafts on
+    // build). There the source marks it by appending " (Draft)" to data.title —
+    // but four of the six Indiekit post types are titleless by design, so that
+    // guard skips them and a titleless draft would render with no indication it
+    // is one. Fold the marker into the synthetic title instead, so every draft
+    // is visibly a draft in the one mode that shows them.
+    const draftSuffix = data.draft ? " (Draft)" : "";
+
     if (data.postType === "bookmark") {
       // bookmark.liquid already falls back to bookmarkOf on its own
       // (`{{ title | default: bookmarkOf }}`) — match that here too, since
@@ -39,12 +47,12 @@ export default {
       // synthetic label every other titleless post type gets, rather than
       // shipping the empty <title></title> this fallback exists to avoid.
       if (data.bookmarkOf) {
-        return data.bookmarkOf;
+        return data.bookmarkOf + draftSuffix;
       }
     }
 
     if (!data.date) {
-      return label;
+      return label + draftSuffix;
     }
 
     // resolveDate() is the same function addDateParsing and the
@@ -59,10 +67,10 @@ export default {
     // inputPath supplies the correct one.
     const parsed = resolveDate(data.date, data.page?.inputPath, TIME_ZONE);
     if (!parsed) {
-      return label;
+      return label + draftSuffix;
     }
 
     const formatted = parsed.setZone(TIME_ZONE).toFormat("d MMM yyyy");
-    return `${label} · ${formatted}`;
+    return `${label} · ${formatted}${draftSuffix}`;
   },
 };
