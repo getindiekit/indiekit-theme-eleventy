@@ -1,0 +1,20 @@
+// Deferred CSS entry point — loaded non-render-blocking via the
+// media="print" onload="this.media='all'" swap in base.liquid, with a
+// <noscript> fallback. See task-14-report.md for rationale.
+//
+// Assignment is the task-14 brief's own list (webmention, syntax
+// highlighting, pagination, print, lists), mapped onto the partials this
+// theme actually has ("syntax highlighting" -> the two prism/highlight
+// partials; "print" -> printed-page), plus two partials the brief's list
+// didn't name and index.scss carried with no obvious critical-path need —
+// assigned here per the port source's own defer.scss (simple-blockquotes)
+// or by the same reasoning (speedlify: a footer widget appended after
+// {{ content }}, not present on the initial screen — see report):
+@use "sass/webmention";
+@use "sass/prism-base16-monokai.dark";
+@use "sass/syntax-line-highlight";
+@use "sass/pagination";
+@use "sass/printed-page";
+@use "sass/lists";
+@use "sass/simple-blockquotes";
+@use "sass/speedlify";

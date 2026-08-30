@@ -45,25 +45,39 @@
 		<link rel="alternate" href="/follow/" title="{{ site.name }} Activity Feed" type="application/rss+xml">
 {% endif %}
 
-		<link rel="stylesheet" href="/_css/index.css">
-		{% comment %} TODO(unresolved shortcode): the source also used `{% renderFile "./static/initial.scss" %}` (inline-compiled critical CSS) here for the "build" runMode branch — not registered by this theme's eleventy.config.js. See task-4-report.md. {% endcomment %}
-		{% comment %} Known gap, not a pending task: the WebC plugin is registered
-		(eleventy.config.js) but this `{% getBundle 'css' %}` call is left unwired —
-		it would output CSS that .webc components bundle via <style>. Concretely,
-		toggle-button.webc's own <style> block bundles into 'css' and, unwired, is
-		silently dropped: those rules vanish the moment anyone uses the component.
+{% comment %} Critical CSS in production, blocking stylesheet for local dev
+for better livereload — livereload can't hot-swap an inlined <style>.
+Ported from zachleat.com, _includes/layouts/base.liquid:45-51. The source's
+production branch uses `{% renderFile "./static/initial.scss" %}`; this
+theme has no `renderFile` shortcode, so `inlineCriticalCss` (sassPlugin.js)
+compiles the same file directly with the `sass` dependency the plugin
+already imports. {% endcomment %}
+{% if eleventy.env.runMode == "serve" %}
+		<link rel="stylesheet" href="/_css/initial.css">
+{% else %}
+		<style>{% inlineCriticalCss %}</style>
+{% endif %}
 		<style>{% getBundle 'css' %}</style><!-- WebC -->
-		{% endcomment %}
 
 		<!-- Preconnect to Eleventy services -->
 		<link href="https://v1.opengraph.11ty.dev" rel="preconnect" crossorigin>
 		<link href="https://v1.indieweb-avatar.11ty.dev" rel="preconnect" crossorigin>
 
-{% comment %} The source split CSS into critical (`initial.css`) and deferred
-(`defer.css`) bundles, and looped over `stylesheets`/`stylesheetsDist` collections
-it populated elsewhere. This theme compiles one stylesheet, linked above, and
-populates neither collection — so those links pointed at paths that are never
-built. Restore a split here only alongside something that produces both files. {% endcomment %}
+{% comment %} Deferred CSS: non-render-blocking media="print" swap trick,
+gated on JS_ENABLED like the source (zachleat.com base.liquid:56-64) —
+without JS the onload handler that flips media back to "all" never runs, so
+the else branch falls back to a plain blocking link instead of shipping CSS
+that would never apply. This theme has no `stylesheets`/`stylesheetsDist`
+collections (nothing populates them), so those loops from the source aren't
+ported. {% endcomment %}
+{%- if JS_ENABLED %}
+		<link rel="stylesheet" href="/_css/defer.css" media="print" onload="this.media='all'">
+		<noscript>
+			<link href="/_css/defer.css" rel="stylesheet">
+		</noscript>
+{%- else %}
+		<link href="/_css/defer.css" rel="stylesheet">
+{%- endif %}
 
 {%- if JS_ENABLED %}
 		{% comment %} TODO(unresolved shortcode): the source also gated a goatcounter analytics `<script>` on runMode == "build" here — analytics dropped per scope. {% endcomment %}

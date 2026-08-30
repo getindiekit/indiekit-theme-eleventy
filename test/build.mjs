@@ -562,6 +562,20 @@ check("the page links a stylesheet that actually exists", () => {
   }
 });
 
+check("critical CSS is inlined, not render-blocking", () => {
+  const html = readFileSync("_site/index.html", "utf8");
+  assert.ok(/<style>[^<]*\.[a-z-]+\s*\{/i.test(html), "no inlined critical CSS found in <head>");
+});
+
+check("deferred CSS loads non-blocking with a noscript fallback", () => {
+  const html = readFileSync("_site/index.html", "utf8");
+  assert.ok(
+    /rel="stylesheet"[^>]*media="print"[^>]*onload="this\.media='all'"/.test(html),
+    "deferred stylesheet is not loaded with the media=print onload swap",
+  );
+  assert.ok(/<noscript>\s*<link[^>]*defer\.css/.test(html), "no <noscript> fallback for the deferred stylesheet");
+});
+
 check("JS_ENABLED is defined and its guarded blocks emit", () => {
   const html = readFileSync("_site/index.html", "utf8");
   assert.ok(
