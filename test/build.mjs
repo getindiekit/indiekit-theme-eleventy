@@ -150,6 +150,11 @@ check("no zachleat.com references leak into output", () => {
     // nothing: every exempted path has to actually exist in the build.
     for (const file of attributionExempt) {
       assert.ok(existsSync(file), `attribution-exempt file ${file} is not in the build — remove the stale exemption`);
+      // The exemption covers ONE known upstream credit line. Pin the count so
+      // a NEW identity leak added to this file later still fails, rather than
+      // riding in under the exemption.
+      const hits = (readFileSync(file, "utf8").match(/zachleat/g) || []).length;
+      assert.equal(hits, 1, `${file} is attribution-exempt for exactly one upstream credit, found ${hits}`);
     }
   }
 });
