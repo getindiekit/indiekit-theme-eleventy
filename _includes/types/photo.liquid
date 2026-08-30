@@ -1,0 +1,7 @@
+<article class="h-entry">
+  {%- if date %}<time class="dt-published" datetime="{{ date | date: '%Y-%m-%dT%H:%M:%SZ' }}">{{ date | date: "%-d %B %Y" }}</time>{% endif %}
+  {%- for image in photo %}
+  <img class="u-photo" src="{{ image.url }}" alt="{{ image.alt | default: '' }}">
+  {%- endfor %}
+  <div class="e-content">{{ content }}</div>
+</article>

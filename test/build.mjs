@@ -116,6 +116,33 @@ check("navigation styling ships, with no animation", () => {
   );
 });
 
+const mf2 = {
+  articles: ["h-entry", "p-name", "e-content"],
+  notes: ["h-entry", "e-content"],
+  bookmarks: ["h-entry", "u-bookmark-of"],
+  likes: ["h-entry", "u-like-of"],
+  replies: ["h-entry", "u-in-reply-to"],
+  photos: ["h-entry", "u-photo"],
+};
+
+for (const [type, classes] of Object.entries(mf2)) {
+  check(`${type} render their microformats`, () => {
+    const files = globSync(`_site/${type}/**/index.html`);
+    assert.ok(files.length > 0, `no built page under _site/${type}/`);
+    const html = readFileSync(files[0], "utf8");
+    for (const c of classes) {
+      assert.ok(html.includes(c), `missing ${c}`);
+    }
+  });
+}
+
+check("photo renders a URL, not an object", () => {
+  const files = globSync("_site/photos/**/index.html");
+  const html = readFileSync(files[0], "utf8");
+  assert.ok(!html.includes("[object Object]"), "photo stringified an object");
+  assert.ok(html.includes("/media/sample.png"), "photo src missing");
+});
+
 const failed = checks.filter((c) => !c).length;
 console.log(`\n${checks.length - failed}/${checks.length} checks passed`);
 process.exit(failed === 0 ? 0 : 1);
