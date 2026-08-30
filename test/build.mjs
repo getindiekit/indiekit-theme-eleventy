@@ -32,9 +32,23 @@ check("compiles sass to css", () => {
 
 check("image transform plugin produces optimised output", () => {
   const html = readFileSync("_site/index.html", "utf8");
+
+  // A bare <img> is what eleventy-img leaves behind when the transform fails.
+  // `failOnError` is false, matching the source plugin, so that fallback is
+  // SILENT — asserting on <img> alone passes on an unoptimised image, which is
+  // exactly what happened once during this port. Assert on artefacts only a
+  // successful transform can produce.
   assert.ok(
-    /<(img|picture)[\s>]/.test(html),
-    "no <img> or <picture> element in the built index",
+    html.includes("<picture>"),
+    "no <picture> element — the image transform did not run",
+  );
+  assert.ok(
+    /<source[^>]+type="image\/avif"/.test(html),
+    "no avif <source> — the transform produced no alternate formats",
+  );
+  assert.ok(
+    globSync("_site/img/built/*.avif").length > 0,
+    "no built .avif on disk under _site/img/built/",
   );
 });
 
