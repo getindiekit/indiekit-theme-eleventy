@@ -5,18 +5,24 @@ import { getImageColors } from "@11ty/image-color";
 
 const SIZES_INLINE = "(min-width: 75em) 44.5625em, (min-width: 61.25em) 40.6875em, (min-width: 41.25em) 36.8125em, 96vw";
 
-// Deviation from the port source: zachleat.com/_11ty/imagePlugin.js:12 keys
-// this the same run-mode idiom as webmentions/npm downloads (1d build / 30d
-// serve). Task 15 brief calls for a flat "*" here instead, and that's the
-// right call for this input: webmentions/npm downloads are time-varying data
-// fetched from a remote API that can change independently of the cache key,
-// so a stale cache genuinely goes stale. `imageFactory`'s Image() calls are
-// keyed by eleventy-img on the source file's own content/stat — a changed
-// source image gets a different cache key regardless of duration, so there
-// is nothing external to go stale against. A permanent cache is therefore
-// both safe and simpler. Exported (not just a local const) so test/build.mjs
-// can assert the real value used, not scan source text for a keyword.
-export const IMAGE_CACHE_DURATION = "*";
+// Matches the port source (zachleat.com/_11ty/imagePlugin.js:12): the same
+// run-mode idiom used for webmentions and npm downloads.
+//
+// An earlier revision set a flat "*" here, on the reasoning that eleventy-img
+// keys its cache on the source file's own content so nothing could go stale.
+// That reasoning was wrong about which code path this option feeds.
+// eleventy-img only builds cacheOptions — and only reads `duration` — inside
+// `if (this.isRemoteUrl)` (eleventy-img/src/image.js:88-98). For a LOCAL file
+// source the duration is never consulted at all, so "*" bought nothing there;
+// for a REMOTE src it is the one case where the value matters, and "*" would
+// pin stale remote bytes permanently with no way to refresh.
+//
+// imageFactory is generic and exported, so a future caller passing a remote
+// URL must not silently inherit a permanent cache. Keyed, like the source.
+// Exported (not just a local const) so test/build.mjs can assert the real
+// value used, rather than scanning source text for a keyword.
+export const IMAGE_CACHE_DURATION =
+	process.env.ELEVENTY_RUN_MODE === "serve" ? "30d" : "1d";
 
 async function imageFactory(src, options = {}) {
 	options = Object.assign({},{

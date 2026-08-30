@@ -207,13 +207,13 @@ process.stdout.write("\\nPROBE_RESULT:" + JSON.stringify({
       // source was actually applied, not left as source's own keyed 1d/30d.
       assert.equal(
         build.image,
-        "*",
-        `build-mode image cache duration: expected "*", got ${JSON.stringify(build.image)}`,
+        "1d",
+        `build-mode image cache duration: expected "1d", got ${JSON.stringify(build.image)}`,
       );
       assert.equal(
         serve.image,
-        "*",
-        `serve-mode image cache duration: expected "*", got ${JSON.stringify(serve.image)}`,
+        "30d",
+        `serve-mode image cache duration: expected "30d", got ${JSON.stringify(serve.image)}`,
       );
     } finally {
       rmSync(probeScript, { force: true });
