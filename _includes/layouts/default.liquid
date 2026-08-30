@@ -18,7 +18,8 @@ modules:
 		<aside>
 			<nav role="navigation">
 				<div class="navigation">
-					<ul class="list-flush tags-rail-links">
+					<button type="button" class="navigation-toggle" aria-expanded="false" aria-controls="site-nav">Menu</button>
+					<ul class="list-flush tags-rail-links" id="site-nav">
 						<li><a href="/" {% if page.url == '/' %}class="active"{% endif %}>Home</a></li>
 						<li><a href="/about/" {% if page.url == '/about/' %}class="active"{% endif %}>About</a></li>
 						<li><a href="/web/" {% if page.url == '/web/' %}class="active"{% endif %}>Archives</a></li>
@@ -29,6 +30,16 @@ modules:
 					</ul>
 				</div>
 			</nav>
+			<script type="module">
+				const toggle = document.querySelector(".navigation-toggle");
+				const nav = document.querySelector("#site-nav");
+				if (toggle && nav) {
+					toggle.addEventListener("click", () => {
+						const open = toggle.getAttribute("aria-expanded") === "true";
+						toggle.setAttribute("aria-expanded", String(!open));
+					});
+				}
+			</script>
 		</aside>
 	</div>
 </div>

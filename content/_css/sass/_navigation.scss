@@ -1,0 +1,34 @@
+@use "config";
+
+/* Wide viewports (two-column layout): links sit in the .rail sidebar as
+   plain, always-visible list items. No toggle needed. */
+.navigation-toggle {
+	display: none;
+}
+
+/* Narrow viewports: a real disclosure menu. The list is hidden until the
+   toggle button (its preceding sibling) reports aria-expanded="true" — CSS
+   reads state from that one attribute, nothing is duplicated in a class. */
+@media (max-width: config.$oneColLayoutMaxWidth) {
+	.navigation-toggle {
+		display: inline-block;
+		padding: 0.5em 1em;
+		border: 1px solid config.$borderColor;
+		border-radius: 0.25em;
+		background-color: #fff;
+		color: config.$textColor;
+		font: inherit;
+		cursor: pointer;
+	}
+	.navigation-toggle:hover,
+	.navigation-toggle:focus-visible {
+		border-color: config.$primaryColor;
+	}
+
+	#site-nav {
+		display: none;
+	}
+	.navigation-toggle[aria-expanded="true"] + #site-nav {
+		display: block;
+	}
+}

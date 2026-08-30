@@ -92,6 +92,30 @@ check("the page links a stylesheet that actually exists", () => {
   }
 });
 
+check("navigation has an accessible mobile toggle", () => {
+  const html = readFileSync("_site/index.html", "utf8");
+  assert.ok(html.includes('class="navigation-toggle"'), "no nav toggle button");
+  assert.ok(html.includes('aria-expanded="false"'), "toggle missing aria-expanded");
+  assert.ok(html.includes('aria-controls="site-nav"'), "toggle not wired to the nav list");
+  assert.ok(html.includes('id="site-nav"'), "nav list has no id to control");
+});
+
+check("navigation styling ships, with no animation", () => {
+  const css = globSync("_site/**/*.css").map((f) => readFileSync(f, "utf8")).join("");
+  assert.ok(css.includes("navigation-toggle"), "nav toggle unstyled");
+  // Not just present anywhere — the hide/show rule must actually target the
+  // real nav id and read the real toggle attribute, or the CSS could pass
+  // while styling something disconnected from the markup.
+  assert.ok(
+    css.includes("#site-nav") && /\[aria-expanded[=~|^$*]*"?true"?\]/.test(css),
+    "toggle styling isn't wired to #site-nav via aria-expanded",
+  );
+  assert.ok(
+    !/\banimation\s*:/.test(css.replace(/prefers-reduced-motion[^}]*}/g, "")),
+    "an animation property was introduced — the source's motion was rejected",
+  );
+});
+
 const failed = checks.filter((c) => !c).length;
 console.log(`\n${checks.length - failed}/${checks.length} checks passed`);
 process.exit(failed === 0 ? 0 : 1);
