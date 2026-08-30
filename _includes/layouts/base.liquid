@@ -19,11 +19,20 @@
 		<meta name="robots" content="noindex">
 {%- endif %}
 
+		{% comment %} TODO(Task 11): favicon assets are a README/asset concern — restore once the icon files exist in this theme.
+		<!-- Icons -->
+		<link rel="apple-touch-icon-precomposed" href="{% getUrlForImage site.avatarImgSrc, 192, 'png' %}">
+		<link rel="icon" href="{% getUrlForImage site.avatarImgSrc, 192, 'jpeg' %}" sizes="192x192" type="image/jpeg">
+		{% endcomment %}
+
 		<!-- Social -->
 		<meta property="og:title" content="{% if title %}{{ title }}—{{ site.name }}{% else %}{{ site.name }}{% endif %}">
 		<meta property="og:type" content="website">
 		<meta property="og:site_name" content="{{ site.name }}">
 		<meta property="og:description" content="{% if description %}{{ description }}, {% endif %}{% if title %}A post by {% endif %}{{ site.author.name }}">
+		{% comment %} TODO(Task 10): depends on an `ogImageSource`/`getOpenGraphImageUrl` shortcode being wired — no task has done that yet.
+		<meta property="og:image" content="{% ogImageSource page %}">
+		{% endcomment %}
 		<meta property="og:url" content="{{ site.url }}{{ page.url }}">
 
 		<!-- SEO/Feeds -->
@@ -39,7 +48,10 @@
 {% if eleventy.env.runMode == "serve" %}
 		<link rel="stylesheet" href="/static/initial.css">
 {% endif %}
-		{% comment %} TODO(unresolved shortcodes): the source used `{% renderFile %}` (inline-compiled critical CSS) and `{% getBundle 'css' %}` (WebC bundle) here for the "build" runMode branch — neither shortcode is registered by this theme's eleventy.config.js. See task-4-report.md. {% endcomment %}
+		{% comment %} TODO(unresolved shortcode): the source also used `{% renderFile "./static/initial.scss" %}` (inline-compiled critical CSS) here for the "build" runMode branch — not registered by this theme's eleventy.config.js. See task-4-report.md. {% endcomment %}
+		{% comment %} TODO(Task 10): WebC bundle registration lands in Task 10.
+		<style>{% getBundle 'css' %}</style><!-- WebC -->
+		{% endcomment %}
 
 		<!-- Preconnect to Eleventy services -->
 		<link href="https://v1.opengraph.11ty.dev" rel="preconnect" crossorigin>
@@ -61,7 +73,10 @@
 {%- endfor %}
 
 {%- if JS_ENABLED %}
-		{% comment %} TODO(unresolved shortcode): the source wrapped this in `{% getBundle 'js' %}` (WebC bundle) — not registered by this theme's eleventy.config.js. Analytics script dropped per scope. {% endcomment %}
+		{% comment %} TODO(unresolved shortcode): the source also gated a goatcounter analytics `<script>` on runMode == "build" here — analytics dropped per scope. {% endcomment %}
+		{% comment %} TODO(Task 10): WebC bundle registration lands in Task 10.
+		<script type="module">{% getBundle 'js' %}</script><!-- WebC -->
+		{% endcomment %}
 		<script src="/static/defer.js" type="module"></script>
 {%- endif %}
 
