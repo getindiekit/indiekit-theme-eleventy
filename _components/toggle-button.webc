@@ -1,0 +1,19 @@
+<is-land on:visible class="toggle-island">
+	<style>
+	.toggle-island {
+		display: flex;
+	}
+	/* Hide without JS */
+	.toggle-island:not(:defined) .toggle {
+		display: none;
+	}
+	</style>
+	<button :id="this.id" type="button" :aria-pressed="this.value ?? 'true'" class="toggle" :class="this.class ? this.class : ''" :data-toggle-class="toggleclass">
+		<span class="toggle-control"></span>
+		<span class="toggle-text" @html="label"></span>
+	</button>
+	<template data-island="once" webc:raw>
+		<link rel="stylesheet" href="/static/toggle-button.css">
+		<script src="/static/toggle-button.js"></script>
+	</template>
+</is-land>

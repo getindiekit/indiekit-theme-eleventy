@@ -262,6 +262,73 @@ check("speedlify renders with the configured url on every page when enabled", ()
   }
 });
 
+check("builds an Atom feed containing posts", () => {
+  assert.ok(existsSync("_site/feed.xml"), "_site/feed.xml missing");
+  const xml = readFileSync("_site/feed.xml", "utf8");
+  assert.ok(xml.includes("<entry"), "feed contains no entries");
+});
+
+check("feed contains every post-tagged fixture, not just any entry", () => {
+  // A bare `includes("<entry")` above would also pass if only one post type
+  // made it into the feed, or if the collection name were wrong and picked up
+  // some unrelated single page. Confirm all 6 post-type fixtures are present,
+  // proving the `post` collection tag from Task 6's cascades actually feeds
+  // this plugin's `collection.name: "post"` option.
+  const xml = readFileSync("_site/feed.xml", "utf8");
+  const entryCount = (xml.match(/<entry>/g) || []).length;
+  assert.equal(entryCount, 6, `expected 6 feed entries (one per post-type fixture), got ${entryCount}`);
+  for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos"]) {
+    assert.ok(
+      xml.includes(`http://localhost:8080/${type}/`),
+      `feed missing an entry linking into /${type}/`,
+    );
+  }
+});
+
+await checkAsync("toggle-button WebC component resolves through the build", async () => {
+  // pluginWebc's `components` glob only expands custom-element tags inside
+  // .webc templates (useTransform defaults to false, and this theme doesn't
+  // set it) — no .liquid/.md page in this theme invokes <toggle-button>, so
+  // there is nothing in the real _site build that would fail if the plugin
+  // were unregistered or pointed at the wrong glob. Build one throwaway .webc
+  // page that uses the component and confirm it actually expands, following
+  // the same patch-and-restore-in-finally pattern as the speedlify check
+  // above.
+  const fixturePath = "content/_webc-check.webc";
+  const outDir = "_site-webc-check";
+  const marker = "WEBC_CHECK_MARKER";
+  // No explicit permalink: WebC front matter treats a literal permalink
+  // string as a dynamic expression here and eleventy rejects the resulting
+  // object, so rely on the default input-path-derived output location.
+  const fixture = `---
+eleventyExcludeFromCollections: true
+---
+<toggle-button label="${marker}"></toggle-button>
+`;
+
+  writeFileSync(fixturePath, fixture);
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(
+      process.execPath,
+      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe" },
+    );
+
+    const outFile = `${outDir}/_webc-check/index.html`;
+    assert.ok(existsSync(outFile), `${outFile} was not built — .webc is not a recognised template format`);
+    const html = readFileSync(outFile, "utf8");
+    assert.ok(
+      html.includes("toggle-island"),
+      "<toggle-button> did not expand into its component markup — _components/**/*.webc is not resolving",
+    );
+    assert.ok(html.includes(marker), "toggle-button's label attribute did not render");
+  } finally {
+    rmSync(fixturePath, { force: true });
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
 let skipped = 0;
 const skip = (name, reason) => {
   skipped++;
