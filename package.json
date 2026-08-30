@@ -1,0 +1,41 @@
+{
+  "name": "indiekit-theme-eleventy-reference",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "npx @11ty/eleventy",
+    "start": "npx @11ty/eleventy --serve --port=8090 --incremental",
+    "clean": "rm -rf _site .cache",
+    "search-index": "npx pagefind --site _site",
+    "test": "node test/build.mjs"
+  },
+  "dependencies": {
+    "@11ty/is-land": "5.0.1",
+    "@zachleat/browser-window": "2.0.0",
+    "@zachleat/carouscroll": "1.0.6",
+    "@zachleat/details-utils": "2.0.2",
+    "@zachleat/filter-container": "4.0.0",
+    "@zachleat/flex-luthor": "4.0.2",
+    "@zachleat/heading-anchors": "1.0.5",
+    "@zachleat/line-numbers": "1.0.3",
+    "@zachleat/pagefind-search": "1.0.3",
+    "@zachleat/table-saw": "1.0.7"
+  },
+  "devDependencies": {
+    "@11ty/eleventy": "4.0.0-alpha.10",
+    "@11ty/eleventy-fetch": "5.1.3",
+    "@11ty/eleventy-img": "7.0.0",
+    "@11ty/eleventy-plugin-rss": "2.0.4",
+    "@11ty/eleventy-plugin-syntaxhighlight": "5.0.2",
+    "@11ty/eleventy-plugin-webc": "0.12.0-beta.7",
+    "@11ty/font-awesome": "1.0.1",
+    "@11ty/image-color": "2.0.0",
+    "luxon": "3.7.2",
+    "markdown-it": "14.3.0",
+    "markdown-it-table-of-contents": "0.9.0",
+    "pagefind": "1.5.2",
+    "sanitize-html": "2.17.6",
+    "sass": "1.102.0"
+  }
+}
