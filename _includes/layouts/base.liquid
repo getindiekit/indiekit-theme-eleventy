@@ -44,10 +44,7 @@
 		<link rel="alternate" href="/follow/" title="{{ site.name }} Activity Feed" type="application/rss+xml">
 {% endif %}
 
-{% comment %}Critical CSS in production, blocking stylesheet for local dev for better livereload{% endcomment %}
-{% if eleventy.env.runMode == "serve" %}
-		<link rel="stylesheet" href="/static/initial.css">
-{% endif %}
+		<link rel="stylesheet" href="/_css/index.css">
 		{% comment %} TODO(unresolved shortcode): the source also used `{% renderFile "./static/initial.scss" %}` (inline-compiled critical CSS) here for the "build" runMode branch — not registered by this theme's eleventy.config.js. See task-4-report.md. {% endcomment %}
 		{% comment %} TODO(Task 10): WebC bundle registration lands in Task 10.
 		<style>{% getBundle 'css' %}</style><!-- WebC -->
@@ -57,20 +54,11 @@
 		<link href="https://v1.opengraph.11ty.dev" rel="preconnect" crossorigin>
 		<link href="https://v1.indieweb-avatar.11ty.dev" rel="preconnect" crossorigin>
 
-{%- if JS_ENABLED %}
-		<link rel="stylesheet" href="/static/defer.css" media="print" onload="this.media='all'">
-		<noscript>
-			<link href="/static/defer.css" rel="stylesheet">
-		</noscript>
-{%- else %}
-		<link href="/static/defer.css" rel="stylesheet">
-{%- endif %}
-{%- for url in stylesheets -%}
-		<link href="{{ url }}" rel="stylesheet">
-{%- endfor %}
-{%- for stylesheet in stylesheetsDist -%}
-		<link href="/static/{{ stylesheet }}" rel="stylesheet">
-{%- endfor %}
+{% comment %} The source split CSS into critical (`initial.css`) and deferred
+(`defer.css`) bundles, and looped over `stylesheets`/`stylesheetsDist` collections
+it populated elsewhere. This theme compiles one stylesheet, linked above, and
+populates neither collection — so those links pointed at paths that are never
+built. Restore a split here only alongside something that produces both files. {% endcomment %}
 
 {%- if JS_ENABLED %}
 		{% comment %} TODO(unresolved shortcode): the source also gated a goatcounter analytics `<script>` on runMode == "build" here — analytics dropped per scope. {% endcomment %}

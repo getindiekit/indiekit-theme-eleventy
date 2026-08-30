@@ -74,6 +74,24 @@ check("stylesheet carries real styling, not the placeholder", () => {
   );
 });
 
+check("the page links a stylesheet that actually exists", () => {
+  const html = readFileSync("_site/index.html", "utf8");
+  const links = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]*>/g)].map((m) => m[0]);
+  assert.ok(links.length > 0, "no stylesheet linked from the page at all");
+
+  // Compiling CSS is not the same as loading it. The ported layout linked
+  // /static/defer.css — a path from the source site that this theme never
+  // builds — so the page 404'd while a full stylesheet sat unreferenced.
+  for (const link of links) {
+    const href = link.match(/href="([^"]+)"/)?.[1];
+    assert.ok(href, `stylesheet link has no href: ${link}`);
+    assert.ok(
+      existsSync(`_site${href}`),
+      `page links ${href}, which does not exist in _site`,
+    );
+  }
+});
+
 const failed = checks.filter((c) => !c).length;
 console.log(`\n${checks.length - failed}/${checks.length} checks passed`);
 process.exit(failed === 0 ? 0 : 1);
