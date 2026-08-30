@@ -81,7 +81,11 @@ export default function (eleventyConfig) {
   // in the file's own front matter, for content authored outside that
   // preset, reading the raw file the same way the source's regex reads
   // the raw filename.
-  const TIME_ZONE = siteData.timezone;
+  // No `timezone` key (a downstream consumer's site.json) falls back to
+  // UTC rather than the build process's ambient zone — a fixed zone keeps
+  // builds reproducible across machines, the same property this file exists
+  // to give configured-timezone sites.
+  const TIME_ZONE = siteData.timezone || "utc";
 
   // An ISO string that already carries an explicit offset or `Z` names an
   // unambiguous instant — `keepLocalTime` must never touch it, that would
@@ -157,6 +161,24 @@ export default function (eleventyConfig) {
         ? DateTime.fromJSDate(dateValue, { zone: "utc" })
         : DateTime.fromISO(String(dateValue), { zone: TIME_ZONE });
     return parsed.isValid ? parsed.toUTC().toISO({ suppressMilliseconds: true }) : "";
+  });
+
+  // The human-readable date text next to `isoInstant`'s machine-readable
+  // one (`{{ date | date: "%-d %B %Y" }}` in every _includes/types/*.liquid
+  // partial) has the identical defect isoInstant was written to fix: LiquidJS's
+  // `date` filter reads the JS Date's fields in the *build process's local*
+  // timezone, so the same content renders a different calendar day depending
+  // on where it's built. Same instant, same TIME_ZONE, same Date/string
+  // branches as isoInstant above — only the output format and target zone
+  // (TIME_ZONE for display, not UTC) differ. Luxon's "d MMMM yyyy" is the
+  // token-for-token equivalent of strftime's "%-d %B %Y" (unpadded day, full
+  // month name, 4-digit year).
+  eleventyConfig.addLiquidFilter("humanDate", (dateValue) => {
+    const parsed =
+      dateValue instanceof Date
+        ? DateTime.fromJSDate(dateValue, { zone: "utc" })
+        : DateTime.fromISO(String(dateValue), { zone: TIME_ZONE });
+    return parsed.isValid ? parsed.setZone(TIME_ZONE).toFormat("d MMMM yyyy") : "";
   });
 
   return {

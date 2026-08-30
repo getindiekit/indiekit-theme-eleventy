@@ -493,6 +493,72 @@ check("a near-midnight offset date lands on the author's real calendar day, not 
   }
 });
 
+check("human-readable date text is anchored to site.json's timezone, not the build process's TZ", () => {
+  // isoInstant (the machine-readable dt-published attribute) was fixed to
+  // ignore the build process's ambient TZ and anchor to site.json's
+  // configured timezone via Luxon. The visible text next to it
+  // (`{{ date | date: "%-d %B %Y" }}`, now `{{ date | humanDate }}`) had the
+  // identical defect: LiquidJS's `date` filter reads the JS Date's fields in
+  // the process's *local* timezone, so the same content renders a different
+  // calendar day depending on where it's built — CI (UTC) vs a Brussels
+  // laptop, say. Build the same content twice, under two TZs chosen so a
+  // naive process-local render *would* disagree (23:30 UTC on 2026-08-30 is
+  // already 2026-08-31 in Brussels — the site's configured zone — but still
+  // 2026-08-30 elsewhere), and assert the rendered day is identical and
+  // matches the configured zone regardless of which TZ built it.
+  const fixturePath = "content/notes/fixture-note.md";
+  const original = readFileSync(fixturePath, "utf8");
+  assert.ok(/^date: /m.test(original), "fixture-note.md has no `date:` front-matter line to patch");
+  const patched = original.replace(/^date: .*$/m, "date: 2026-08-30T23:30:00.000Z");
+
+  const expectedHuman = "31 August 2026"; // 2026-08-30T23:30:00Z is 2026-08-31 01:30 in Europe/Brussels
+  const zones = [
+    ["_site-tz-check-brussels", "Europe/Brussels"],
+    ["_site-tz-check-chicago", "America/Chicago"],
+  ];
+  const rendered = {};
+
+  writeFileSync(fixturePath, patched);
+  try {
+    for (const [outDir, tz] of zones) {
+      rmSync(outDir, { recursive: true, force: true });
+      execFileSync(
+        process.execPath,
+        ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe", env: { ...process.env, TZ: tz } },
+      );
+
+      const html = readFileSync(`${outDir}/notes/fixture-note/index.html`, "utf8");
+      const match = html.match(/dt-published"[^>]*>([^<]*)</);
+      assert.ok(match, `${outDir} (TZ=${tz}): page has no dt-published text content`);
+      rendered[tz] = match[1];
+    }
+
+    for (const [outDir, tz] of zones) {
+      assert.equal(
+        rendered[tz],
+        expectedHuman,
+        `TZ=${tz} rendered "${rendered[tz]}", expected "${expectedHuman}" (site.json's Europe/Brussels)`,
+      );
+    }
+    assert.equal(
+      rendered["Europe/Brussels"],
+      rendered["America/Chicago"],
+      `human date depends on the build's TZ: Europe/Brussels got "${rendered["Europe/Brussels"]}", America/Chicago got "${rendered["America/Chicago"]}"`,
+    );
+  } finally {
+    writeFileSync(fixturePath, original);
+    for (const [outDir] of zones) {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+    assert.equal(
+      readFileSync(fixturePath, "utf8"),
+      original,
+      "content/notes/fixture-note.md was not restored to its original contents",
+    );
+  }
+});
+
 check("no .webc source template is published into _site", () => {
   // addPassthroughCopy({ _components: "/" }) previously copied the whole
   // _components dir verbatim, shipping .webc build-input templates (e.g.

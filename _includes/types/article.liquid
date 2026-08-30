@@ -1,5 +1,5 @@
 <article class="h-entry">
   {%- if title %}<h1 class="p-name">{{ title }}</h1>{% endif %}
-  {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | date: "%-d %B %Y" }}</time>{% endif %}
+  {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
   <div class="e-content">{{ content }}</div>
 </article>

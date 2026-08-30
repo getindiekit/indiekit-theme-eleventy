@@ -1,4 +1,4 @@
 <article class="h-entry">
-  {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | date: "%-d %B %Y" }}</time>{% endif %}
+  {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
   {%- if likeOf %}<p>Liked <a class="u-like-of" href="{{ likeOf }}">{{ likeOf }}</a></p>{% endif %}
 </article>
