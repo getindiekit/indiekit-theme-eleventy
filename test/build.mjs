@@ -192,6 +192,16 @@ for (const [type, classes] of Object.entries(mf2)) {
     for (const c of classes) {
       assert.ok(html.includes(c), `missing ${c}`);
     }
+
+    // IdAttributePlugin (eleventy.config.js) is otherwise untested — nothing
+    // else in this suite fails if its registration is deleted. Assert its
+    // slugified heading id lands on the real p-name heading it targets.
+    if (type === "articles") {
+      assert.ok(
+        /<h1[^>]+class="p-name[^"]*"[^>]+id="[a-z0-9-]+"/.test(html),
+        "article's p-name heading has no id — IdAttributePlugin not applied",
+      );
+    }
   });
 }
 
@@ -282,6 +292,72 @@ check("feed contains every post-tagged fixture, not just any entry", () => {
       xml.includes(`http://localhost:8080/${type}/`),
       `feed missing an entry linking into /${type}/`,
     );
+  }
+});
+
+check("feed metadata comes from site.json, not the plugin's placeholder or a hardcoded copy", () => {
+  // Prior to this fix, eleventy.config.js passed no `subtitle` (so
+  // eleventy-plugin-rss's own lorem-ipsum default shipped verbatim) and
+  // hardcoded `title`/`base` as string literals duplicating site.json — a
+  // regression in either would previously reach a green suite because
+  // nothing asserted feed metadata at all.
+  const site = JSON.parse(readFileSync("_data/site.json", "utf8"));
+  const xml = readFileSync("_site/feed.xml", "utf8");
+
+  assert.ok(
+    !xml.includes("This is a longer description about your blog."),
+    "feed subtitle is eleventy-plugin-rss's placeholder lorem, not site.json's description",
+  );
+  assert.ok(
+    xml.includes(`<subtitle>${site.description}</subtitle>`),
+    "feed subtitle does not match _data/site.json's description",
+  );
+  assert.ok(
+    xml.includes(`<title>${site.name}</title>`),
+    "feed title does not match _data/site.json's name",
+  );
+  // site.json's url has no trailing slash; the feed's `base` needs one.
+  assert.ok(
+    xml.includes(`<id>${site.url}/</id>`),
+    "feed base does not match site.json's url (with the required trailing slash)",
+  );
+});
+
+check("every feed entry has a non-empty title", () => {
+  // Atom requires atom:title on every entry. Notes, photos, likes and
+  // replies carry no `title` front matter (titleless by IndieWeb design),
+  // and the plugin renders `post.data.title` verbatim — an unhandled
+  // fallback ships as literal <title></title>, which most feed readers
+  // render as a blank row. This is the majority case: 4 of the 6 post
+  // types produce no title of their own.
+  const xml = readFileSync("_site/feed.xml", "utf8");
+  const titles = [...xml.matchAll(/<title>([\s\S]*?)<\/title>/g)]
+    .map((m) => m[1].trim())
+    // the feed's own <title> (site name) is not an entry title
+    .slice(1);
+  assert.equal(titles.length, 6, `expected 6 entry titles, found ${titles.length}`);
+  for (const title of titles) {
+    assert.ok(title.length > 0, "a feed entry has an empty <title>");
+  }
+});
+
+check("no .webc source template is published into _site", () => {
+  // addPassthroughCopy({ _components: "/" }) previously copied the whole
+  // _components dir verbatim, shipping .webc build-input templates (e.g.
+  // toggle-button.webc) into the output tree alongside real assets.
+  const files = globSync("_site/**/*.webc");
+  assert.equal(files.length, 0, `.webc file(s) published into _site: ${files.join(", ")}`);
+});
+
+check("toggle-button's own CSS/JS assets are reachable at the paths it links", () => {
+  // toggle-button.webc links /toggle-button.css and /toggle-button.js. The
+  // old passthrough shipped _components/* under /static/ paths that don't
+  // match what the component actually references — both 404'd.
+  const webc = readFileSync("_components/toggle-button.webc", "utf8");
+  const hrefs = [...webc.matchAll(/(?:href|src)="([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(hrefs.length > 0, "toggle-button.webc links no assets to check");
+  for (const href of hrefs) {
+    assert.ok(existsSync(`_site${href}`), `toggle-button.webc links ${href}, which does not exist in _site`);
   }
 });
 

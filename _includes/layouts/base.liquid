@@ -30,7 +30,8 @@
 		<meta property="og:type" content="website">
 		<meta property="og:site_name" content="{{ site.name }}">
 		<meta property="og:description" content="{% if description %}{{ description }}, {% endif %}{% if title %}A post by {% endif %}{{ site.author.name }}">
-		{% comment %} TODO(Task 10): depends on an `ogImageSource`/`getOpenGraphImageUrl` shortcode being wired — no task has done that yet.
+		{% comment %} Known unimplemented feature, not a pending task: og:image depends on an
+		`ogImageSource`/`getOpenGraphImageUrl` shortcode that no task in this plan has wired up.
 		<meta property="og:image" content="{% ogImageSource page %}">
 		{% endcomment %}
 		<meta property="og:url" content="{{ site.url }}{{ page.url }}">
@@ -46,7 +47,11 @@
 
 		<link rel="stylesheet" href="/_css/index.css">
 		{% comment %} TODO(unresolved shortcode): the source also used `{% renderFile "./static/initial.scss" %}` (inline-compiled critical CSS) here for the "build" runMode branch — not registered by this theme's eleventy.config.js. See task-4-report.md. {% endcomment %}
-		{% comment %} TODO(Task 10): WebC bundle registration lands in Task 10.
+		{% comment %} Known gap, not a pending task: the WebC plugin is registered
+		(eleventy.config.js) but this `{% getBundle 'css' %}` call is left unwired —
+		it would output CSS that .webc components bundle via <style>. Concretely,
+		toggle-button.webc's own <style> block bundles into 'css' and, unwired, is
+		silently dropped: those rules vanish the moment anyone uses the component.
 		<style>{% getBundle 'css' %}</style><!-- WebC -->
 		{% endcomment %}
 
@@ -62,7 +67,9 @@ built. Restore a split here only alongside something that produces both files. {
 
 {%- if JS_ENABLED %}
 		{% comment %} TODO(unresolved shortcode): the source also gated a goatcounter analytics `<script>` on runMode == "build" here — analytics dropped per scope. {% endcomment %}
-		{% comment %} TODO(Task 10): WebC bundle registration lands in Task 10.
+		{% comment %} Known gap, not a pending task: same as the CSS bundle above —
+		the WebC plugin is registered but this `{% getBundle 'js' %}` call is left
+		unwired, so any .webc component's bundled <script> is silently dropped.
 		<script type="module">{% getBundle 'js' %}</script><!-- WebC -->
 		{% endcomment %}
 		<script src="/static/defer.js" type="module"></script>

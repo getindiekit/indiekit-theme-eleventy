@@ -37,12 +37,9 @@ document.addEventListener("click", function(event) {
 		toggleClassname(isPressed, className);
 	}
 
-	if(toggle.getAttribute("id").startsWith("ai-mode")) {
-		// In sidebar and embedded in the blog post
-		Array.from(document.querySelectorAll("[id^='ai-mode']")).forEach(el => {
-			el.setAttribute("aria-pressed", true);
-			el.setAttribute("disabled", "")
-		});
-		import("/static/js/ai-mode.js");
-	}
+	// Deviation from source: the source's "ai-mode" branch here required a
+	// caller-supplied id starting with "ai-mode" (toggle-button.webc:id is
+	// otherwise undefined, which crashed getAttribute("id").startsWith(...))
+	// and imported /static/js/ai-mode.js, a file this theme does not ship.
+	// Deliberately dropped — do not restore without also porting ai-mode.js.
 });
