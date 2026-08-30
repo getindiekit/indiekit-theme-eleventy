@@ -1,0 +1,77 @@
+/* Webmention Section */
+
+.webmentions {
+    display:block;
+    text-align: left;
+}
+.webmentions__facepile {
+    display:flex;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-left: 8px;
+    margin-bottom: 1em;
+}
+.webmentions__facepile > h3 {
+    float: left;
+    margin: 0 calc(var(--webmention-avatar-size) - 2.25rem) 0 -8px;
+}
+.webmentions__facepile__hedlg {
+    min-width: 180px;
+}
+.webmentions__facepile > a {
+    margin-left: -12px;
+    width: var(--webmention-avatar-size);
+    height: var(--webmention-avatar-size);
+    border-radius: 50%;
+    border: 2px solid #fff;
+    line-height: 1;
+    overflow: hidden;
+    box-sizing: content-box;
+}
+.webmentions__facepile > a:hover {
+    position: relative;
+    z-index: 1;
+}
+.webmentions__face {
+    background-color: rgba(0,0,0,.2);
+}
+/* Hide errors, note: this makes the number reported on the page inaccurate */
+.webmentions__facepile .error {
+    display: none;
+}
+@supports (object-fit: cover) {
+    .webmentions__face,
+    .webmentions__face[width][height] {
+        object-fit: cover;
+        height: 100%;
+        width: 100%;
+    }
+}
+.webmentions__list {
+    list-style-type: none;
+}
+.webmentions__list.webmentions__list.webmentions__list {
+    padding:0;
+}
+.webmentions__item {
+    margin-bottom: 1em;
+}
+
+/* Webmention form */
+.form-webmention {
+    margin-bottom: 2rem;
+}
+.form-webmention label {
+    display: block;
+}
+.form-webmention input {
+    height: 2rem;
+}
+.form-webmention input[type="url"] {
+    width: calc(100% - 13em);
+    max-width: 30em;
+}
+.form-webmention [type="submit"] {
+    margin-left: .25em;
+    width: 12em;
+}

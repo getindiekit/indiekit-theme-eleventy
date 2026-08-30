@@ -63,6 +63,17 @@ check("no zachleat.com references leak into output", () => {
   assert.ok(!html.includes("zachleat"), "found a zachleat reference in output");
 });
 
+check("stylesheet carries real styling, not the placeholder", () => {
+  const files = globSync("_site/**/*.css");
+  assert.ok(files.length > 0, "no css produced");
+  const css = files.map((f) => readFileSync(f, "utf8")).join("");
+  assert.ok(css.length > 2000, `stylesheet is only ${css.length} bytes — still a stub?`);
+  assert.ok(
+    css.includes(".content-main") || css.includes("content-main"),
+    "layout primitives missing — .content-main not compiled",
+  );
+});
+
 const failed = checks.filter((c) => !c).length;
 console.log(`\n${checks.length - failed}/${checks.length} checks passed`);
 process.exit(failed === 0 ? 0 : 1);

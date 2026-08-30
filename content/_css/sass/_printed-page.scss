@@ -1,0 +1,39 @@
+@use "mixins";
+@use "config";
+
+/* Printed Pages */
+.printed-page {
+	border: 1px solid #999;
+	box-shadow: 4px 4px 0 #ddd;
+	padding: 3em;
+	font-size: 14px
+}
+.printed-page > img {
+	display: block;
+	max-width: 150px;
+	margin: 0 auto 3em;
+}
+.printed-page .redacted {
+	background-color: #000;
+}
+.printed-page blockquote {
+	font-family: config.$monospaceFont;
+	font-style: normal;
+	margin: 0;
+	padding: 0;
+	border: none;
+	background-color: transparent;
+	color: #000;
+	white-space: pre-wrap;
+	max-width: none;
+
+	/* Disable ligatures */
+	font-variant-ligatures: no-common-ligatures;
+	font-feature-settings: 'liga' 0, 'clig' 0;
+
+	@include mixins.extraunhyphenate;
+}
+
+.printed-page blockquote p {
+	padding: 0;
+}

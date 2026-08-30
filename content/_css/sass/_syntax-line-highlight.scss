@@ -1,0 +1,48 @@
+.token.deleted,
+.token.inserted {
+	line-height: 1.5;
+}
+.token.deleted {
+  background-color: #712b2b;
+}
+.token.inserted {
+	background-color: #2a522e;
+}
+
+pre[class*="language-diff-"] {
+	padding-left: 0;
+	padding-right: 0;
+}
+
+/* Make the + and - characters unselectable for copy/paste */
+.token.prefix.unchanged,
+.token.prefix.inserted,
+.token.prefix.deleted {
+	-webkit-user-select: none;
+	user-select: none;
+	margin-right: .2em;
+	padding-left: .2em;
+	color: rgba(255,255,255,.2);
+}
+
+/* Optional: full-width background color */
+.token.inserted:not(.prefix),
+.token.deleted:not(.prefix) {
+	display: block;
+	min-width: min-content;
+}
+
+/*
+ * Dark theme
+ */
+
+// .highlight-line-active {
+//   background-color: #444;
+//   background-color: hsla(0, 0%, 27%, .8);
+// }
+// .highlight-line-add {
+//   background-color: #45844b;
+// }
+// .highlight-line-remove {
+//   background-color: #902f2f;
+// }
