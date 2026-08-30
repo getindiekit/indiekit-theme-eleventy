@@ -9,3 +9,6 @@ layout: layouts/base.liquid
   {% when "reply" %}{% include "types/reply.liquid" %}
   {% else %}{% include "types/note.liquid" %}
 {% endcase %}
+
+{%- capture absoluteUrl %}{{ site.url }}{{ page.url }}{% endcapture -%}
+{% include "webmentionlist.liquid" %}

@@ -1,0 +1,13 @@
+{
+  "children": [
+    {
+      "type": "entry",
+      "wm-property": "in-reply-to",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://example.com/a-reply",
+      "published": "2026-08-30T11:00:00Z",
+      "content": { "text": "WEBMENTION_FIXTURE_MARKER" },
+      "author": { "name": "A Commenter", "url": "https://example.com/" }
+    }
+  ]
+}

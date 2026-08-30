@@ -1,0 +1,88 @@
+<div class="webmentions content-grid-sibling" id="webmentions" data-pagefind-ignore>
+  {% comment %}Note thie combines both repost and mention, similar to how Twitter now combines retweet and quote tweet{% endcomment %}
+  {%- assign reposts = webmentions | webmentionsForUrl: absoluteUrl, "repost-of,mention-of" -%}
+  {%- assign repostsSize = reposts | size -%}
+  {%- assign likes = webmentions | webmentionsForUrl: absoluteUrl, 'like-of' -%}
+  {%- assign likesSize = likes | size -%}
+  {% if repostsSize > 0 %}
+  <div class="webmentions__facepile">
+    <h3{% if repostsSize > 11 or likesSize > 11 %} class="webmentions__facepile__hedlg"{% endif %}>{{ repostsSize }} Repost{% if repostsSize != 1 %}s{% endif %}</h3>
+    {%- for webmention in reposts -%}
+      {%- if webmention.url != "" -%}
+      <a class="h-card u-url" href="{{ webmention.url }}" target="_blank" rel="noopener noreferrer">
+      {%- endif -%}
+      {% render "webmention-avatar.liquid", webmention: webmention, imageClass: "webmentions__face" %}
+      {%- if webmention.url != "" -%}
+      </a>
+      {%- endif -%}
+    {%- endfor -%}
+  </div>
+  {% endif %}
+
+  {% if likesSize > 0 %}
+  <div class="webmentions__facepile">
+    <h3{% if repostsSize > 11 or likesSize > 11 %} class="webmentions__facepile__hedlg"{% endif %}>{{ likesSize }} Like{% if likesSize != 1 %}s{% endif %}</h3>
+    {%- for webmention in likes -%}
+      {%- if webmention.url != "" -%}
+      <a class="h-card u-url" href="{{ webmention.url }}" target="_blank" rel="noopener noreferrer">
+      {%- endif -%}
+      {% render "webmention-avatar.liquid", webmention: webmention, imageClass: "webmentions__face" %}
+      {%- if webmention.url != "" -%}
+      </a>
+      {%- endif -%}
+    {%- endfor -%}
+  </div>
+  {% endif %}
+
+  {%- assign bookmarks = webmentions | webmentionsForUrl: absoluteUrl, 'bookmark-of' -%}
+  {%- assign bookmarksSize = bookmarks | size -%}
+
+  {% if bookmarksSize > 0 %}
+  <div class="webmentions__facepile">
+    <h3{% if bookmarksSize > 11 %} class="webmentions__facepile__hedlg"{% endif %}>{{ bookmarksSize }} Bookmark{% if bookmarksSize != 1 %}s{% endif %}</h3>
+    {%- for webmention in bookmarks -%}
+      {%- if webmention.url != "" -%}
+      <a class="h-card u-url" href="{{ webmention.url }}" target="_blank" rel="noopener noreferrer">
+      {%- endif -%}
+      {% render "webmention-avatar.liquid", webmention: webmention, imageClass: "webmentions__face" %}
+      {%- if webmention.url != "" -%}
+      </a>
+      {%- endif -%}
+    {%- endfor -%}
+  </div>
+  {% endif %}
+
+  {%- assign replies = webmentions | webmentionsForUrl: absoluteUrl, 'in-reply-to' -%}
+  {% assign disqusCommentSize = 0 %}
+  {% if disqus %}{% assign disqusCommentSize = disqus.commentCount %}{% endif %}
+  {%- assign repliesSize = replies | size | plus: disqusCommentSize -%}
+  {% if repliesSize > 0 %}
+  <details id="comments">
+    <summary class="hed-h3">{{ repliesSize }} Comment{% if repliesSize != 1 and repliesSize != "1" %}s{% endif %}</summary>
+    <ol class="static-comments static-comments-webmentions favicon-optin">
+      {% for webmention in replies %}
+        {% include "webmention" %}
+      {% endfor %}
+    </ol>
+
+    <ol class="static-comments favicon-optin">
+    {% for comment in disqus.comments %}
+      {% include "comment-entry.html" %}
+    {% endfor %}
+    </ol>
+  </details>
+  {% endif %}
+
+  <details>
+    <summary class="hed-h4"><strong>Shamelessly plug your related post</strong></summary>
+
+    <p>These are <a href="https://indieweb.org/Webmention">webmentions</a> via the <a href="https://indieweb.org/">IndieWeb</a> and <a href="https://webmention.io/">webmention.io</a>.</p>
+
+    <form action="https://webmention.io/www.zachleat.com/webmention" method="post" class="form-webmention">
+      <label for="form-webmention-source" class="sr-only">URL of your site:</label>
+      <input id="form-webmention-source" type="url" name="source" placeholder="https://example.com" required>
+      <input type="hidden" name="target" value="https://www.zachleat.com{{ page.url }}">
+      <input type="submit" class="button" value="Send Webmention">
+    </form>
+  </details>
+</div>

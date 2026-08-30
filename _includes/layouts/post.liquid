@@ -55,12 +55,10 @@ tmpl: page
 	</p>
 </article>
 
-{% comment %} TODO(Task 7): webmentionlist include restored when the webmention endpoint is ported.
 {% unless disableComments %}
-	{%- capture absoluteUrl -%}{{ page.url | absoluteUrl }}{%- endcapture -%}
-	{% include "webmentionlist", absoluteUrl: absoluteUrl %}
+	{%- capture absoluteUrl -%}{{ site.url }}{{ page.url }}{%- endcapture -%}
+	{% include "webmentionlist.liquid", absoluteUrl: absoluteUrl %}
 {% endunless %}
-{% endcomment %}
 
 <script type="module" src="/static/line-numbers.js"></script>
 <script type="module">

@@ -153,6 +153,31 @@ check("each post type builds a directory index", () => {
   }
 });
 
+check("webmentions render from fixture data", () => {
+  const files = globSync("_site/notes/*/index.html");
+  const html = readFileSync(files[0], "utf8");
+  assert.ok(
+    html.includes("WEBMENTION_FIXTURE_MARKER"),
+    "fixture webmention not rendered on the note page",
+  );
+
+  // Not just present anywhere on the page — a stray dump of the fixture data
+  // would also satisfy a bare `includes()`. Confirm the marker rendered
+  // through the real mf2 comment markup (u-comment h-cite / p-content), i.e.
+  // that it came from the webmentionsForUrl filter -> webmentionlist.liquid
+  // -> webmention.liquid pipeline, not some other path.
+  const commentEntry = /<li class="static-comments-reply u-comment h-cite"[^>]*>[\s\S]*?<\/li>/.exec(html);
+  assert.ok(commentEntry, "no u-comment h-cite webmention entry found on the page");
+  assert.ok(
+    commentEntry[0].includes("WEBMENTION_FIXTURE_MARKER"),
+    "fixture marker did not render inside the webmention comment entry",
+  );
+  assert.ok(
+    commentEntry[0].includes('class="static-comments-msg p-content'),
+    "fixture marker rendered outside the p-content comment body",
+  );
+});
+
 const failed = checks.filter((c) => !c).length;
 console.log(`\n${checks.length - failed}/${checks.length} checks passed`);
 process.exit(failed === 0 ? 0 : 1);

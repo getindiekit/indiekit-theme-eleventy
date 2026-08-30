@@ -1,0 +1,29 @@
+<li class="static-comments-reply u-comment h-cite" id="webmention-{{ webmention['wm-id'] }}">
+  <div class="static-comments-hed">
+    {%- include "webmention-avatar.liquid" %}
+
+    <h3 class="static-comments-title p-name cased">{% if webmention.author.name != "" %}{{ webmention.author.name | htmlEntities }}{% elsif webmention.url %}<em>{{ webmention.url | hostnameFromUrl }}</em>{% else %}Anonymous{% endif %}<!-- <a href="#webmention-{{ webmention['wm-id'] }}" class="static-comments-selflink exempt">🔗</a>--></h3>
+
+    {% if webmention.published %}
+      <em class="static-comments-date">
+        {%- if webmention.url != "" %}<a class="h-card u-url" href="{{ webmention.url }}" target="_blank" rel="noopener noreferrer">{% endif -%}
+        <time class="dt-published" datetime="{{ webmention.published }}">{{ webmention.published | readableDateFromISO: "dd LLL yyyy" }}</time>
+        {%- if webmention.url != "" %}</a>{% endif -%}
+      </em>
+    {% endif %}
+  </div>
+
+  {% if webmention['wm-property'] == "repost-of" or webmention['wm-property'] == "like-of" or webmention['wm-property'] == "bookmark-of" %}
+  {% elsif webmention.content.text.length <= 5000 %}
+  <div class="static-comments-msg p-content{% if webmention.content.text.length > 5000 %} static-comments-msg-long{% endif %}"><p>
+    {%- if webmention.published %}{% elsif webmention.url != "" %}
+    <a class="h-card u-url" href="{{ webmention.url }}" target="_blank" rel="noopener noreferrer">Show original post</a>
+    {% endif -%}
+    {{ webmention.content.text | escape | truncate }}
+  </p></div>
+  {% endif %}
+
+  {% if showTarget %}
+  <a href="{{ webmention['wm-target'] }}" class="tag-inline tag-cased">{{ webmention['wm-target'] | localUrl }}</a>
+  {% endif %}
+</li><!-- /static-comments-reply -->
