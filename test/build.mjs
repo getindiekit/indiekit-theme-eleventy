@@ -122,6 +122,54 @@ check("no zachleat.com references leak into output", () => {
   }
 });
 
+check("templates reading collections declare eleventyImport", () => {
+  // A template that reads collections.* without declaring
+  // `eleventyImport: { collections: [...] }` in its own front matter (or
+  // inherits it from its layout chain) will not be rebuilt by `--incremental`
+  // when a collection member changes elsewhere — a silent stale-listing bug,
+  // not something a build-output assertion can see. Source-scan instead.
+  const files = globSync("{content,_includes}/**/*.{liquid,md,njk,html}");
+  assert.ok(
+    files.length > 0,
+    "glob matched no template files — this check scanned nothing",
+  );
+
+  const isOffender = (src) => /collections\./.test(src) && !/eleventyImport/.test(src);
+
+  // This repo currently has zero templates that read collections.* at all
+  // (verified: `grep -rn 'collections\.' content/ _includes/` — no hits).
+  // That makes the real scan below pass with 0 offenders for a reason that
+  // proves nothing: "no violations" and "nothing to violate" look identical
+  // from offenders.length alone. Exercise the same detector against inline
+  // fixtures first, so a pass is backed by evidence the detector actually
+  // distinguishes an offender from a compliant or irrelevant file — not
+  // just an empty result set.
+  assert.equal(
+    isOffender('{% for p in collections.post %}{% endfor %}'),
+    true,
+    "detector failed to flag a template reading collections.* with no eleventyImport",
+  );
+  assert.equal(
+    isOffender(
+      '---\neleventyImport:\n  collections: ["post"]\n---\n{% for p in collections.post %}{% endfor %}',
+    ),
+    false,
+    "detector flagged a template that already declares eleventyImport",
+  );
+  assert.equal(
+    isOffender("<p>no collections read here</p>"),
+    false,
+    "detector flagged a template that never reads collections.*",
+  );
+
+  const offenders = files.filter((f) => isOffender(readFileSync(f, "utf8")));
+  assert.equal(
+    offenders.length,
+    0,
+    `templates read collections.* without declaring eleventyImport: ${offenders.join(", ")}`,
+  );
+});
+
 check("stylesheet carries real styling, not the placeholder", () => {
   const files = globSync("_site/**/*.css");
   assert.ok(files.length > 0, "no css produced");
