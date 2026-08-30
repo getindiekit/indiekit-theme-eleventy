@@ -37,14 +37,19 @@ export default function (eleventyConfig) {
   // including template lives in. Eleventy's Liquid engine defaults `root` to
   // [dir.includes, dir.input] (Engines/Liquid.js) — neither contains
   // node_modules, because dir.input here is "content", not the project root.
-  // The source's dir.input IS the project root, so node_modules is already a
-  // descendant of one of its two default roots and no override was needed
-  // there. Adding "." (the project root, which does contain node_modules) as
-  // a third entry restores that same reachability for this one legitimate,
-  // documented use — nothing else in this theme relies on relative Liquid
-  // includes reaching outside _includes/content.
+  //
+  // markdownTemplateEngine below is "liquid", so every post body — written by
+  // a Micropub client, i.e. untrusted remote input — is rendered through
+  // Liquid before markdown conversion. An earlier version of this config used
+  // "." (the project root) as the third root entry, which restored reach to
+  // node_modules for the include above but *also* let a post body's own
+  // `{% include %}` read any project-root file (confirmed exploitable: a
+  // note body containing `{% include "package.json" %}` rendered its
+  // contents onto the published page). Scoped to the one package this build
+  // actually needs instead — narrow enough that no other project-root file,
+  // and no other npm package, is reachable this way.
   eleventyConfig.setLiquidOptions({
-    root: ["_includes", "content", "."],
+    root: ["_includes", "content", "node_modules/@11ty/is-land"],
   });
 
   eleventyConfig.addPlugin(pluginSass);

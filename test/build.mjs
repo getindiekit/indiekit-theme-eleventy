@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { existsSync, readFileSync, writeFileSync, rmSync, globSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, rmSync, globSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import npmDownloads from "../_data/npmDownloads.js";
 
@@ -114,11 +114,89 @@ check("no zachleat.com references leak into output", () => {
   // layout, so it can never see a leak confined to entry.liquid or the
   // includes it pulls in (e.g. webmentionlist.liquid's webmention.io form,
   // which only renders on entry pages).
-  const files = globSync("_site/**/*.html");
-  assert.ok(files.length > 0, "no HTML produced in _site");
-  for (const file of files) {
-    const html = readFileSync(file, "utf8");
-    assert.ok(!html.includes("zachleat"), `found a zachleat reference in ${file}`);
+  //
+  // Also scan .js and .css, not just .html: Task 13 introduced a JS bundle
+  // (content/static/defer.js.liquid) that inlines vendor source pulled out
+  // of node_modules, and the port source concatenates more such vendor
+  // files into the same bundle — a design that's built to grow. defer.js is
+  // clean today; nothing would notice if a future addition stopped being.
+  // Each glob is asserted non-empty on its own so a typo or an emptied
+  // output directory for one extension can't silently pass by scanning
+  // zero files of that type (matching the same guard already used for the
+  // .html glob below).
+  const extensions = { html: "_site/**/*.html", js: "_site/**/*.js", css: "_site/**/*.css" };
+  for (const [ext, glob] of Object.entries(extensions)) {
+    const files = globSync(glob);
+    assert.ok(files.length > 0, `no .${ext} produced in _site — this check scanned nothing for that type`);
+    for (const file of files) {
+      const text = readFileSync(file, "utf8");
+      assert.ok(!text.includes("zachleat"), `found a zachleat reference in ${file}`);
+    }
+  }
+});
+
+check("a post body cannot use Liquid include to read an arbitrary project-root file", () => {
+  // eleventy.config.js sets markdownTemplateEngine: "liquid", so every post
+  // body — written by a Micropub client, i.e. untrusted remote input — is
+  // rendered through Liquid before markdown conversion. content/static/
+  // defer.js.liquid legitimately needs a Liquid `root` entry that reaches
+  // into node_modules (to {% include %} is-land.js); a `root` entry of "."
+  // (the project root) satisfies that but also lets a post body {% include
+  // %} any project-root file, e.g. secrets or deployment config. Prove a
+  // post body cannot do that by having one try, via a canary file created
+  // fresh here (not a real project file, so this check can't produce a
+  // false pass by matching incidental substrings elsewhere in the build).
+  const canaryPath = "SECURITY_TEST_CANARY.txt";
+  const canaryToken = "CANARY_9f3d7c1b_do_not_leak";
+  const fixturePath = "content/notes/fixture-note.md";
+  const outDir = "_site-liquid-include-check";
+  const originalFixture = readFileSync(fixturePath, "utf8");
+
+  writeFileSync(canaryPath, `${canaryToken}\n`);
+  writeFileSync(fixturePath, `${originalFixture}\n{% include "${canaryPath}" %}\n`);
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    let buildError = null;
+    try {
+      execFileSync(
+        process.execPath,
+        ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe" },
+      );
+    } catch (error) {
+      // LiquidJS's Loader rejects the include outright (it never resolves
+      // inside an allowed root) and Eleventy fails the whole build rather
+      // than writing a partial site — a hard failure is a legitimate way to
+      // not leak the file, not just an empty output succeeding by accident.
+      // Require the failure to actually name the blocked lookup, so an
+      // unrelated crash can't be mistaken for the guard working.
+      buildError = error;
+      const output = `${error.stdout || ""}${error.stderr || ""}`;
+      assert.ok(
+        output.includes(canaryPath) && /ENOENT/.test(output),
+        `build failed, but not because the include was blocked — got: ${output.slice(0, 500)}`,
+      );
+    }
+
+    // Whether the build failed outright or completed, no output file may
+    // contain the canary's contents.
+    const producedFiles = globSync(`${outDir}/**/*`).filter((f) => statSync(f).isFile());
+    for (const file of producedFiles) {
+      const text = readFileSync(file, "utf8");
+      assert.ok(!text.includes(canaryToken), `canary file contents leaked into ${file}`);
+    }
+    if (!buildError) {
+      assert.ok(producedFiles.length > 0, "build reported success but produced no files to check");
+    }
+  } finally {
+    writeFileSync(fixturePath, originalFixture);
+    rmSync(canaryPath, { force: true });
+    rmSync(outDir, { recursive: true, force: true });
+    assert.equal(
+      readFileSync(fixturePath, "utf8"),
+      originalFixture,
+      "content/notes/fixture-note.md was not restored to its original contents",
+    );
   }
 });
 
