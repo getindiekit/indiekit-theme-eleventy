@@ -36,6 +36,12 @@ modules:
 	{{ content }}
 </main><!-- /.content -->
 
+{% comment %} TODO(Task 10): WebC bundle registration lands in Task 10. The
+source loaded its font-awesome icon sprite here, alongside the css/js bundles
+preserved in base.liquid.
+{% getBundle "fontawesome" %}
+{% endcomment %}
+
 <div class="hamburger">
 	<is-land on:idle on:visible on:media="(prefers-reduced-motion: no-preference) and (min-width: 61.1875em)">
 		<infinity-burger theme-fn></infinity-burger>
