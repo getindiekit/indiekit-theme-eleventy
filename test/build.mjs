@@ -122,53 +122,314 @@ check("no zachleat.com references leak into output", () => {
   }
 });
 
-check("templates reading collections declare eleventyImport", () => {
-  // A template that reads collections.* without declaring
-  // `eleventyImport: { collections: [...] }` in its own front matter (or
-  // inherits it from its layout chain) will not be rebuilt by `--incremental`
-  // when a collection member changes elsewhere — a silent stale-listing bug,
-  // not something a build-output assertion can see. Source-scan instead.
-  const files = globSync("{content,_includes}/**/*.{liquid,md,njk,html}");
+check("templates reading collections declare eleventyImport where it can take effect", () => {
+  // A template that reads collections.* without `eleventyImport: {
+  // collections: [...] }` reaching it through the *data cascade* (its own
+  // front matter, or a layout in its chain — front matter merges up the
+  // layout chain, Template.js:392,397 + TemplateMap.js) will not be rebuilt
+  // by `--incremental` when a collection member changes elsewhere — a
+  // silent stale-listing bug, not something a build-output assertion can
+  // see. Source-scan instead.
+  //
+  // Critically: dir.input is "content" (eleventy.config.js), so files under
+  // _includes/** are never their own TemplateMap entries — an `{% include
+  // %}`d partial's own eleventyImport is inert (its front matter never
+  // merges into the including page's data). A naive per-file scan flags the
+  // partial itself; a developer "fixes" it by declaring eleventyImport on
+  // the partial, the check goes green, and the real bug — the consuming
+  // page still has no declaration — survives untouched. This check
+  // attributes the requirement to the page/layout that can actually satisfy
+  // it, resolving `{% include %}` and `layout:` chains (including layouts
+  // assigned via a directory's *.11tydata.js, not just front matter).
+  const templateFiles = globSync("{content,_includes}/**/*.{liquid,md,njk,html}");
+  // Extended coverage (MEDIUM): the glob above misses directory-data
+  // cascade files and WebC components — neither reads collections.* today,
+  // but both are template-adjacent sources this check should watch.
+  const dataFiles = globSync("content/**/*.11tydata.js");
+  const webcFiles = globSync("_components/**/*.webc");
   assert.ok(
-    files.length > 0,
-    "glob matched no template files — this check scanned nothing",
+    templateFiles.length > 0,
+    "template glob matched nothing — this check scanned nothing",
   );
 
-  const isOffender = (src) => /collections\./.test(src) && !/eleventyImport/.test(src);
+  const srcCache = new Map();
+  const src = (f) => {
+    if (!srcCache.has(f)) srcCache.set(f, readFileSync(f, "utf8"));
+    return srcCache.get(f);
+  };
 
-  // This repo currently has zero templates that read collections.* at all
-  // (verified: `grep -rn 'collections\.' content/ _includes/` — no hits).
-  // That makes the real scan below pass with 0 offenders for a reason that
-  // proves nothing: "no violations" and "nothing to violate" look identical
-  // from offenders.length alone. Exercise the same detector against inline
-  // fixtures first, so a pass is backed by evidence the detector actually
-  // distinguishes an offender from a compliant or irrelevant file — not
-  // just an empty result set.
+  const readsCollections = (text) => /collections\./.test(text);
+  const declaresImport = (text) => /eleventyImport/.test(text);
+  const isSelfOffender = (text) => readsCollections(text) && !declaresImport(text);
+
+  // Exercise the primitive detectors against inline fixtures first, so a
+  // "0 offenders" result below is backed by evidence they actually
+  // distinguish an offender from a compliant or irrelevant file — not just
+  // an empty result set (this repo currently has zero templates reading
+  // collections.* at all, which would make the real scan pass "for free").
   assert.equal(
-    isOffender('{% for p in collections.post %}{% endfor %}'),
+    isSelfOffender('{% for p in collections.post %}{% endfor %}'),
     true,
     "detector failed to flag a template reading collections.* with no eleventyImport",
   );
   assert.equal(
-    isOffender(
+    isSelfOffender(
       '---\neleventyImport:\n  collections: ["post"]\n---\n{% for p in collections.post %}{% endfor %}',
     ),
     false,
     "detector flagged a template that already declares eleventyImport",
   );
   assert.equal(
-    isOffender("<p>no collections read here</p>"),
+    isSelfOffender("<p>no collections read here</p>"),
     false,
     "detector flagged a template that never reads collections.*",
   );
+  // /collections\./ deliberately requires the dot, so bare prose mentioning
+  // "collections" (e.g. base.liquid's comment about a `stylesheets`
+  // collection) doesn't false-flag. A future comment written as literally
+  // "collections.post" still could — accepted per the original tradeoff: a
+  // spurious declaration is cheap, a missed one is a silent stale build.
+  assert.equal(
+    isSelfOffender("{% comment %}looped over collections it populated{% endcomment %}"),
+    false,
+    "detector flagged dot-less prose mentioning \"collections\"",
+  );
 
-  const offenders = files.filter((f) => isOffender(readFileSync(f, "utf8")));
+  function frontMatter(text) {
+    const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    return m ? m[1] : "";
+  }
+  function stripQuotes(s) {
+    return s.trim().replace(/^["']/, "").replace(/["']$/, "");
+  }
+  function ownLayout(text) {
+    const m = frontMatter(text).match(/^layout:\s*(.+)$/m);
+    return m ? stripQuotes(m[1]) : null;
+  }
+  // A directory-data file (e.g. content/articles/articles.11tydata.js)
+  // assigns `layout:` as a plain JS string literal in every case this theme
+  // uses — read it the same lightweight way as front matter rather than
+  // executing the module.
+  function directoryDataLayout(text) {
+    const m = text.match(/layout:\s*["']([^"']+)["']/);
+    return m ? m[1] : null;
+  }
+
+  // Resolve an `{% include %}` target or a `layout:` value to the real file
+  // under _includes/ it names (Eleventy resolves both relative to the
+  // includes dir here — no separate dir.layouts is configured).
+  function resolveIncludeTarget(name) {
+    const clean = stripQuotes(name);
+    const bare = `_includes/${clean}`;
+    if (templateFiles.includes(bare)) return bare;
+    for (const ext of [".liquid", ".html", ".njk", ".md"]) {
+      const candidate = `${bare}${ext}`;
+      if (templateFiles.includes(candidate)) return candidate;
+    }
+    return null;
+  }
+  function includesOf(text) {
+    const names = [...text.matchAll(/{%-?\s*include\s+["']([^"']+)["']/g)].map((m) => m[1]);
+    return [...new Set(names.map(resolveIncludeTarget).filter(Boolean))];
+  }
+
+  // Eleventy's directory-data cascade: for each ancestor directory between
+  // content/ and a page's own directory, "<dir>/<dirName>.11tydata.js"
+  // supplies default data (including `layout`) to every template in it.
+  function directoryDataFilesFor(pagePath) {
+    const parts = pagePath.split("/");
+    const found = [];
+    let dir = parts[0];
+    for (let i = 1; i < parts.length - 1; i++) {
+      dir += `/${parts[i]}`;
+      const candidate = `${dir}/${parts[i]}.11tydata.js`;
+      if (dataFiles.includes(candidate)) found.push(candidate);
+    }
+    return found;
+  }
+
+  // Walk a page's layout chain (own front matter first, directory-data
+  // fallback, matching Eleventy's own specificity order), returning the
+  // resolved _includes files, innermost first. Cycle-safe.
+  function layoutChainOf(pagePath) {
+    const chain = [];
+    const seen = new Set([pagePath]);
+    let layoutName =
+      ownLayout(src(pagePath)) ||
+      directoryDataFilesFor(pagePath).map((f) => directoryDataLayout(src(f))).find(Boolean);
+    while (layoutName) {
+      const layoutPath = resolveIncludeTarget(layoutName);
+      if (!layoutPath || seen.has(layoutPath)) break;
+      seen.add(layoutPath);
+      chain.push(layoutPath);
+      layoutName = ownLayout(src(layoutPath));
+    }
+    return chain;
+  }
+
+  // Every file whose body text actually executes when this page renders:
+  // itself, its layout chain, and everything transitively `{% include %}`d
+  // from any of those. This is the render set — collections.* read anywhere
+  // in it is this page's problem to declare against, however deep the
+  // partial that does the actual reading.
+  function renderSetOf(pagePath) {
+    const chain = layoutChainOf(pagePath);
+    const seen = new Set([pagePath, ...chain]);
+    const queue = [pagePath, ...chain];
+    while (queue.length) {
+      const f = queue.pop();
+      for (const inc of includesOf(src(f))) {
+        if (!seen.has(inc)) {
+          seen.add(inc);
+          queue.push(inc);
+        }
+      }
+    }
+    return seen;
+  }
+
+  // Data-cascade sources that can actually *satisfy* an eleventyImport
+  // requirement for this page: its own front matter, its layout chain's own
+  // front matter (propagates automatically), and any directory-data file
+  // that applies. Deliberately excludes included partials — a partial's own
+  // eleventyImport never merges into the including page's data, so it must
+  // never count here (that's the exact blind spot this check exists to
+  // close).
+  function declarationSourcesOf(pagePath) {
+    return [pagePath, ...layoutChainOf(pagePath), ...directoryDataFilesFor(pagePath)];
+  }
+
+  const pages = templateFiles.filter((f) => f.startsWith("content/"));
+  assert.ok(pages.length > 0, "no content pages found — this check scanned nothing");
+
+  const offenders = [];
+  const reached = new Set();
+  for (const page of pages) {
+    const renderSet = renderSetOf(page);
+    for (const f of renderSet) reached.add(f);
+    const readerFile = [...renderSet].find((f) => readsCollections(src(f)));
+    if (!readerFile) continue;
+    const declares = declarationSourcesOf(page).some((f) => declaresImport(src(f)));
+    if (!declares) {
+      offenders.push(readerFile === page ? page : `${page} (reads collections.* via ${readerFile})`);
+    }
+  }
+
+  // Safety net: an _includes template that reads collections.* but is
+  // reachable from no page's render set is invisible to the loop above —
+  // either genuinely dead code, or a sign include-resolution above missed a
+  // real edge. Flag it rather than silently passing either way; the message
+  // deliberately does not suggest declaring eleventyImport on the partial
+  // itself, since that would not do anything.
+  for (const f of templateFiles.filter((f) => f.startsWith("_includes/"))) {
+    if (!reached.has(f) && readsCollections(src(f))) {
+      offenders.push(
+        `${f} (reads collections.* but is unreachable from any page's render set — ` +
+          "dead code, or a missed {% include %}/layout edge; declaring eleventyImport on " +
+          "this partial would not fix it, since partial front matter never merges into a page)",
+      );
+    }
+  }
+
+  // Directory-data files and WebC components have no partial-style blind
+  // spot: a directory-data file's export merges into the cascade the same
+  // as front matter, so it can satisfy its own requirement directly. WebC's
+  // data-cascade/collections semantics aren't otherwise modelled here — the
+  // simple self-check is what "extended coverage" means for these two.
+  for (const f of [...dataFiles, ...webcFiles]) {
+    if (isSelfOffender(src(f))) offenders.push(f);
+  }
+
   assert.equal(
     offenders.length,
     0,
-    `templates read collections.* without declaring eleventyImport: ${offenders.join(", ")}`,
+    `templates read collections.* without an eleventyImport declaration that reaches them: ${offenders.join("; ")}`,
   );
 });
+
+await checkAsync(
+  "a page declaring eleventyImport is actually rebuilt incrementally; one that doesn't stays stale",
+  async () => {
+    // The source-scan check above proves templates are *annotated*
+    // correctly; it can't prove Eleventy's incremental rebuilder actually
+    // honors the annotation. Drive a real incremental build instead —
+    // CLI's public `--incremental=<file>` flag (cmd.cjs:130-131) calls the
+    // same `core.setIncrementalFiles()` the review pointed at in
+    // CoreMinimal.js, and with no --watch/--serve it's a single write() and
+    // exit (cmd.cjs:136-157) — no server, no port, no watcher.
+    //
+    // Three throwaway fixtures at content root, same pattern as the
+    // toggle-button WebC check above: a tagged "member" page, a listing
+    // that declares eleventyImport for that tag, and an identical listing
+    // that doesn't. Full build, modify the member, rebuild incrementally,
+    // and check which listing's *output file* actually changed.
+    const outDir = "_site-incremental-check";
+    const memberPath = "content/incremental-check-member.liquid";
+    const declaredPath = "content/incremental-check-listing-declared.liquid";
+    const undeclaredPath = "content/incremental-check-listing-undeclared.liquid";
+    const declaredOut = `${outDir}/incremental-check-listing-declared/index.html`;
+    const undeclaredOut = `${outDir}/incremental-check-listing-undeclared/index.html`;
+
+    const memberBefore = `---
+title: Original Title
+tags: ["incrementalCheckMember"]
+---
+member
+`;
+    const declaredListing = `---
+eleventyImport:
+  collections: ["incrementalCheckMember"]
+---
+{% for item in collections.incrementalCheckMember %}{{ item.data.title }}{% endfor %}
+`;
+    const undeclaredListing = `{% for item in collections.incrementalCheckMember %}{{ item.data.title }}{% endfor %}
+`;
+
+    writeFileSync(memberPath, memberBefore);
+    writeFileSync(declaredPath, declaredListing);
+    writeFileSync(undeclaredPath, undeclaredListing);
+    try {
+      rmSync(outDir, { recursive: true, force: true });
+      const run = (extraArgs) =>
+        execFileSync(
+          process.execPath,
+          ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet", ...extraArgs],
+          { stdio: "pipe", env: { ...process.env, NPM_DOWNLOADS_OFFLINE: "1" } },
+        );
+
+      run([]); // full build — establishes the baseline output
+
+      assert.ok(existsSync(declaredOut), `${declaredOut} was not built`);
+      assert.ok(existsSync(undeclaredOut), `${undeclaredOut} was not built`);
+      assert.ok(
+        readFileSync(declaredOut, "utf8").includes("Original Title"),
+        "baseline build didn't render the member's title into the declaring listing",
+      );
+      assert.ok(
+        readFileSync(undeclaredOut, "utf8").includes("Original Title"),
+        "baseline build didn't render the member's title into the non-declaring listing",
+      );
+
+      writeFileSync(memberPath, memberBefore.replace("Original Title", "Updated Title"));
+      run([`--incremental=${memberPath}`]); // real incremental rebuild, same output dir
+
+      assert.ok(
+        readFileSync(declaredOut, "utf8").includes("Updated Title"),
+        "a page declaring eleventyImport for the changed collection was NOT rebuilt incrementally",
+      );
+      assert.ok(
+        readFileSync(undeclaredOut, "utf8").includes("Original Title"),
+        "a page reading the same collection with no eleventyImport unexpectedly updated — " +
+          "this fixture no longer demonstrates the bug the guard exists to catch",
+      );
+    } finally {
+      rmSync(memberPath, { force: true });
+      rmSync(declaredPath, { force: true });
+      rmSync(undeclaredPath, { force: true });
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  },
+);
 
 check("stylesheet carries real styling, not the placeholder", () => {
   const files = globSync("_site/**/*.css");
