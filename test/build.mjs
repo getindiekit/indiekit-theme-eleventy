@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, globSync } from "node:fs";
 
 const checks = [];
 const check = (name, fn) => {
@@ -23,6 +23,11 @@ check("index carries its title", () => {
     html.includes("Indiekit reference theme"),
     "title text not found in output",
   );
+});
+
+check("compiles sass to css", () => {
+  const css = globSync("_site/**/*.css");
+  assert.ok(css.length > 0, "no .css file produced in _site");
 });
 
 const failed = checks.filter((c) => !c).length;
