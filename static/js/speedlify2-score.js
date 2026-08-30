@@ -1,11 +1,11 @@
 /**
  * <speedlify2-score> — Lighthouse scores for one URL, with a summary on hover.
  *
- * Inspired by the speedlify-score approach in the 11ty ecosystem, with one
- * deliberate difference: there is no `urls.json` index to download. The data
- * file for a URL is found by slugifying the URL in the browser with the same
- * rules the generator uses, so a page needs exactly one request for exactly
- * the data it shows — and no index, no crypto, and no secure context to get it.
+ * Inspired by https://github.com/zachleat/speedlify-score, with one deliberate
+ * difference: there is no `urls.json` index to download. The data file for a
+ * URL is found by slugifying the URL in the browser with the same rules the
+ * generator uses, so a page needs exactly one request for exactly the data it
+ * shows — and no index, no crypto, and no secure context to get it.
  *
  *   <script type="module" src="https://your-speedlify/js/speedlify2-score.js"></script>
  *   <speedlify2-score speedlify-url="https://your-speedlify/"></speedlify2-score>

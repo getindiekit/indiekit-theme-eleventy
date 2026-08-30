@@ -124,13 +124,32 @@ check("no zachleat.com references leak into output", () => {
   // output directory for one extension can't silently pass by scanning
   // zero files of that type (matching the same guard already used for the
   // .html glob below).
+    // Neutrality means this theme must not present the port author's IDENTITY
+    // as its own — a personal domain in a form action, a name in a byline, a
+    // hardcoded personal endpoint. It does NOT mean erasing credit to upstream
+    // projects we vendor. Stripping an attribution comment out of third-party
+    // source to make this check pass would be the wrong fix: it removes credit
+    // the original author is owed and breaks byte-fidelity with the port
+    // source. Such files are exempted BY PATH so the exemption is auditable
+    // rather than a blanket substring carve-out.
+    const attributionExempt = new Set([
+    // Vendored from the port source; its header credits the upstream project
+    // it derives from (github.com/zachleat/speedlify-score). Preserve it.
+    "_site/js/speedlify2-score.js",
+    ]);
   const extensions = { html: "_site/**/*.html", js: "_site/**/*.js", css: "_site/**/*.css" };
   for (const [ext, glob] of Object.entries(extensions)) {
     const files = globSync(glob);
     assert.ok(files.length > 0, `no .${ext} produced in _site — this check scanned nothing for that type`);
     for (const file of files) {
+        if (attributionExempt.has(file)) continue;
       const text = readFileSync(file, "utf8");
       assert.ok(!text.includes("zachleat"), `found a zachleat reference in ${file}`);
+    }
+    // The exemption must not rot into a dead entry that silently covers
+    // nothing: every exempted path has to actually exist in the build.
+    for (const file of attributionExempt) {
+      assert.ok(existsSync(file), `attribution-exempt file ${file} is not in the build — remove the stale exemption`);
     }
   }
 });
@@ -164,12 +183,12 @@ check("a post body cannot use Liquid include to read an arbitrary project-root f
         { stdio: "pipe" },
       );
     } catch (error) {
-      // LiquidJS's Loader rejects the include outright (it never resolves
-      // inside an allowed root) and Eleventy fails the whole build rather
-      // than writing a partial site — a hard failure is a legitimate way to
-      // not leak the file, not just an empty output succeeding by accident.
-      // Require the failure to actually name the blocked lookup, so an
-      // unrelated crash can't be mistaken for the guard working.
+    // LiquidJS's Loader rejects the include outright (it never resolves
+    // inside an allowed root) and Eleventy fails the whole build rather
+    // than writing a partial site — a hard failure is a legitimate way to
+    // not leak the file, not just an empty output succeeding by accident.
+    // Require the failure to actually name the blocked lookup, so an
+    // unrelated crash can't be mistaken for the guard working.
       buildError = error;
       const output = `${error.stdout || ""}${error.stderr || ""}`;
       assert.ok(
