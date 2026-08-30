@@ -1973,7 +1973,12 @@ process.stdout.write("\\nPROBE_RESULT:" + JSON.stringify({ hits, misses, elapsed
     const runBuild = () => {
       const stdout = execFileSync(process.execPath, [probeScript, "_site"], {
         stdio: "pipe",
-        env: process.env,
+        // This check wipes .cache/ to force a cold image build — which also
+        // clears .cache/eleventy-fetch/, the npm-downloads cache. Without this
+        // override the probe re-fetches api.npmjs.org for real, breaking the
+        // suite's no-network contract on a bare `npm test`. Same convention as
+        // the run-mode probe above.
+        env: { ...process.env, NPM_DOWNLOADS_OFFLINE: "1" },
       }).toString("utf8");
       const match = /PROBE_RESULT:(\{.*\})/.exec(stdout);
       assert.ok(match, `image-cache probe produced no PROBE_RESULT — got: ${stdout.slice(0, 500)}`);
