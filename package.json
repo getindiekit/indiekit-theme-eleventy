@@ -2,7 +2,7 @@
   "name": "indiekit-theme-eleventy-reference",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": { "node": ">=22" },
   "scripts": {
     "build": "npx @11ty/eleventy",
     "start": "npx @11ty/eleventy --serve --port=8090 --incremental",
