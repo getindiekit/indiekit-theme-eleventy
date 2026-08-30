@@ -26,6 +26,11 @@ check("index carries its title", () => {
   );
 });
 
+check("npm downloads data is available and numeric", () => {
+  const html = readFileSync("_site/index.html", "utf8");
+  assert.ok(/downloads:\s*-?\d+/.test(html), "download count not rendered");
+});
+
 check("compiles sass to css", () => {
   const css = globSync("_site/**/*.css");
   assert.ok(css.length > 0, "no .css file produced in _site");

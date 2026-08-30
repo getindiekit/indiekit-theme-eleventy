@@ -8,3 +8,5 @@ title: Indiekit reference theme
 Placeholder home page. Replaced in Task 6.
 
 <img src="./_fixtures/sample.png" alt="A sample image">
+
+<p>downloads: {{ npmDownloads.downloads }}</p>
