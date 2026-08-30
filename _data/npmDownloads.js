@@ -38,7 +38,10 @@ export default async function() {
 		};
 	} catch(e) {
 		if(process.env.NODE_ENV === "production") {
-			// Fail the build in production.
+			// Fail the build in production. Note: a deployer who sets
+			// NODE_ENV=production without also setting NPM_DOWNLOADS_OFFLINE
+			// gets a hard build failure on any transient npm API outage —
+			// set NPM_DOWNLOADS_OFFLINE=1 to skip the fetch entirely instead.
 			return Promise.reject(e);
 		}
 

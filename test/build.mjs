@@ -1,11 +1,27 @@
 import { strict as assert } from "node:assert";
 import { existsSync, readFileSync, writeFileSync, rmSync, globSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import npmDownloads from "../_data/npmDownloads.js";
 
 const checks = [];
 const check = (name, fn) => {
   try {
     fn();
+    checks.push(true);
+    console.log(`ok   ${name}`);
+  } catch (error) {
+    checks.push(false);
+    console.log(`FAIL ${name} — ${error.message}`);
+  }
+};
+
+// fn may return a promise; await it so a rejection is caught here instead of
+// becoming an unhandled rejection that lets the check "pass" while testing
+// nothing. Callers must `await checkAsync(...)` — the checks array has to be
+// fully populated before the pass/fail summary is computed at the bottom.
+const checkAsync = async (name, fn) => {
+  try {
+    await fn();
     checks.push(true);
     console.log(`ok   ${name}`);
   } catch (error) {
@@ -27,8 +43,37 @@ check("index carries its title", () => {
 });
 
 check("npm downloads data is available and numeric", () => {
+  // A bare regex on "downloads: <number>" passes identically whether the
+  // fetch worked (a real count) or silently failed (0) — it can't tell a
+  // live feature from a dead one. NPM_DOWNLOADS_OFFLINE is the one case
+  // where 0 is the *correct* answer (CI has no network), so the assertion
+  // has to know which mode it's in rather than accept any integer.
   const html = readFileSync("_site/index.html", "utf8");
-  assert.ok(/downloads:\s*-?\d+/.test(html), "download count not rendered");
+  const match = /downloads:\s*(-?\d+)/.exec(html);
+  assert.ok(match, "download count not rendered");
+  const value = Number(match[1]);
+  if (process.env.NPM_DOWNLOADS_OFFLINE) {
+    assert.equal(value, 0, `offline mode must render exactly 0, got ${value}`);
+  } else {
+    assert.ok(
+      Number.isInteger(value) && value > 0,
+      `expected a positive rendered download count, got ${value}`,
+    );
+  }
+});
+
+await checkAsync("npmDownloads data module returns a well-formed contract", async () => {
+  // Complements the HTML check above by testing the contract at its source
+  // rather than by scraping rendered markup — proves the module itself is
+  // correct, independent of whether/how a template chooses to display it.
+  const result = await npmDownloads();
+  assert.ok(result && typeof result === "object", "npmDownloads() did not return an object");
+  assert.ok(Number.isInteger(result.downloads), `downloads is not an integer: ${result.downloads}`);
+  if (process.env.NPM_DOWNLOADS_OFFLINE) {
+    assert.equal(result.downloads, 0, `offline mode must return exactly 0, got ${result.downloads}`);
+  } else {
+    assert.ok(result.downloads > 0, `expected a positive downloads count, got ${result.downloads}`);
+  }
 });
 
 check("compiles sass to css", () => {
