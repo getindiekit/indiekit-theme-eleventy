@@ -11,6 +11,10 @@ export default function (eleventyConfig) {
   eleventyConfig.addPlugin(pluginImageAvatar);
   eleventyConfig.addPlugin(pluginWebmentions);
 
+  // webmention-avatar.liquid's fallback <img> references this path. Source
+  // ships the same file at the same path via the same passthrough pattern.
+  eleventyConfig.addPassthroughCopy("web/img");
+
   return {
     dir: {
       input: "content",

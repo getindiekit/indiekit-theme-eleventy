@@ -1,3 +1,7 @@
+{% comment %} Deviation from source: Eleventy's Liquid engine has no auto-escape
+   here (see node_modules/@11ty/eleventy/src/Engines/Liquid.js), and every
+   field below comes from remote, untrusted webmention.io data. Attribute
+   interpolations below use | escape; source does not. {% endcomment %}
 <li class="static-comments-reply u-comment h-cite" id="webmention-{{ webmention['wm-id'] }}">
   <div class="static-comments-hed">
     {%- include "webmention-avatar.liquid" %}
@@ -6,8 +10,8 @@
 
     {% if webmention.published %}
       <em class="static-comments-date">
-        {%- if webmention.url != "" %}<a class="h-card u-url" href="{{ webmention.url }}" target="_blank" rel="noopener noreferrer">{% endif -%}
-        <time class="dt-published" datetime="{{ webmention.published }}">{{ webmention.published | readableDateFromISO: "dd LLL yyyy" }}</time>
+        {%- if webmention.url != "" %}<a class="h-card u-url" href="{{ webmention.url | escape }}" target="_blank" rel="noopener noreferrer">{% endif -%}
+        <time class="dt-published" datetime="{{ webmention.published | escape }}">{{ webmention.published | readableDateFromISO: "dd LLL yyyy" }}</time>
         {%- if webmention.url != "" %}</a>{% endif -%}
       </em>
     {% endif %}
@@ -17,13 +21,13 @@
   {% elsif webmention.content.text.length <= 5000 %}
   <div class="static-comments-msg p-content{% if webmention.content.text.length > 5000 %} static-comments-msg-long{% endif %}"><p>
     {%- if webmention.published %}{% elsif webmention.url != "" %}
-    <a class="h-card u-url" href="{{ webmention.url }}" target="_blank" rel="noopener noreferrer">Show original post</a>
+    <a class="h-card u-url" href="{{ webmention.url | escape }}" target="_blank" rel="noopener noreferrer">Show original post</a>
     {% endif -%}
     {{ webmention.content.text | escape | truncate }}
   </p></div>
   {% endif %}
 
   {% if showTarget %}
-  <a href="{{ webmention['wm-target'] }}" class="tag-inline tag-cased">{{ webmention['wm-target'] | localUrl }}</a>
+  <a href="{{ webmention['wm-target'] | escape }}" class="tag-inline tag-cased">{{ webmention['wm-target'] | localUrl }}</a>
   {% endif %}
 </li><!-- /static-comments-reply -->

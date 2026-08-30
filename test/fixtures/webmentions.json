@@ -2,12 +2,23 @@
   "children": [
     {
       "type": "entry",
+      "wm-id": 1001,
       "wm-property": "in-reply-to",
       "wm-target": "http://localhost:8080/notes/fixture-note/",
       "url": "https://example.com/a-reply",
       "published": "2026-08-30T11:00:00Z",
       "content": { "text": "WEBMENTION_FIXTURE_MARKER" },
       "author": { "name": "A Commenter", "url": "https://example.com/" }
+    },
+    {
+      "type": "entry",
+      "wm-id": 1002,
+      "wm-property": "in-reply-to",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://example.com/a-long-reply",
+      "published": "2026-08-30T12:00:00Z",
+      "content": { "text": "This comment is deliberately longer than the LiquidJS built-in truncate filter's 50-character default cutoff TRUNCATE_TAIL_MARKER" },
+      "author": { "name": "A Verbose Commenter", "url": "https://example.com/verbose" }
     }
   ]
 }

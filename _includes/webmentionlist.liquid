@@ -9,7 +9,7 @@
     <h3{% if repostsSize > 11 or likesSize > 11 %} class="webmentions__facepile__hedlg"{% endif %}>{{ repostsSize }} Repost{% if repostsSize != 1 %}s{% endif %}</h3>
     {%- for webmention in reposts -%}
       {%- if webmention.url != "" -%}
-      <a class="h-card u-url" href="{{ webmention.url }}" target="_blank" rel="noopener noreferrer">
+      <a class="h-card u-url" href="{{ webmention.url | escape }}" target="_blank" rel="noopener noreferrer">
       {%- endif -%}
       {% render "webmention-avatar.liquid", webmention: webmention, imageClass: "webmentions__face" %}
       {%- if webmention.url != "" -%}
@@ -24,7 +24,7 @@
     <h3{% if repostsSize > 11 or likesSize > 11 %} class="webmentions__facepile__hedlg"{% endif %}>{{ likesSize }} Like{% if likesSize != 1 %}s{% endif %}</h3>
     {%- for webmention in likes -%}
       {%- if webmention.url != "" -%}
-      <a class="h-card u-url" href="{{ webmention.url }}" target="_blank" rel="noopener noreferrer">
+      <a class="h-card u-url" href="{{ webmention.url | escape }}" target="_blank" rel="noopener noreferrer">
       {%- endif -%}
       {% render "webmention-avatar.liquid", webmention: webmention, imageClass: "webmentions__face" %}
       {%- if webmention.url != "" -%}
@@ -42,7 +42,7 @@
     <h3{% if bookmarksSize > 11 %} class="webmentions__facepile__hedlg"{% endif %}>{{ bookmarksSize }} Bookmark{% if bookmarksSize != 1 %}s{% endif %}</h3>
     {%- for webmention in bookmarks -%}
       {%- if webmention.url != "" -%}
-      <a class="h-card u-url" href="{{ webmention.url }}" target="_blank" rel="noopener noreferrer">
+      <a class="h-card u-url" href="{{ webmention.url | escape }}" target="_blank" rel="noopener noreferrer">
       {%- endif -%}
       {% render "webmention-avatar.liquid", webmention: webmention, imageClass: "webmentions__face" %}
       {%- if webmention.url != "" -%}
@@ -78,10 +78,15 @@
 
     <p>These are <a href="https://indieweb.org/Webmention">webmentions</a> via the <a href="https://indieweb.org/">IndieWeb</a> and <a href="https://webmention.io/">webmention.io</a>.</p>
 
-    <form action="https://webmention.io/www.zachleat.com/webmention" method="post" class="form-webmention">
+    {% comment %} Deviation from source: source hardcodes its own webmention.io
+       endpoint and target host. This theme is shared/neutral, so both are
+       derived from site.json's url (hostnameFromUrl shares its implementation
+       with _data/webmentions.js's domain lookup — see
+       _includes/getHostname.js). {% endcomment %}
+    <form action="https://webmention.io/{{ site.url | hostnameFromUrl }}/webmention" method="post" class="form-webmention">
       <label for="form-webmention-source" class="sr-only">URL of your site:</label>
       <input id="form-webmention-source" type="url" name="source" placeholder="https://example.com" required>
-      <input type="hidden" name="target" value="https://www.zachleat.com{{ page.url }}">
+      <input type="hidden" name="target" value="{{ site.url }}{{ page.url }}">
       <input type="submit" class="button" value="Send Webmention">
     </form>
   </details>

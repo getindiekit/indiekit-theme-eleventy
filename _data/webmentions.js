@@ -3,9 +3,13 @@ import Fetch from "@11ty/eleventy-fetch";
 
 import siteData from "./site.json" with { type: "json" };
 import getBaseUrl from "../_includes/getBaseUrl.js";
+import getHostname from "../_includes/getHostname.js";
 
 // Configuration Parameters
-const { domain } = siteData;
+// site.json has no `domain` key (its keys are name/url/author/speedlify) —
+// derive it from `url` instead of adding a second key that could drift out
+// of sync with it.
+const domain = getHostname(siteData.url);
 const API_ORIGIN = 'https://webmention.io/api/mentions.jf2';
 const TOKEN = process.env.WEBMENTION_IO_TOKEN;
 const CACHE_DURATION = process.env.ELEVENTY_RUN_MODE === "serve" ? "30d" : "2h";
@@ -93,7 +97,11 @@ export default async function({ eleventy }) {
 	let totalCount = 0;
 	for(let url in mentions) {
 		// De-dupe by wm-id (replaces lodash.uniqBy — lodash isn’t a dependency
-		// of this theme; Map keeps first-seen order like uniqBy does).
+		// of this theme). Map preserves first-seen key order like uniqBy, but
+		// unlike uniqBy it keeps the LAST value seen for a repeated key, not
+		// the first. Kept deliberately: a later duplicate in the feed is a
+		// more current copy of that webmention, so preferring it over the
+		// first-seen one is the more correct behaviour here.
 		mentions[url] = [...new Map(mentions[url].map(entry => [entry["wm-id"], entry])).values()];
 
 		totalCount += mentions[url].length;

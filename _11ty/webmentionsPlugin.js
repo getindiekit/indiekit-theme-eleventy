@@ -4,6 +4,7 @@ import { DateTime } from "luxon";
 import webmentionBlockList from "../_data/webmentionsBlockList.json" with { type: "json" };
 import siteData from "../_data/site.json" with { type: "json" };
 import getBaseUrl from "../_includes/getBaseUrl.js";
+import getHostname from "../_includes/getHostname.js";
 
 export default function(eleventyConfig) {
 
@@ -33,12 +34,27 @@ export default function(eleventyConfig) {
 		}[char]));
 	});
 
+	// Used both on our own site.json url (webmentionlist.liquid's webmention.io
+	// form action) and on remote, untrusted `webmention.url`/`wm-target`
+	// values — a malformed remote URL must not crash the build, so this
+	// deliberately returns "" instead of the source's throwing `new
+	// URL(url).hostname`.
 	eleventyConfig.addLiquidFilter('hostnameFromUrl', url => {
-		return new URL(url).hostname;
+		return getHostname(url);
 	});
 
 	eleventyConfig.addLiquidFilter('readableDateFromISO', (dateStr, formatStr = "dd LLL yyyy 'at' hh:mma") => {
 		return DateTime.fromISO(dateStr).toFormat(formatStr);
+	});
+
+	// Source registers this in its main eleventy.config.js, not here — ported
+	// alongside the other webmention-only filters since nothing else uses it.
+	// Without registering it at all, `| truncate` in webmention.liquid silently
+	// resolves to LiquidJS's own built-in `truncate` (default length 50), which
+	// clips comment bodies mid-word with no visual indicator.
+	eleventyConfig.addLiquidFilter('truncate', (str, len = 280) => { // tweet sized default
+		let suffix = str.length > len ? `… <span class="tag-inline">Truncated</span>` : "";
+		return str.substr(0, len) + suffix;
 	});
 
 	// Source hardcodes its own domain here; use this theme's own site.json url
@@ -88,8 +104,12 @@ export default function(eleventyConfig) {
 				return true;
 			}).sort((a, b) => {
 				// Show oldest entries first
+				// Deliberate divergence from source: source reads `a['wm-received']`
+				// here too (a faithfully-ported bug), which effectively ignores `b`'s
+				// wm-received value in the fallback. Fixed to read `b`'s own field —
+				// do not "restore" this to match source.
 				let adate = a.published || a['wm-received'];
-				let bdate = b.published || a['wm-received'];
+				let bdate = b.published || b['wm-received'];
 				if(bdate < adate) {
 					return 1;
 				} else if(bdate > adate) {
