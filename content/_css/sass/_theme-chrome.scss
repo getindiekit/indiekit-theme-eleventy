@@ -55,3 +55,58 @@
 	text-decoration: none;
 	border-radius: var(--z-border-radius-2);
 }
+
+/* Search overrides — port source _theme.scss:1779-1787. Pagefind ships its own
+   UI stylesheet; these are the three custom properties that make it inherit
+   this theme's type and the one selector that undoes the list indent inside
+   .content-main. Without them the search box is browser-default. */
+html:root {
+	--pagefind-ui-font: inherit;
+	--pagefind-ui-scale: 1;
+	--pagefind-ui-background: #efefef;
+}
+.content-main .pagefind-ui ol {
+	padding-left: 0;
+}
+
+/* Utility margin classes — port source _theme.scss:1789-1813. Needed, not
+   speculative: this theme emits `m-4` on the fullwidth poster, and the ported
+   _navigation.scss / _theme-posts.scss reference `m-2` and `z-icon`. */
+.m-0 {
+	margin-block: 0;
+}
+.m-2 {
+	margin-block: .5em;
+
+	&:first-child {
+		margin-block-start: 0;
+	}
+	&:last-child {
+		margin-block-end: 0;
+	}
+}
+.m-s4 {
+	margin-block-start: 1em;
+}
+.m-4 {
+	margin-block: 1em;
+}
+.m-8 {
+	margin-block: 2em;
+}
+.mi-2 {
+	margin-inline-end: .25em;
+}
+
+/* Icon sizing — port source _theme.scss:1815-1823. The .fa-* colour overrides
+   that follow it there are skipped: they colour specific Font Awesome glyphs,
+   and this theme ships no icon font. */
+.z-icon {
+	vertical-align: text-bottom;
+	margin: 0 .15em;
+	width: 1.3em;
+	height: 1.3em;
+}
+svg.z-icon {
+	margin-inline-end: .3em;
+}

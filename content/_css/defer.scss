@@ -16,6 +16,8 @@
 // syntax highlighting, so it's placed immediately above the prism partials
 // it pairs with — see theme-code.scss's own header comment for the full
 // critical-vs-deferred reasoning.
+// The webmention comment styling — see _disqus.scss for why it is named that.
+@use "sass/disqus";
 @use "sass/webmention";
 @use "sass/theme-code";
 @use "sass/prism-base16-monokai.dark";

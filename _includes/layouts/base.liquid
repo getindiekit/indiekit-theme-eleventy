@@ -56,6 +56,16 @@ through to site.description below — not an error case. {% endcomment -%}
 
 		<title>{% if title %}{% if titleOverride %}{{ titleOverride }}{% else %}{{ title }}{% endif %}—{{ site.name }}{% else %}{{ site.name }}{% endif %}</title>
 
+		{%- comment %} Webmention discovery. Without these a sender cannot find
+		   where to deliver, so the site can receive nothing — the receiving half
+		   of webmentions is these two lines, not the comment list.
+		   The source hardcodes its own webmention.io endpoint; this theme derives
+		   it from site.json's url via the same hostnameFromUrl filter
+		   webmentionlist.liquid's send-form already uses. {% endcomment -%}
+		{%- if site.url %}
+		<link rel="webmention" href="https://webmention.io/{{ site.url | hostnameFromUrl }}/webmention">
+		<link rel="pingback" href="https://webmention.io/{{ site.url | hostnameFromUrl }}/xmlrpc">
+		{%- endif %}
 		<link rel="preload" href="/fonts/lato/2.0/latolatin-regular-subset.woff2" as="font" type="font/woff2" crossorigin>
 		<link rel="preload" href="/fonts/hex-franklin/HEX_Franklin_v0.2_Tyght_Variable-subset.woff2" as="font" type="font/woff2" crossorigin>
 

@@ -1,0 +1,129 @@
+// Copied verbatim from the port source's static/sass/_disqus.scss (117 lines).
+// Despite the filename this is the WEBMENTION comment styling — every
+// .static-comments-* class emitted by webmentionlist.liquid, webmention.liquid
+// and comment-entry.html. Without it those templates rendered with no CSS at
+// all, which is why webmentions looked broken.
+//
+// Copied whole rather than cherry-picked: the rules are interdependent (shared
+// custom properties, nested selectors). Four classes it defines are not emitted
+// by this theme — .static-comments-empty, -reply-salty, -tag, -title-twitter —
+// and are inert here; left in place so a later sync against the source stays a
+// clean diff.
+
+@use "mixins";
+
+.static-comments {
+	--webmention-comment-avatar-size: 2rem;
+	font-size: 80%;
+	max-width: 36em;
+}
+details.static-comments-empty > summary {
+	list-style: none;
+	pointer-events: none;
+}
+details.static-comments-empty > summary::-webkit-details-marker {
+	display: none;
+}
+.static-comments.static-comments.static-comments ol,
+.static-comments.static-comments.static-comments {
+	padding-left: 0;
+	list-style: none;
+}
+.static-comments-reply {
+	margin: 1em 0 1em;
+}
+.static-comments-reply .static-comments-reply {
+	margin-top: 2em;
+	padding-left: 1.5em;
+	border-left: 4px solid #eee;
+}
+.static-comments-hed {
+	display: flex;
+	align-items: flex-start;
+	flex-wrap: nowrap;
+}
+.static-comments-title {
+	flex: 1;
+	margin: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.static-comments-title.static-comments-title {
+	@include mixins.webfont;
+}
+.static-comments-title-twitter {
+	font-size: 80%;
+	color: #666;
+}
+.static-comments-img {
+	vertical-align: top;
+	width: var(--webmention-comment-avatar-size);
+	height: var(--webmention-comment-avatar-size);
+	margin-right: .5em;
+	border-radius: 50%;
+}
+.static-comments-msg {
+	clear: both;
+	line-height: 1.7;
+	margin-top: .5em;
+	@include mixins.hyphenate;
+}
+.static-comments-reply-salty > .static-comments-msg {
+	font-family: Comic Sans MS, Chalkboard SE, fantasy;
+}
+
+.static-comments-msg-long {
+	max-height: 18.75em; /* 300px /16 */
+	overflow: hidden;
+	position: relative;
+}
+.static-comments-msg-long:after {
+	content: "";
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	width: 100%;
+	height: 6em;
+	background-image: linear-gradient(to bottom,transparent,#fff);
+}
+.static-comments-reply-salty > .static-comments-msg-long {
+	font-family: inherit;
+}
+
+.static-comments-webmentions .static-comments-reply {
+	border-bottom: 1px solid #eee;
+	padding-bottom: 1em;
+}
+.static-comments-msg p:first-child {
+	margin-top: 0;
+}
+.static-comments-msg p:last-child {
+	margin-bottom: 0;
+}
+.static-comments-date {
+	min-width: 6em;
+	font-size: 85%;
+	text-align: right;
+	line-height: 1.5;
+}
+.static-comments-tag {
+	margin-left: 6px;
+}
+.static-comments-selflink {
+	font-size: 80%;
+	margin-left: 2px;
+	margin-right: 8px;
+}
+@media (min-width: 28.125em) { /* 450px */
+	.static-comments-hed {
+		align-items: center;
+	}
+	.static-comments-msg {
+		padding-left: calc(var(--webmention-comment-avatar-size) + .5em);
+	}
+	.static-comments-date br {
+		display: none;
+	}
+}
