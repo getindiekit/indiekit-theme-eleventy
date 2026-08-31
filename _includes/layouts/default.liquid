@@ -62,27 +62,10 @@ preserved in base.liquid.
 {% getBundle "fontawesome" %}
 {% endcomment %}
 
-<div class="hamburger">
-	<is-land on:idle on:visible on:media="(prefers-reduced-motion: no-preference) and (min-width: 61.1875em)">
-		<infinity-burger theme-fn></infinity-burger>
-
-		<template data-island="once">
-			<style>
-			/* Desktop only, for extra laughs */
-			@media (max-width: 61.1875em) { /* 979px */
-				infinity-burger {
-					display: none;
-				}
-			}
-			</style>
-{%- if JS_ENABLED %}
-			<script>
-			function InfinityBurgerColor(count) {
-				return `hsl(${count * 5 % 360}, 100%, 50%)`
-			}
-			</script>
-			<script type="module" src="/static/infinity-burger.js"></script>
-{%- endif %}
-		</template>
-	</is-land>
-</div>
+{%- comment %} The port source has an <infinity-burger> easter egg here — a
+   decorative animated hamburger. It is removed rather than ported: the
+   custom element's JS (/static/infinity-burger.js) does not exist in the
+   source checkout either, so it 404s there too. Shipping a guaranteed
+   console error on every page of a theme other people deploy, for a
+   decoration that has never worked, is not a faithful port of anything.
+   {% endcomment -%}

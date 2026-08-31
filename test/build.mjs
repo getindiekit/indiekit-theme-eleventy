@@ -44,26 +44,11 @@ check("index carries its title", () => {
   );
 });
 
-check("npm downloads data is available and numeric", () => {
-  // A bare regex on "downloads: <number>" passes identically whether the
-  // fetch worked (a real count) or silently failed (0) — it can't tell a
-  // live feature from a dead one. NPM_DOWNLOADS_OFFLINE is the one case
-  // where 0 is the *correct* answer (CI has no network), so the assertion
-  // has to know which mode it's in rather than accept any integer.
-  const html = readFileSync("_site/index.html", "utf8");
-  const match = /downloads:\s*(-?\d+)/.exec(html);
-  assert.ok(match, "download count not rendered");
-  const value = Number(match[1]);
-  if (process.env.NPM_DOWNLOADS_OFFLINE) {
-    assert.equal(value, 0, `offline mode must render exactly 0, got ${value}`);
-  } else {
-    assert.ok(
-      Number.isInteger(value) && value > 0,
-      `expected a positive rendered download count, got ${value}`,
-    );
-  }
-});
-
+// The HTML-scraping counterpart of the check below used to live here. It
+// asserted against `<p>downloads: N</p>` — a debug line rendered on the
+// homepage purely so the assertion had something to read. Rendering test
+// scaffolding to every visitor to satisfy a test is the wrong trade; the
+// module-level contract check below tests the same data without it.
 await checkAsync("npmDownloads data module returns a well-formed contract", async () => {
   // Complements the HTML check above by testing the contract at its source
   // rather than by scraping rendered markup — proves the module itself is
@@ -2632,26 +2617,10 @@ Body text.
 );
 
 check("every same-origin script src, stylesheet href and image src emitted by any built page resolves to a real file in _site", () => {
-  // Scoped to same-origin absolute paths (starts with "/", not "//") —
-  // external URLs (https://…) and data: URIs are never built by this theme
-  // and are out of scope. Scans every built .html page, not just index.html
-  // (the pre-existing "the page links a stylesheet that actually exists"
-  // check above only covers index.html and would have missed this bug,
-  // which only reached the six post-type permalink pages after Task 18
-  // routed them through default.liquid).
-  //
-  // One known, pre-existing exception: /static/infinity-burger.js
-  // (default.liquid's decorative "hamburger" easter egg). Verified against
-  // task-13-report.md and the port source itself: this reference is broken
-  // even in /home/rmdes/zachleat.com's own checkout — no infinity-burger.js
-  // exists there either, so there is no source file to port and this is not
-  // a regression this theme introduced. Task 13 deliberately left it
-  // unmodified as out of scope; fixing it now would be scope creep on a
-  // finding about two specific, different, and now-fixed module paths. It
-  // is exempted BY PATH — see the attributionExempt pattern above — rather
-  // than by weakening the check, so the exemption is auditable and a NEW
-  // dead reference elsewhere still fails this check.
-  const referenceExempt = new Set(["/static/infinity-burger.js"]);
+  // No exemptions. The one that lived here — /static/infinity-burger.js —
+  // was for a decorative easter egg whose JS does not exist in the port
+  // source either; the markup has been removed rather than carried.
+  const referenceExempt = new Set();
 
   const files = globSync("_site/**/*.html");
   assert.ok(files.length > 0, "no HTML built — this check scanned nothing");
