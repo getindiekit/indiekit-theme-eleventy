@@ -297,6 +297,99 @@ check("every @font-face src referenced by compiled CSS resolves to a real file i
   }
 });
 
+// Task S2 (audit §4.4, §4.7, §4.8; plan Task S2): no h1-h6, pre, code or
+// figure rule existed anywhere in the port, and every link rendered the UA
+// default #0000EE with no hover/focus feedback. These checks tie markup to
+// styling per the task brief: a rule existing is not enough — a selector
+// with no properties, or matched against the wrong stylesheet (see the
+// opengraph.css trap noted on PAGE_CSS_GLOB above), proves nothing.
+check("compiled CSS styles h1/h2 distinctly from body text", () => {
+  const css = globSync(PAGE_CSS_GLOB)
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
+  assert.ok(css.length > 0, `${PAGE_CSS_GLOB} matched no files — check is vacuous`);
+
+  const h1Rule = /\bh1\s*,\s*\.hed-h1\s*\{([^}]*)\}/.exec(css);
+  assert.ok(h1Rule, "no `h1, .hed-h1 { ... }` rule found in compiled page CSS");
+  assert.ok(
+    /font-size\s*:/.test(h1Rule[1]),
+    "h1's rule has no font-size — indistinguishable from body text",
+  );
+
+  const h2Rule = /\bh2\s*,\s*\.hed-h2\s*\{([^}]*)\}/.exec(css);
+  assert.ok(h2Rule, "no `h2, .hed-h2 { ... }` rule found in compiled page CSS");
+  assert.ok(
+    /font-size\s*:/.test(h2Rule[1]),
+    "h2's rule has no font-size — indistinguishable from body text",
+  );
+});
+
+check("compiled CSS gives links a non-default colour with hover/focus feedback", () => {
+  const css = globSync(PAGE_CSS_GLOB)
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
+  assert.ok(css.length > 0, `${PAGE_CSS_GLOB} matched no files — check is vacuous`);
+
+  // The source styles links via `:link`/`:visited`, not a bare `a` selector
+  // — `:link` matches the same rendered `<a href>` elements the UA default
+  // #0000EE applies to.
+  const linkRule = /:link\s*\{([^}]*)\}/.exec(css);
+  assert.ok(linkRule, "no `:link { ... }` rule found in compiled page CSS");
+  const colorMatch = /color\s*:\s*([^;]+);/.exec(linkRule[1]);
+  assert.ok(colorMatch, "`:link` rule sets no color");
+  assert.notEqual(
+    colorMatch[1].trim().toLowerCase(),
+    "#0000ee",
+    "`:link` colour is still the UA default #0000EE",
+  );
+
+  assert.ok(
+    /:link:active\s*,\s*:link:hover\s*,\s*:link:focus\s*,\s*:visited:hover\s*\{/.test(css),
+    "no hover/focus rule for links — every link still only gets default browser feedback",
+  );
+});
+
+check("compiled CSS gives pre/code a styled box", () => {
+  const css = globSync(PAGE_CSS_GLOB)
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
+  assert.ok(css.length > 0, `${PAGE_CSS_GLOB} matched no files — check is vacuous`);
+
+  // `code`/`pre` each compile to several separate blocks (mixins expand to
+  // their own `& { ... }` rule — see the body font-family check above for
+  // the same quirk), so scan every block rather than assume it's the first.
+  const codeBlocks = [...css.matchAll(/\bcode\s*\{([^}]*)\}/g)];
+  assert.ok(codeBlocks.length > 0, "no `code { ... }` rule found in compiled page CSS");
+  assert.ok(
+    codeBlocks.some((m) => /background-color\s*:/.test(m[1])),
+    "no `code` rule sets background-color — inline code is indistinguishable from prose",
+  );
+
+  const preBlocks = [...css.matchAll(/\bpre\s*\{([^}]*)\}/g)];
+  assert.ok(preBlocks.length > 0, "no `pre { ... }` rule found in compiled page CSS");
+  assert.ok(
+    preBlocks.some((m) => /background\s*:/.test(m[1])),
+    "no `pre` rule sets background — code blocks would render on the page background with no padding or scroll",
+  );
+});
+
+check("compiled CSS styles figure/figcaption", () => {
+  const css = globSync(PAGE_CSS_GLOB)
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
+  assert.ok(css.length > 0, `${PAGE_CSS_GLOB} matched no files — check is vacuous`);
+
+  const figureRule = /\bfigure\s*\{([^}]*)\}/.exec(css);
+  assert.ok(figureRule, "no `figure { ... }` rule found in compiled page CSS");
+
+  const figcaptionRule = /\bfigcaption\s*,\s*\.caption\s*\{([^}]*)\}/.exec(css);
+  assert.ok(figcaptionRule, "no `figcaption, .caption { ... }` rule found in compiled page CSS");
+  assert.ok(
+    /font-size\s*:/.test(figcaptionRule[1]),
+    "figcaption's rule has no font-size — indistinguishable from body text",
+  );
+});
+
 check("image transform plugin produces optimised output", () => {
   const html = readFileSync("_site/index.html", "utf8");
 

@@ -10,7 +10,14 @@
 // assigned here per the port source's own defer.scss (simple-blockquotes)
 // or by the same reasoning (speedlify: a footer widget appended after
 // {{ content }}, not present on the initial screen — see report):
+//
+// Task S2 added sass/theme-code (pre/code box styling, ported from source
+// _theme.scss:622-716): it exists purely to carry the already-deferred
+// syntax highlighting, so it's placed immediately above the prism partials
+// it pairs with — see theme-code.scss's own header comment for the full
+// critical-vs-deferred reasoning.
 @use "sass/webmention";
+@use "sass/theme-code";
 @use "sass/prism-base16-monokai.dark";
 @use "sass/syntax-line-highlight";
 @use "sass/pagination";
