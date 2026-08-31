@@ -1,0 +1,205 @@
+# indiekit-theme-eleventy-reference
+
+An [Eleventy](https://www.11ty.dev/) theme built to be consumed by
+[Indiekit](https://getindiekit.com/): Indiekit's Micropub endpoint writes
+Markdown files into `content/`, and this theme turns them into a website.
+
+It is a **port of [zachleat.com](https://github.com/zachleat/zachleat.com)**
+— Zach Leatherman's personal site — adapted into a general-purpose Indiekit
+theme. The source repo declares `"license": "MIT"` in its `package.json` but
+ships no `LICENSE` file; this port carries that same MIT licensing forward,
+and files translated closely from the source say so in a comment. Where a
+piece of source code is used close to verbatim (for example
+`static/js/speedlify2-score.js`, adapted from
+[zachleat/speedlify-score](https://github.com/zachleat/speedlify-score)), the
+upstream credit in that file is preserved — do not remove or reword it.
+
+**Not ported**, because it's specific to Zach's own site rather than to the
+theme: his content, analytics, fundraising, Kickstarter, ShopTalk, talk/
+transcript pages, and his `eleventy-*.html` prose partials.
+
+## Who this is for
+
+Anyone running Indiekit who wants an Eleventy front end with IndieWeb
+features (webmentions, an Atom feed, syndication-friendly markup, an
+Open Graph card per post, client-side search) without building one from
+scratch.
+
+## Post types
+
+Indiekit writes each post under `content/<type>/<slug>.md`, one directory per
+post type:
+
+| Directory | Post type |
+|---|---|
+| `content/articles/` | article |
+| `content/bookmarks/` | bookmark |
+| `content/likes/` | like |
+| `content/notes/` | note |
+| `content/photos/` | photo |
+| `content/replies/` | reply |
+
+Eleventy's input directory is `content/`; the built site is written to
+`_site/`.
+
+## `_data/site.json` — the configuration surface
+
+All site identity and feature configuration lives in `_data/site.json`.
+Every key:
+
+| Key | Purpose |
+|---|---|
+| `name` | Site name, used in the page `<title>`, feed title, and OG meta. |
+| `url` | The site's canonical, publicly reachable URL (no trailing slash). Used for feed links, canonical URLs, and to decide whether OG screenshot cards can run (see below). |
+| `description` | Default site/page description, used as a fallback for OG/Twitter meta. |
+| `author.name`, `author.url` | Site owner identity. `author.url` also renders a `rel="me"` link for IndieAuth. |
+| `timezone` | An IANA timezone name (e.g. `Europe/Brussels`). All dates render in this zone, regardless of what timezone the build machine is in, so a build is reproducible no matter where it runs. Falls back to UTC if unset. |
+| `speedlify.enabled` | Turns the `<speedlify2-score>` Lighthouse-score widget on or off, site-wide. |
+| `speedlify.url` | The Speedlify API base URL the widget queries when enabled. |
+| `opengraph.defaultImage` | The bundled fallback `og:image`/`twitter:image`, used whenever a screenshot card isn't available. |
+| `opengraph.screenshotUrlTemplate` | A URL template (with a `{url}` placeholder) for an external screenshot service. When set **and** `site.url` is publicly reachable (not `localhost`, `127.*`, `0.0.0.0`, `::1`, or a private `10.*`/`192.168.*`/`172.16-31.*` address), `og:image` uses a generated screenshot card instead of the default image. A `localhost` URL can never be screenshotted by an external service, so this is skipped automatically rather than shipping a broken image link — check your build logs for a `[opengraph]` warning if it doesn't kick in. |
+
+`_data/webmentionsBlockList.json` is a plain JSON array of source URLs to
+suppress from the incoming webmentions list — it starts empty (`[]`) and is
+the site owner's to populate as spam/abuse shows up.
+
+## Running standalone
+
+```sh
+npm install
+npm run build      # one-off production build to _site/
+npm start           # eleventy --serve --incremental, dev server on :8090
+npm test            # runs test/build.mjs against a real build
+npm run search-index  # builds the Pagefind search index (separate step, see below)
+```
+
+`node_modules` must exist before building — the deferred JS bundle
+`{% include %}`s `@11ty/is-land` directly out of `node_modules`, so
+`npm install` is not optional even for a "just render the templates" build.
+
+### Drafts
+
+When Indiekit is configured with `post-status: draft`,
+`@indiekit/preset-eleventy` converts that into a `draft: true` front-matter
+key on the file it writes (not a literal `post-status` field — verified
+against the preset's own template code). This theme:
+
+- **drops** draft posts entirely from a production build (`npm run build` /
+  `npx @11ty/eleventy`);
+- **keeps** them visible under `npm start` (`--serve`/`--watch`), so an
+  author can preview a draft before publishing;
+- marks a visible draft's title with a trailing `(Draft)` suffix so it's
+  never mistaken for a published post while previewing.
+
+### Two CSS bundles
+
+- `content/_css/initial.scss` is the above-the-fold critical CSS. In a
+  production build it's compiled and **inlined** directly into a `<style>`
+  tag on every page. Under `--serve` it's instead linked as a normal
+  stylesheet (`/_css/initial.css`) — livereload can't hot-swap an inlined
+  `<style>` block, so dev mode trades the inlining for a working live reload.
+- `content/_css/defer.scss` is everything else. It's loaded non-blocking
+  (`media="print"` swapped to `all` on load) with a `<noscript>` fallback
+  `<link>` for visitors without JavaScript.
+
+### `JS_ENABLED`
+
+`eleventy.config.js` sets a global `JS_ENABLED` flag (currently hardcoded
+`true`) that gates every script-emitting block in the layouts, including the
+deferred module bundle that loads `<is-land>` (`@11ty/is-land`) for
+client-side progressive enhancement (search, heading anchors, etc.).
+
+## Search
+
+Search is client-side, powered by [Pagefind](https://pagefind.app/), and
+**requires JavaScript** — there is no server-side search fallback. The
+`/search/` page ships a plain, unguarded `<form>` for visitors without JS, so
+the page never looks broken, but it won't actually return results until
+Pagefind's client bundle loads.
+
+Building the search index is a **separate step** from building the site:
+
+```sh
+npm run build          # 1. build the site into _site/
+npm run search-index   # 2. index it — indexes only content pages, not the homepage or /search/ itself
+```
+
+Forgetting step 2 means `_site/` has a search page with no index behind it.
+
+## Open Graph cards
+
+Every built post gets an `og:image`/`twitter:image`. Which mechanism it uses
+depends on configuration:
+
+- By default, every page uses the bundled static `opengraph.defaultImage`.
+- If `opengraph.screenshotUrlTemplate` is configured **and** `site.url` is a
+  publicly reachable address, `og:image` instead points at a generated
+  per-post OG card page (`content/opengraph-images.liquid`, one render per
+  built, non-draft post) via the screenshot service.
+- A `localhost` (or other private/loopback) `site.url` can never be
+  screenshotted by an outside service, so the screenshot mechanism is
+  skipped automatically and the default image is used instead — this is by
+  design, not a bug, and it's logged.
+
+The OG card page set only builds in **production build mode**
+(`npx @11ty/eleventy`, no `--serve`) — under `--serve` it's skipped entirely,
+since nothing needs it there and it costs a full extra render per post.
+
+## Testing
+
+```sh
+npm test
+```
+
+Runs `test/build.mjs`, which does its own build(s) against `_site/` and
+asserts against the output. Two things affect which checks run and how many
+pass:
+
+- **`WEBMENTIONS_FIXTURE=test/fixtures/webmentions.json`** — points the
+  webmentions data file at a local fixture instead of calling the
+  webmention.io API. Without it, tests that need webmention data are
+  skipped rather than making a real network call.
+- **`NPM_DOWNLOADS_OFFLINE=1`** — short-circuits the npm download-count
+  data file instead of calling the npmjs.org API.
+
+```sh
+# With no env vars (network reachable): 74/74 checks passed, 3 skipped
+npm test
+
+# Fully offline: 77/77 checks passed, 0 skipped
+NPM_DOWNLOADS_OFFLINE=1 WEBMENTIONS_FIXTURE=test/fixtures/webmentions.json npm test
+```
+
+A plain local `npm test` (no env vars) needs `registry.npmjs.org` to be
+reachable — the npm-downloads assertion is deliberately discriminating
+about what a real API response looks like, so it fails outright rather than
+silently passing against nothing if the network is down or flaky. That's an
+accepted trade for local runs; CI always sets `NPM_DOWNLOADS_OFFLINE=1` so it
+never depends on the network at all (see below).
+
+Always `rm -rf _site` before treating a build as a clean baseline — Eleventy
+reuses `_site/` incrementally, so a stale directory can hide a regression.
+
+## Consumed as a submodule
+
+This theme is designed to be added to an Indiekit config repo (such as
+`example-config-local`) as a **git submodule**, alongside a small
+build-watcher + static-file-server pair — the same pattern the project's
+other starters use: a `site` service that runs `npm install && npx @11ty/eleventy --watch`
+against the submodule directory, and a `static` service that serves the
+resulting `_site/` output. The theme itself has no opinion on how it's
+served in that setup; it only needs `content/` to be where Indiekit writes
+files and `_site/` to be where the static server points.
+
+## Eleventy version
+
+This theme pins **`@11ty/eleventy` `4.0.0-alpha.10`** exactly, deliberately
+— not a caret range. Eleventy 4 is still in alpha; the other Indiekit
+starters (Hugo, Jekyll, and the plain Eleventy starter) remain on Eleventy
+3.x. This theme intentionally tracks the newer major version, which means
+its dependency versions may need re-verifying against each new Eleventy 4
+alpha/beta release rather than upgrading automatically.
+
+No dependency in this repo is added, removed, re-versioned, or imported
+transitively without deliberately updating `package.json` — treat the
+current dependency set as pinned.
