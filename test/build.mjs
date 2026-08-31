@@ -229,6 +229,74 @@ check("compiles sass to css", () => {
   assert.ok(css.length > 0, "no .css file produced in _site");
 });
 
+// Task S1 (audit §4.3, §4.4): 7 @font-face rules and 2 preloads were
+// declared with zero font files shipped and a passthrough-copy prefix
+// mismatch, so every one of them 404'd — and no `body` rule named a
+// font-family at all, so text rendered in the browser's default serif.
+// These checks tie the declared hrefs/urls to real files on disk, and are
+// written to FAIL (not vacuously pass) if they find zero preloads or zero
+// @font-face rules to check — the exact failure mode this project has been
+// burned by before.
+check("every preloaded font resolves to a real file in _site", () => {
+  const html = readFileSync("_site/index.html", "utf8");
+  const hrefs = [
+    ...html.matchAll(/<link\b[^>]*\brel="preload"[^>]*\bas="font"[^>]*>/g),
+  ].map((m) => /\bhref="([^"]+)"/.exec(m[0])?.[1]);
+  assert.ok(
+    hrefs.length > 0 && hrefs.every(Boolean),
+    "no <link rel=\"preload\" as=\"font\"> found — the check is vacuous",
+  );
+  for (const href of hrefs) {
+    assert.ok(
+      existsSync(`_site${href}`),
+      `preloaded font href ${href} does not resolve to a real file in _site`,
+    );
+  }
+});
+
+// Only the two bundles base.liquid actually links for a real page
+// (initial.css critical, defer.css deferred). _site/_css/opengraph.css is a
+// wholly separate stylesheet for the OG card image renders — it has its own
+// unrelated `body { font-family: system-ui... }` for that 1200x630 canvas,
+// which would make these checks pass vacuously (right selector, wrong
+// document) if the glob weren't scoped away from it.
+const PAGE_CSS_GLOB = "_site/_css/{initial,defer}.css";
+
+check("compiled CSS sets a body font-family", () => {
+  const css = globSync(PAGE_CSS_GLOB)
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
+  // Sass splits a selector's plain declarations and its @included nested
+  // rule into separate output blocks for the same `body {}` selector (a
+  // quirk of the webfont mixin's `& { ... }` wrapper) — so this must check
+  // every `body { ... }` block, not just the first, for one that sets
+  // font-family.
+  const bodyRules = [...css.matchAll(/\bbody\s*\{[^}]*\}/g)];
+  assert.ok(bodyRules.length > 0, "no `body { ... }` rule found in compiled page CSS");
+  assert.ok(
+    bodyRules.some((m) => /font-family\s*:/.test(m[0])),
+    "compiled page CSS has body rule(s) but none sets font-family",
+  );
+});
+
+check("every @font-face src referenced by compiled CSS resolves to a real file in _site", () => {
+  const css = globSync(PAGE_CSS_GLOB)
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
+  const faceBlocks = css.match(/@font-face\s*\{[^}]*\}/g) || [];
+  assert.ok(faceBlocks.length > 0, "no @font-face rules found in compiled CSS — the check is vacuous");
+  const urls = faceBlocks.flatMap((block) =>
+    [...block.matchAll(/url\(['"]?([^'")]+)['"]?\)/g)].map((m) => m[1]),
+  );
+  assert.ok(urls.length > 0, "no font src urls found inside @font-face rules — the check is vacuous");
+  for (const url of urls) {
+    assert.ok(
+      existsSync(`_site${url}`),
+      `@font-face src ${url} does not resolve to a real file in _site`,
+    );
+  }
+});
+
 check("image transform plugin produces optimised output", () => {
   const html = readFileSync("_site/index.html", "utf8");
 

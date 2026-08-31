@@ -6,13 +6,15 @@
 // Assignment is the task-14 brief's own list (reset, typography, theme,
 // layout, navigation, skiplink, avatars, webmention-initial), mapped onto
 // the partials this theme actually has:
-//   - "typography" -> fonts (no separate typography partial exists)
+//   - "typography" -> fonts + theme-typography (Task S1 added the latter —
+//     the `body { font-family }` rule ported from the source's _theme.scss)
 //   - "theme" -> no partial of that name exists here; colour/breakpoint
 //     values live in sass/_config.scss, which layout/navigation/etc. already
 //     `@use` internally, so they're pulled into this bundle transitively —
 //     no top-level entry needed for it (see report).
 @use "sass/reset";
 @use "sass/fonts";
+@use "sass/theme-typography";
 @use "sass/layout";
 @use "sass/navigation";
 @use "sass/skiplink";

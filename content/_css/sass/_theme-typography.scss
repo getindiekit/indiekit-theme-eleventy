@@ -1,0 +1,14 @@
+@use "mixins";
+
+// Ported verbatim from the source's _theme.scss:433-438 ("App specific").
+// The `webfont` mixin (_mixins.scss:29-34) sets font-family/font-weight but
+// was never @included anywhere in the port, so body text rendered in the
+// browser's default serif with no line-height or ligature settings. First
+// paint text, so this lands in the critical bundle (initial.scss), not
+// defer.scss.
+body {
+	line-height: 140%;
+	font-variant-ligatures: common-ligatures;
+	font-feature-settings: "liga", "clig";
+	@include mixins.webfont;
+}
