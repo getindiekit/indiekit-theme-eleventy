@@ -44,7 +44,13 @@ example article" falls in that same default bucket in source too — the
 large rendering is faithful, not a leftover scoping bug; see
 task-visual-fix-report.md for the full evidence trail. {%- endcomment -%}
 <article class="h-entry">
-  <h1 class="p-name primary-title{% if smalltitle %} primary-title-smalltitle{% endif %}">{{ title }}</h1>
+  {%- comment %} Indiekit adaptation: the source opts INTO the smaller clamp
+   per post (`smalltitle: true` in front matter, e.g. _posts/2008-05-10-*.md).
+   Indiekit titles are written by a Micropub client, so no author will ever set
+   that flag — and the 68-120px hero clamp renders a normal-length post title
+   across three lines. Default to the smaller clamp and let a post opt OUT with
+   `hugeTitle: true` if it ever wants the hero size. {% endcomment -%}
+  <h1 class="p-name primary-title{% unless hugeTitle %} primary-title-smalltitle{% endunless %}">{{ title }}</h1>
   {% case postType %}
     {% when "article" %}{% include "types/article.liquid" %}
     {% when "bookmark" %}{% include "types/bookmark.liquid" %}
