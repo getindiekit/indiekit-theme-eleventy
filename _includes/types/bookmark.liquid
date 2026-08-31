@@ -1,5 +1,18 @@
-<a class="u-url{% unless lcp %} p-name{% endunless %}" href="{{ page.url }}">{{ title }}</a>
+{%- if lcp -%}
+<a class="u-url" href="{{ page.url }}">{{ title }}</a>
 {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
 {%- if bookmarkOf %}<a class="u-bookmark-of" href="{{ bookmarkOf }}">{{ title | default: bookmarkOf }}</a>{% endif %}
 {%- comment %} Task 18 (§7.4): see types/article.liquid for why h2,h3. {% endcomment -%}
 <div class="content-grid e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
+{%- else -%}
+{%- comment %} Task S4 (audit §2.2, corrected — see task-s4-report.md): the
+feed-listing branch. Unlike note/like/reply/photo, a bookmark's title is
+always meaningful here even when it has none of its own — eleventyComputed.js
+gives an untitled bookmark its own fallback (the bookmarkOf URL itself), not
+the generic "<Type> · <date>" label the other titleless types get, so it
+never duplicates the <time> next to it. One shape covers both: the source's
+link-list, no body. {% endcomment -%}
+<a class="posts-link p-name u-url" href="{{ page.url }}">{{ title }}</a>
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+<span class="tags"></span>
+{%- endif -%}

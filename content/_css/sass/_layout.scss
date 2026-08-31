@@ -89,14 +89,23 @@
 	line-height: 1.65;
 }
 
+// Task S4 (audit §2.4 secondary note, plan step 5): source pairs every
+// .tmpl-page rule in this file with a .tmpl-list counterpart (the homepage's
+// own tmpl, via layouts/pagealign.liquid, not ported — see index.liquid's
+// own header comment on why its layout deliberately isn't page.liquid/
+// pagealign.liquid-shaped). Four .tmpl-list selectors were dead here
+// (:97,140,146,152 per the audit) since nothing in this theme ever sets
+// tmpl: list. Deleted rather than activated by switching index.liquid to
+// tmpl: list: three of the four are a no-op either way (identical computed
+// styles to their .tmpl-page pairing at every breakpoint this theme's
+// homepage reaches — it emits neither .content-grid-sibling nor a <pre>),
+// and the fourth would have been a regression — .tmpl-page .primary-title's
+// mobile max-width/centering (:182 below) is live on the homepage's own H1
+// today and has no .tmpl-list counterpart in the source to replace it with.
 @media (min-width: 25em) { /* 400px */
 	.content-main {
 		padding-left: 0.75rem; /* 12px /16 */
 		padding-right: 0.75rem; /* 12px /16 */
-	}
-	.tmpl-list .content-main {
-		margin-left: auto;
-		margin-right: auto;
 	}
 	.tmpl-page .content-main {
 		margin-left: auto;
@@ -136,23 +145,11 @@
 		}
 	}
 
-	@media (min-width: config.$twoColLayoutMinWidth) {
-		.tmpl-list .content-main pre {
-			max-width: calc(100vw - 20rem);
-		}
-	}
-
 	@media (min-width: 40.625em) { /* 650px */
-		.tmpl-list .content-main,
 		.tmpl-page .content-main {
 			max-width: none;
 			margin-left: initial;
 			margin-right: initial;
-		}
-		.tmpl-list .content-grid-sibling {
-			max-width: 45em;
-			margin-left: auto;
-			margin-right: auto;
 		}
 		.tmpl-page .content-grid-sibling {
 			max-width: 31em;

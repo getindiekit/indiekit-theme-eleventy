@@ -11,38 +11,51 @@ elements in the Atom feed earlier in this project, see eleventyComputed.js).
 So this partial does NOT reimplement per-type rendering: it dispatches to the
 same _includes/types/*.liquid partials entry.liquid already uses (Task 6),
 via the identical {% case postType %} switch, so every list entry renders
-exactly what its own permalink page renders — title for article, content for
-note, the target link for bookmark/like/reply, the image for photo. The only
-genuinely new thing here is the <li> wrapper.
+its own type's feed-row shape (Task S4 branch inside each type partial, keyed
+on the `lcp` flag — see below).
 
-The permalink <a class="u-url"> itself is NOT rendered by this partial — it
-was originally placed here, as a sibling *before* the <article
-class="h-entry"> each type partial emits, which put it outside the h-entry
-entirely. A real mf2 parser confirmed the consequence: all 7 permalinks
-collapsed onto the h-feed root's own `url` property and every h-entry child
-had none, defeating the entire point of publishing an h-feed (microsub
-readers/webmention senders/aggregators have nothing to link back to). Fixed
-by moving the anchor INTO each _includes/types/*.liquid partial, immediately
-inside its own <article class="h-entry"> (article.liquid wraps its existing
-h1 title in it instead of adding a second visible link; the other five had
-no title text on display at all, so they gained one). Type partials are
-shared with the standalone permalink page (via layouts/entry.liquid), so the
-anchor's href is `page.url`, not `post.url` — `page` is already correctly
-scoped to the post being rendered (see the `page: post` override discussed
-below), so it resolves to the right permalink from both call sites with no
-new parameter needed. This also means standalone permalink pages now carry a
-`u-url` on their own h-entry for the first time — they had none before
-either.
+Task S4 (audit §2.2, corrected — see task-s4-report.md): the first pass at
+this listing put an `<article class="h-entry">` inside each `<li>` and had
+every type partial render its own full permalink body (the content-grid
+e-content div, images, everything) into the feed row. Both were wrong:
 
-The link text is `title`, likewise already in scope inside the type
-partials because LiquidJS `{% include %}` shares the caller's scope — not
-conditionally branched per type — because _data/eleventyComputed.js already
-computes a non-empty title for every post (a real title for article/bookmark,
-the bookmarked URL for a titleless bookmark, "<Type> · <date>" for
-note/like/reply/photo). Using it here gives every entry a meaningful, unique
-label for free and matches what @11ty/eleventy-plugin-rss already puts in the
-Atom feed's <title> for the same post — one fallback, reused, not a second
-one invented for the listing.
+1. The source's `.posts`/`.posts-link` selectors are descendant combinators
+   off `li` (`.posts:not(.posts-withimg) li`, `.posts .posts-link`) — a
+   nested <article> breaks every one of them, so h-entry moved onto the <li>
+   itself, matching the source's own `<li class="h-entry">`.
+2. The source's listing is a compact LINK LIST — title + date, never a post
+   body — because every one of its posts has a title. Rendering the full
+   e-content div into every row made the homepage a wall of repeated post
+   text, not a listing. `content-grid` doubly doesn't belong here: it's a
+   *permalink* layout class (Task S3 added it to the type partials' own
+   content wrapper for that reason), not a listing one.
+
+The adaptation this needs, that a straight copy of the source can't give it:
+four of six Indiekit post types have no title, so a pure link list reading
+"Reply · 30 Aug 2026" / "Note · 30 Aug 2026" (eleventyComputed.js's Atom-feed
+fallback label, needed there because @11ty/eleventy-plugin-rss requires a
+non-empty atom:title) is useless right next to a `<time>` showing the same
+date. Each type partial now renders one of two shapes when `lcp` is unset
+(this file never sets it — see the type partials' own comments):
+
+  - article, bookmark: the source's link-list shape verbatim — the anchor
+    IS the entry's real substance (a real title, or — for a bookmark with no
+    title of its own — eleventyComputed.js's bookmark-specific fallback,
+    which is the bookmarked URL itself, not the generic "<Type> · <date>"
+    label, so it never duplicates the date either). No body.
+  - note, like, reply, photo: always titleless, and eleventyComputed.js's
+    fallback for these four IS the date-duplicating "<Type> · <date>" label.
+    The permalink anchor still carries u-url/p-name (an existing guard
+    requires every h-entry to have both), but its visible text is hidden
+    (.sr-only — reachable to assistive tech and mf2 parsers, same technique
+    the source itself uses for `.posts .date`, which is a11y-only inside
+    .posts by design). What's shown instead is each type's own substance:
+    note's own text (truncated, see types/note.liquid), the reply's own
+    words if it has any (falling back to its target), and the like/bookmark
+    target — wrapped in `.description` (sass/theme-posts.scss:933-942 in the
+    source line numbers), the source's own hook for exactly this "excerpt
+    under the link" presentation. Photo's substance is the photo: its
+    thumbnail sits inside a plain (unmarked) link back to the permalink.
 
 Expects a local `post` (one `collections.post` item) AND `page` overridden to
 that same `post` — both passed by the caller (content/index.liquid). The
@@ -65,20 +78,7 @@ page renders itself.
 {%- assign inReplyTo = post.data.inReplyTo -%}
 {%- assign photo = post.data.photo -%}
 {%- assign postType = post.data.postType -%}
-<li>
-	{%- comment -%}
-	Task S3 (audit §2.3): the type partials are body-only now — the
-	<article class="h-entry"> wrapper moved here and into
-	layouts/entry.liquid, the two callers, so each can put its own h1
-	(entry.liquid only) or nothing (here) inside the h-entry boundary that
-	actually owns it, instead of baking a heading into a partial reused by
-	both. The `lcp` variable is never assigned in this file, so the type
-	partials' own unless-lcp check on their u-url anchor (see
-	types/article.liquid) resolves true here — this render is the one that
-	puts p-name on that anchor, since no h1 exists in this context to carry
-	it instead.
-	{%- endcomment -%}
-	<article class="h-entry">
+<li class="h-entry">
 	{% case postType %}
 		{% when "article" %}{% include "types/article.liquid" %}
 		{% when "bookmark" %}{% include "types/bookmark.liquid" %}
@@ -87,5 +87,4 @@ page renders itself.
 		{% when "reply" %}{% include "types/reply.liquid" %}
 		{% else %}{% include "types/note.liquid" %}
 	{% endcase %}
-	</article>
 </li>

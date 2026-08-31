@@ -1,5 +1,24 @@
-<a class="u-url{% unless lcp %} p-name{% endunless %}" href="{{ page.url }}">{{ title }}</a>
+{%- if lcp -%}
+<a class="u-url" href="{{ page.url }}">{{ title }}</a>
 {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
 {%- if inReplyTo %}<p>In reply to <a class="u-in-reply-to" href="{{ inReplyTo }}">{{ inReplyTo }}</a></p>{% endif %}
 {%- comment %} Task 18 (§7.4): see types/article.liquid for why h2,h3. {% endcomment -%}
 <div class="content-grid e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
+{%- else -%}
+{%- comment %} Task S4 (audit §2.2, corrected — see task-s4-report.md): a
+reply is titleless by IndieWeb design (see types/note.liquid for the same
+"<Type> · <date>" fallback / .sr-only reasoning). Its own words, if it has
+any, are its substance — same truncated/stripped treatment as a note. A
+reply can be contentless (just a share of the target, nothing of its own to
+say), so fall back to the reply target when there's nothing to show.
+{%- endcomment -%}
+<a class="p-name u-url sr-only" href="{{ page.url }}">{{ title }}</a>
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+<span class="tags"></span>
+{%- assign replyWords = content | strip_html | truncate -%}
+{%- if replyWords != "" -%}
+<p class="description">{{ replyWords }}</p>
+{%- elsif inReplyTo -%}
+<p class="description">In reply to <a class="u-in-reply-to" href="{{ inReplyTo }}">{{ inReplyTo }}</a></p>
+{%- endif -%}
+{%- endif -%}

@@ -1,4 +1,5 @@
-<a class="u-url{% unless lcp %} p-name{% endunless %}" href="{{ page.url }}">{{ title }}</a>
+{%- if lcp -%}
+<a class="u-url" href="{{ page.url }}">{{ title }}</a>
 {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
 {%- for image in photo %}
 {%- comment %} Task 18 (§7.4): the port source marks exactly one LCP image
@@ -10,7 +11,7 @@
    (post-list-entry.liquid, which does not set it), where marking every
    listed photo eager would fight the real LCP image for priority instead
    of being one. Only the first image of a multi-photo post counts. {% endcomment -%}
-{%- if lcp and forloop.first %}
+{%- if forloop.first %}
 <img class="u-photo" src="{{ image.url }}" alt="{{ image.alt | default: '' }}" loading="eager" fetchpriority="high" eleventy:optional="keep">
 {%- else %}
 <img class="u-photo" src="{{ image.url }}" alt="{{ image.alt | default: '' }}" loading="lazy" decoding="async" eleventy:optional="keep">
@@ -18,3 +19,20 @@
 {%- endfor %}
 {%- comment %} Task 18 (§7.4): see types/article.liquid for why h2,h3. {% endcomment -%}
 <div class="content-grid e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
+{%- else -%}
+{%- comment %} Task S4 (audit §2.2, corrected — see task-s4-report.md): a
+photo is titleless by IndieWeb design (see types/note.liquid for the same
+"<Type> · <date>" fallback / .sr-only reasoning). Its own substance is the
+photo: show the first image, small, as the row's visible content — wrapped
+in a plain (unmarked) link back to the permalink rather than the u-url one,
+so u-url/p-name still resolve unambiguously to the single hidden anchor
+above and a real mf2 parser has no second `u-*`-classed link to reconcile.
+{%- endcomment -%}
+<a class="p-name u-url sr-only" href="{{ page.url }}">{{ title }}</a>
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+<span class="tags"></span>
+{%- assign firstPhoto = photo | first -%}
+{%- if firstPhoto %}
+<a href="{{ page.url }}"><img class="u-photo" src="{{ firstPhoto.url }}" alt="{{ firstPhoto.alt | default: '' }}" loading="lazy" decoding="async" eleventy:optional="keep"></a>
+{%- endif %}
+{%- endif -%}

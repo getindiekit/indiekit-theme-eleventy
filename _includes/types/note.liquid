@@ -1,4 +1,20 @@
-<a class="u-url{% unless lcp %} p-name{% endunless %}" href="{{ page.url }}">{{ title }}</a>
+{%- if lcp -%}
+<a class="u-url" href="{{ page.url }}">{{ title }}</a>
 {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
 {%- comment %} Task 18 (§7.4): see types/article.liquid for why h2,h3. {% endcomment -%}
 <div class="content-grid e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
+{%- else -%}
+{%- comment %} Task S4 (audit §2.2, corrected — see task-s4-report.md): a
+note is titleless by IndieWeb design — eleventyComputed.js's fallback title
+is the generic "Note · <date>" label, needed only so the Atom feed's
+atom:title is never empty. Showing it here would sit right next to <time>
+repeating the same date, so it's kept but visually hidden (.sr-only — still
+reachable to a real mf2 parser and assistive tech, same technique the source
+itself uses for `.posts .date`). A note's own substance IS its text: show
+that instead, truncated and HTML-stripped — this is a feed row summarising a
+post, not the post itself. {% endcomment -%}
+<a class="p-name u-url sr-only" href="{{ page.url }}">{{ title }}</a>
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+<span class="tags"></span>
+<p class="description">{{ content | strip_html | truncate }}</p>
+{%- endif -%}

@@ -12,9 +12,15 @@
 //     values live in sass/_config.scss, which layout/navigation/etc. already
 //     `@use` internally, so they're pulled into this bundle transitively —
 //     no top-level entry needed for it (see report).
+//
+// Task S4 added sass/theme-posts (the ".posts" h-feed listing design,
+// ported from source _theme.scss:878-1064 + :1706-1734) — the homepage's
+// h-feed is above the fold on the one page that renders it, same critical
+// reasoning as theme-typography above.
 @use "sass/reset";
 @use "sass/fonts";
 @use "sass/theme-typography";
+@use "sass/theme-posts";
 @use "sass/layout";
 @use "sass/navigation";
 @use "sass/skiplink";

@@ -28,8 +28,12 @@ a top-level listing. layouts/default.liquid carries no such wrapper.
 collections.post is already sorted oldest-first (Eleventy's own default sort,
 ascending by date) — `reverse` here, not a second sort, is what gives
 newest-first.
+
+Task S4 (audit §2.2): `.posts` is the source's own class carrying the whole
+listing's flex-column layout and the two-col-viewport dotted-leader row
+(sass/theme-posts.scss) — `h-feed` sits alongside it, not instead of it.
 {%- endcomment -%}
-<ol class="h-feed">
+<ol class="posts h-feed">
 	{%- assign posts = collections.post | reverse -%}
 	{%- for post in posts -%}
 		{%- include "partials/post-list-entry.liquid", post: post, page: post -%}

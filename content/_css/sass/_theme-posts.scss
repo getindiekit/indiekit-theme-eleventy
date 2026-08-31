@@ -1,0 +1,230 @@
+@use "config";
+@use "mixins";
+
+// Task S4 (audit §2.2, plan step 4): source _theme.scss:878-1064 (the
+// ".posts" system) plus :1706-1734 (".spark", coupled to it via the
+// ".posts .spark-img" rule at :1725) — the entire visual design of the
+// h-feed listing post-list-entry.liquid renders on (Task S4 rebuilt that
+// markup onto .posts/.posts-link/.date/.tags to match). Ported verbatim.
+// .subhed/.spark/.posts-withimg/.project_img currently have no emitter in
+// this theme's markup (no year subheads, no image-preview grid, no rail —
+// that's Task S6) — same as _pagination.scss/_printed-page.scss, already
+// ported wholesale with no current emitter (audit §3.1).
+.posts {
+	display: flex;
+	flex-direction: column;
+	list-style: "";
+	gap: 1.25em;
+	margin: 0;
+	padding: 0;
+}
+.posts .posts-link {
+	display: inline;
+	padding: 0;
+	margin-right: 6px;
+	font-size: 1.157894736842em; /* 22px /19 */
+	line-height: 110%;
+	text-decoration: none;
+}
+.posts .posts-link-highlight {
+	font-weight: 900;
+	font-size: 1.263157894737em; /* 24px /19 */
+}
+.posts .posts-link-more {
+	text-decoration: underline;
+}
+@supports (text-decoration-skip-ink: auto) {
+	.posts .posts-link:hover,
+	.posts .posts-link:focus,
+	.posts .posts-link:active {
+		text-decoration: underline;
+	}
+}
+
+.posts .subhed {
+	line-height: 1;
+	margin-top: 3em;
+	text-transform: uppercase;
+	display: flex;
+	gap: 1em;
+	align-items: center;
+}
+.subhed-year {
+	font-family: Hex Franklin Tight, system-ui, sans-serif;
+	font-variation-settings: "wdth" 65, "TYTE" 0, "NOTC" 0;
+	font-size: 2.315789473684em; /* 44px /19 */
+}
+.subhed-count {
+	color: #555;
+}
+.posts .subhed:first-child {
+	margin-top: 0;
+}
+.posts img,
+.posts video,
+.posts .description {
+	margin: .5em 0;
+}
+.posts .description {
+	padding-left: 24px;
+}
+.posts img {
+	display: block;
+}
+.posts .description {
+	margin-top: .210526316em; /* 4px /19 */
+	color: #333;
+	font-style: italic;
+}
+.project_img,
+.project_video {
+	width: 100%;
+	max-width: 28.125rem;
+	border: 1px solid #ddd;
+	border-radius: .2em;
+	transition: .25s box-shadow, .25s border-color;
+	box-shadow: 0 6px 12px 0px rgba(0, 0, 0, .1);
+}
+.project_img {
+	transition: .3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+a[href]:is(:focus, :hover) .project_img {
+	transform: scale(1.04);
+	border-color: #fff;
+	box-shadow: 0 0 0 6px rgba(0, 106, 35, 0.8), 0 6px 40px 4px rgba(0, 0, 0, .25);
+}
+.posts .project_img,
+.posts .project_video {
+	width: 100%;
+	max-width: none;
+	margin-bottom: 1em;
+}
+// Empty src
+.project_img[src=""] {
+	display: block;
+	padding: .5em;
+	aspect-ratio: 267/144;
+	text-indent: -9999px;
+	background: repeating-linear-gradient(
+    -60deg,
+    transparent,
+    transparent 10px,
+    config.$primaryColor 10px,
+    config.$primaryColor 20px
+  ),
+  linear-gradient(
+    to bottom,
+    config.$primaryColor,
+    #374b39,
+  );
+}
+.layout-list p + ol.posts {
+	margin-top: 3em;
+}
+@media (min-width: 30em) {
+	.layout-list h1.posts-indent {
+		padding-left: 55px;
+	}
+	.posts .smalltitle .posts-link {
+		font-size: 1.375em; /* 22px */
+	}
+}
+@media (min-width: config.$twoColLayoutMinWidth) {
+	.posts .subhed:first-child {
+		margin-top: 18px;
+	}
+}
+.posts .date {
+	@include mixins.a11y-only;
+}
+.posts .deprecated,
+.posts .deprecated :link,
+.posts .deprecated :visited {
+	color: #666;
+}
+.posts .deprecated,
+.posts .deprecated :link {
+	font-size: 1.25rem; /* 20px /16 */
+}
+
+.posts-withimg {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1em;
+	flex-direction: row;
+}
+.posts-withimg > * {
+	flex-grow: 1;
+	flex-basis: 15em;
+}
+
+@media (min-width: config.$oneColLayoutDottedList) {
+	/* List of posts, icons align right */
+	.posts:not(.posts-withimg) {
+		li:not(.filter-category--hide) {
+			display: flex;
+			justify-content: space-between;
+			gap: .5em;
+		}
+		li:not(.subhed) .tags {
+			flex-grow: 999;
+
+			&:empty {
+				display: inherit;
+			}
+			&:before {
+				content: "";
+				min-width: .75em;
+				flex-grow: 999;
+				border-bottom: 1px dotted #d0d0d0;
+			}
+			&:not(:empty):before {
+				margin-right: .5em;
+			}
+		}
+		.tags {
+			gap: .3em;
+			flex-wrap: nowrap;
+			white-space: nowrap;
+			justify-content: flex-end;
+		}
+		.posts-link {
+			line-height: 1.4;
+		}
+		.tags > :is(.z-icon, .z-avatar) {
+			margin: 0;
+			min-width: 1.3em;
+		}
+	}
+}
+
+/* Sparkline */
+.spark {
+	display: flex;
+	gap: 1em;
+	align-items: center;
+	text-decoration: none;
+	text-transform: none;
+	font-weight: 700;
+	white-space: nowrap;
+}
+.spark > :has(img[src]) {
+	flex-grow: 1;
+}
+.spark-img.spark-img {
+	padding: 0;
+	margin: 0;
+}
+.spark .spark-img {
+	width: 100%;
+	height: auto;
+}
+.posts .spark-img {
+	width: 6em;
+}
+.rail .spark {
+	gap: .5em;
+	margin-top: 2em;
+	align-items: center;
+	justify-content: space-between;
+}

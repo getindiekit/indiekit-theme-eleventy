@@ -1098,7 +1098,13 @@ check("h-feed lists posts newest first", () => {
   // descending, not just "some order exists".
   const html = readFileSync("_site/index.html", "utf8");
   const feedSection = html.split(/class="[^"]*\bh-feed\b[^"]*"/)[1] ?? "";
-  const hrefs = [...feedSection.matchAll(/href="(\/(?:articles|notes|bookmarks|likes|replies|photos)\/[^"]+\/)"/g)]
+  // Task S4: the photo type's feed row (types/photo.liquid) wraps its
+  // thumbnail in a second, plain (unmarked) link back to the same
+  // permalink — deliberately not u-url, so a real mf2 parser has only one
+  // u-url per entry to resolve (see task-s4-report.md). A bare `href="..."`
+  // scan would double-count that entry; anchor on the class every entry's
+  // *one* real permalink link always carries instead.
+  const hrefs = [...feedSection.matchAll(/<a\s+class="[^"]*\bu-url\b[^"]*"\s+href="(\/(?:articles|notes|bookmarks|likes|replies|photos)\/[^"]+\/)"/g)]
     .map((m) => m[1]);
   assert.equal(hrefs.length, 7, `expected 7 entry links inside the h-feed, found ${hrefs.length}`);
 
@@ -1162,41 +1168,47 @@ check("h-feed entry dates match the same instant as the post's own page", () => 
   }
 });
 
-// Extracts the full source text of every top-level `<article class="h-entry">
-// ...</article>` block from an HTML string, respecting nesting. The four
-// checks above are all regex/string matches over flat HTML — none of them
-// can tell whether a `u-url` anchor is a property of an h-entry or merely
-// somewhere else on the same page (this is exactly how the h-feed permalink
-// bug shipped with a green suite: the anchor sat as a sibling *before* each
+// Extracts the full source text of every top-level `<TAG class="h-entry">
+// ...</TAG>` block from an HTML string, respecting nesting. The four checks
+// above are all regex/string matches over flat HTML — none of them can tell
+// whether a `u-url` anchor is a property of an h-entry or merely somewhere
+// else on the same page (this is exactly how the h-feed permalink bug
+// shipped with a green suite: the anchor sat as a sibling *before* each
 // <article>, and every flat check still matched). A naive non-greedy scan
 // (`/<article[^>]*>.*?<\/article>/gs`) would also mismatch here: nothing in
-// this file's <article> markup nests another <article>, but relying on that
-// silently is how "a check that matches the wrong span" (this project's own
-// stated failure mode) gets written — so this walks open/close tags with an
-// explicit depth counter instead of trusting non-greedy regex to stop at the
-// right boundary.
-function extractHEntryBlocks(html) {
-  const tagRe = /<article\b[^>]*>|<\/article>/g;
+// this file's markup nests a same-named tag inside itself, but relying on
+// that silently is how "a check that matches the wrong span" (this
+// project's own stated failure mode) gets written — so this walks
+// open/close tags with an explicit depth counter instead of trusting
+// non-greedy regex to stop at the right boundary.
+//
+// tagName defaults to "article" (every permalink page's own layout,
+// entry.liquid, wraps its h-entry that way). Task S4 (audit §2.2, corrected)
+// moved the homepage listing's h-entry onto the <li> itself, not a nested
+// <article> — the source's own `.posts`/`.posts-link` selectors are
+// descendant combinators off `li` and a nested <article> would break every
+// one of them (see post-list-entry.liquid's own comment) — so the homepage
+// checks below pass tagName: "li" instead.
+function extractHEntryBlocks(html, tagName = "article") {
+  const tagRe = new RegExp(`<${tagName}\\b[^>]*>|</${tagName}>`, "g");
   const blocks = [];
   let openStart = -1;
   let depth = 0;
   let match;
   while ((match = tagRe.exec(html))) {
-    const isOpen = match[0].startsWith("<article");
+    const isOpen = match[0].startsWith(`<${tagName}`);
     if (isOpen) {
       if (depth === 0) {
         openStart = match.index;
-        // Only h-entry-classed <article> opens are collected — a plain
-        // <article> with no h-entry class (none exist in this theme today,
-        // but the check should not silently start counting one if it ever
-        // does) is tracked for depth only, not returned as a block.
+        // Only h-entry-classed opens are collected — a plain <TAG> with no
+        // h-entry class is tracked for depth only, not returned as a block.
       }
       depth++;
     } else {
       depth--;
       if (depth === 0 && openStart !== -1) {
         const block = html.slice(openStart, match.index + match[0].length);
-        if (/^<article class="h-entry"/.test(block)) {
+        if (new RegExp(`^<${tagName} class="h-entry"`).test(block)) {
           blocks.push(block);
         }
         openStart = -1;
@@ -1215,7 +1227,7 @@ check("every h-entry in the homepage listing carries its own u-url", () => {
   // see this: they all matched a `u-url` and an `h-entry` existing
   // *somewhere* on the page, never whether one is nested inside the other.
   const html = readFileSync("_site/index.html", "utf8");
-  const blocks = extractHEntryBlocks(html);
+  const blocks = extractHEntryBlocks(html, "li");
 
   // Guards against the "scan matching no files passes forever" false-green
   // pattern: if the extractor's boundary logic were broken and found zero
@@ -1301,7 +1313,7 @@ check("every h-entry — permalink and feed listing alike — still carries a p-
   // entry.liquid's <h1> never renders (post-list-entry.liquid calls the
   // type partials directly, not through entry.liquid) — an h-entry with no
   // name at all is a real mf2 regression, not just a missing heading.
-  const homeBlocks = extractHEntryBlocks(readFileSync("_site/index.html", "utf8"));
+  const homeBlocks = extractHEntryBlocks(readFileSync("_site/index.html", "utf8"), "li");
   assert.equal(homeBlocks.length, 7, `expected 7 h-entry blocks in the feed, found ${homeBlocks.length}`);
   const feedMissing = homeBlocks
     .map((block, i) => ({ i, hasName: /\bp-name\b/.test(block) }))
@@ -1322,6 +1334,49 @@ check("every h-entry — permalink and feed listing alike — still carries a p-
       assert.ok(/\bp-name\b/.test(blocks[0]), `${file}: its h-entry has no p-name`);
     }
   }
+});
+
+check("the homepage listing emits .posts/.posts-link/.date and each has a matching rule in compiled CSS", () => {
+  // Task S4 (audit §2.2): the reinvented listing (<ol class="h-feed"><li>
+  // <article class="h-entry">) matched none of the source's .posts
+  // selectors — the CSS existed (once ported) but nothing in the markup
+  // wore its classes. Assert both sides: the class in markup AND a rule for
+  // it in compiled CSS, scoped to the two bundles a real page links (see
+  // PAGE_CSS_GLOB's own comment on why not a bare "_site/_css/**/*.css").
+  const html = readFileSync("_site/index.html", "utf8");
+  assert.ok(/<ol class="[^"]*\bposts\b[^"]*\bh-feed\b[^"]*"/.test(html), "homepage <ol> does not carry .posts alongside .h-feed");
+  assert.ok(/class="[^"]*\bposts-link\b[^"]*"/.test(html), "no element in built output carries .posts-link");
+  assert.ok(/<time class="[^"]*\bdate\b[^"]*\bdt-published\b[^"]*"/.test(html), "no <time> carries .date alongside .dt-published");
+
+  const css = globSync(PAGE_CSS_GLOB)
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
+  assert.ok(css.length > 0, `${PAGE_CSS_GLOB} matched no files — check is vacuous`);
+  assert.ok(/\.posts\s*\{[^}]*\}/.test(css), "no `.posts { ... }` rule in compiled page CSS");
+  assert.ok(/\.posts\s+\.posts-link\s*\{[^}]*\}/.test(css), "no `.posts .posts-link { ... }` rule in compiled page CSS");
+  assert.ok(/\.posts\s+\.date\s*\{[^}]*\}/.test(css), "no `.posts .date { ... }` rule in compiled page CSS");
+});
+
+check("the homepage listing never embeds a full post body — no content-grid/e-content inside any <li>", () => {
+  // Task S4, corrected per task-s4-report.md: the first pass at this
+  // listing rendered the same content-grid e-content div the permalink page
+  // uses into every feed row, making the homepage a wall of repeated post
+  // text instead of a compact listing — content-grid is a *permalink*
+  // layout class (Task S3), it doesn't belong inside a list item at all.
+  // Pin this so it can't come back, for both listing shapes (titled: no
+  // body at all; titleless: a compact .description excerpt, never the full
+  // e-content wrapper).
+  const html = readFileSync("_site/index.html", "utf8");
+  const blocks = extractHEntryBlocks(html, "li");
+  assert.equal(blocks.length, 7, `expected 7 h-entry <li> blocks, found ${blocks.length}`);
+  const withBody = blocks
+    .map((block, i) => ({ i, hasBody: /\bcontent-grid\b/.test(block) || /\be-content\b/.test(block) }))
+    .filter((b) => b.hasBody);
+  assert.equal(
+    withBody.length,
+    0,
+    `${withBody.length} feed <li> blocks embed a full post body (content-grid/e-content) — indices: ${withBody.map((b) => b.i).join(", ")}`,
+  );
 });
 
 check("a Micropub draft is dropped from pages, the feed and the h-feed in a production build", () => {
