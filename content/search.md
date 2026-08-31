@@ -62,6 +62,12 @@ job.
 		<input type="search" name="q" id="search-term" autocomplete="off" autofocus>
 		<button type="submit">Search</button>
 	</form>
+	<noscript>
+		<p><strong>Search needs JavaScript.</strong> This site's index is built
+		and queried in the browser by Pagefind, so there is no server to answer
+		the form above — submitting it will simply reload this page. Browse
+		<a href="/">the archive</a> instead.</p>
+	</noscript>
 </pagefind-search>
 
 <p>Search powered by <a href="https://pagefind.app/">Pagefind</a>.</p>
