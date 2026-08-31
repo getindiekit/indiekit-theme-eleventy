@@ -1,0 +1,25 @@
+{%- comment %}
+Task 20 (spec §F.5). Deliberately NOT layouts/base.liquid. base.liquid pulls
+in the WebC CSS/JS bundles, preloaded webfonts, the nav rail + skip link,
+the Atom/RSS <link> tags, rel=me, and the speedlify widget — none of which
+belong inside a page a screenshot service photographs at 1200×630 (spec:
+"base.liquid drags in site JS, WebC bundles, feeds, rel=me, Pagefind body
+attr — none wanted inside a screenshot"). This layout is intentionally
+minimal and self-contained: one dedicated stylesheet
+(content/_css/opengraph.scss, compiled the same way every other .scss file
+in this theme is — see _11ty/sassPlugin.js), no script, no navigation.
+
+noindex is unconditional here (not the front-matter-driven `{% if noindex %}`
+base.liquid uses) — every page built through this layout is a card, never a
+page meant to be crawled or landed on directly.
+{% endcomment -%}
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="robots" content="noindex,nofollow">
+	<title>{{ site.name }} — social card</title>
+	<link rel="stylesheet" href="/_css/opengraph.css">
+</head>
+<body>{{ content }}</body>
+</html>

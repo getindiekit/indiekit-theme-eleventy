@@ -1,0 +1,126 @@
+// Dedicated stylesheet for the OG card pages (content/opengraph-images.liquid
+// via _includes/layouts/opengraph.liquid). Task 20.
+//
+// Deliberately its own compile, not folded into initial.scss/defer.scss:
+// a card a screenshot service photographs must not depend on the whole
+// site's CSS bundle (spec §A.2/§E.4 — the port source's own opengraph.css
+// is "additive", silently inheriting the rest of zachleat.com's stylesheet
+// chain and self-hosted webfonts; a port that copied only that file would
+// render in the browser default font). Compiled the same way every other
+// .scss file in this theme is (_11ty/sassPlugin.js's "scss" extension), so
+// it lands at /_css/opengraph.css — a real, independently-linkable file,
+// same idiom as /_css/initial.css and /_css/defer.css.
+@use "sass/config";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  // Pinned, not inherited from the screenshot service's viewport preset
+  // (spec §F.1/§G.3 — the port source's card has no explicit dimensions at
+  // all; 1200×630 is an accident of the service's own default viewport).
+  width: 1200px;
+  height: 630px;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.og {
+  position: relative;
+  height: 100%;
+  padding: 4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 1rem;
+  color: #fff;
+  font-size: 32px;
+  background: linear-gradient(160deg, config.$primaryColor, #101820);
+}
+
+.og-photo {
+  background-image: var(--og-bgimage);
+  background-size: cover;
+  background-position: center;
+}
+
+.og-photo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  // Lighter scrim than the text-only cards (spec §F.6): the photo IS the
+  // content here, not a backdrop for a headline.
+  background-color: rgba(0, 0, 0, 0.25);
+}
+
+.og > * {
+  position: relative;
+  z-index: 1;
+}
+
+// The one idea worth porting verbatim (spec §A.3/§F.1): a solid inline box
+// behind text via box-decoration-break, so arbitrary text stays legible
+// over an arbitrary photo background without a full-bleed scrim.
+.og-box {
+  display: inline;
+  padding: 0 0.2em;
+  background-color: rgba(0, 0, 0, 0.85);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.og-kicker {
+  margin: 0;
+  font-size: 0.6em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.og-hed {
+  margin: 0;
+  font-size: 2.2em;
+  line-height: 1.25;
+  font-weight: 800;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+// note/reply: the post's own words, not a headline — smaller, lighter,
+// clamped to more lines (spec §F.6).
+.og-hed-body {
+  font-weight: 500;
+  font-size: 1.6em;
+  -webkit-line-clamp: 6;
+}
+
+// photo: a short caption over the photo itself, not competing with it.
+.og-hed-photo {
+  font-weight: 500;
+  font-size: 1.3em;
+  -webkit-line-clamp: 2;
+}
+
+.og-meta {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: 0.65em;
+}
+
+.og-meta > :last-child {
+  margin-left: auto;
+}
+
+.og-nowrap {
+  white-space: nowrap;
+}

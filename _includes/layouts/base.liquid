@@ -15,7 +15,11 @@
 		<meta name="generator" content="{{ eleventy.generator }}">
 
 {%- if noindex %}
-		{% comment %}For OpenGraph image pages{% endcomment %}
+		{% comment %} General-purpose noindex flag. Task 20's own OG card
+		pages (content/opengraph-images.liquid) don't route through this
+		layout at all — see _includes/layouts/opengraph.liquid, which sets
+		its own unconditional noindex — so this guard is for any other page
+		that sets `noindex: true` in front matter. {% endcomment %}
 		<meta name="robots" content="noindex">
 {%- endif %}
 
@@ -26,15 +30,36 @@
 		{% endcomment %}
 
 		<!-- Social -->
+		{% comment %} Task 20. og:image is `ogImageSource` (_11ty/imagePlugin.js)
+		— mechanism 1, this site's OWN card/photo, never
+		`getOpenGraphImageUrl` (mechanism 2, which reads a THIRD-PARTY
+		page's own og:image and is unrelated to this tag — see that
+		function's own comment in imagePlugin.js). postType/photo/title are
+		already in scope here via the ordinary data cascade, the same way
+		title/description above are. Never emits an empty content attribute
+		(contrast the port source, imagePlugin.js:219 — see
+		content/opengraph-images.liquid's front-matter comment for why that
+		isn't ported). {% endcomment %}
 		<meta property="og:title" content="{% if title %}{{ title }}—{{ site.name }}{% else %}{{ site.name }}{% endif %}">
-		<meta property="og:type" content="website">
+		<meta property="og:type" content="{% if postType %}article{% else %}website{% endif %}">
 		<meta property="og:site_name" content="{{ site.name }}">
 		<meta property="og:description" content="{% if description %}{{ description }}, {% endif %}{% if title %}A post by {% endif %}{{ site.author.name }}">
-		{% comment %} Known unimplemented feature, not a pending task: og:image depends on an
-		`ogImageSource`/`getOpenGraphImageUrl` shortcode that no task in this plan has wired up.
-		<meta property="og:image" content="{% ogImageSource page %}">
-		{% endcomment %}
+		<meta property="og:image" content="{% ogImageSource page.url, postType, photo %}">
+		<meta property="og:image:width" content="1200">
+		<meta property="og:image:height" content="630">
+		<meta property="og:image:alt" content="{% ogImageAlt postType, photo, title %}">
 		<meta property="og:url" content="{{ site.url }}{{ page.url }}">
+{%- if postType and date %}
+		<meta property="article:published_time" content="{{ date | isoInstant }}">
+{%- endif %}
+
+		<!-- X / Twitter: og:* covers most of it; these five change the card
+		size and are cheap to add (spec §G.11 — source has none at all). -->
+		<meta name="twitter:card" content="summary_large_image">
+		<meta name="twitter:title" content="{% if title %}{{ title }}—{{ site.name }}{% else %}{{ site.name }}{% endif %}">
+		<meta name="twitter:description" content="{% if description %}{{ description }}, {% endif %}{% if title %}A post by {% endif %}{{ site.author.name }}">
+		<meta name="twitter:image" content="{% ogImageSource page.url, postType, photo %}">
+		<meta name="twitter:image:alt" content="{% ogImageAlt postType, photo, title %}">
 
 		<!-- SEO/Feeds -->
 		<link rel="canonical" href="{{ fullUrl }}">

@@ -1130,7 +1130,13 @@ check("every page has a skip link targeting main content", () => {
   // that entry.liquid (six post types) never carried it at all, exactly the
   // failure mode this project has already recorded once. Glob every built
   // page, not the homepage alone.
-  const files = globSync("_site/**/*.html");
+  //
+  // Task 20: _site/opengraph/** is exempt — those pages render through
+  // _includes/layouts/opengraph.liquid, not default.liquid, and are never
+  // navigated by a keyboard user (they exist only to be photographed by a
+  // screenshot service, noindex/nofollow — see that layout's own comment
+  // for why it deliberately skips base.liquid/default.liquid entirely).
+  const files = globSync("_site/**/*.html").filter((f) => !f.startsWith("_site/opengraph/"));
   assert.ok(files.length > 0, "no .html produced in _site — this check scanned nothing");
   for (const file of files) {
     const html = readFileSync(file, "utf8");
@@ -1143,7 +1149,9 @@ check("the skip link is the first element in the body", () => {
   // Not just present anywhere on the page — it has to be reachable by the
   // very first Tab press, which requires it to precede everything else in
   // body content (default.liquid:11).
-  const files = globSync("_site/**/*.html");
+  //
+  // Task 20: same _site/opengraph/** exemption as the check above.
+  const files = globSync("_site/**/*.html").filter((f) => !f.startsWith("_site/opengraph/"));
   for (const file of files) {
     const html = readFileSync(file, "utf8");
     const bodyMatch = /<body[^>]*>([\s\S]*)/.exec(html);
@@ -1235,7 +1243,13 @@ check("speedlify renders with the configured url on every page when enabled", ()
       { stdio: "pipe" },
     );
 
-    const files = globSync(`${outDir}/**/*.html`);
+    // Task 20: excludes ${outDir}/opengraph/** — this is a plain CLI build
+    // (no --serve), so ELEVENTY_RUN_MODE is "build" and the OG card set
+    // (content/opengraph-images.liquid) gets built here too. Those pages
+    // render through _includes/layouts/opengraph.liquid, not base.liquid,
+    // so they never carry the speedlify widget by design — see that
+    // layout's own comment.
+    const files = globSync(`${outDir}/**/*.html`).filter((f) => !f.includes(`${outDir}/opengraph/`));
     assert.ok(files.length > 0, "no HTML produced for the speedlify-enabled build");
     for (const file of files) {
       const html = readFileSync(file, "utf8");
@@ -2414,6 +2428,18 @@ await checkAsync(
           `${excludedUrl} was indexed even though it falls outside the scoped glob — the scoping failed`,
         );
       }
+
+      // Task 20, named explicitly (not just implied by the deepEqual
+      // above): content/opengraph-images.liquid builds a real page per post
+      // under _site/opengraph/**, outside every one of the six directories
+      // the glob allow-lists — plan Task 20 step 5's own note that this is
+      // already covered by the existing scoping, not something needing new
+      // machinery. Fails loudly, and independently of the deepEqual, if a
+      // future glob change ever widens to include it.
+      assert.ok(
+        indexedUrls.every((u) => !u.startsWith("/opengraph/")),
+        `OG card page(s) were indexed by pagefind: ${indexedUrls.filter((u) => u.startsWith("/opengraph/")).join(", ")}`,
+      );
     } finally {
       rmSync(outputPath, { recursive: true, force: true });
     }
@@ -2502,6 +2528,286 @@ check("the search page ships a real, unguarded <form> as its no-JS fallback", ()
   } finally {
     rmSync(outDir, { recursive: true, force: true });
   }
+});
+
+// --- Task 20: Open Graph card pages -----------------------------------
+
+check("OG card pages build one per built post, at the permalink adapted to content/'s own permalink scheme", () => {
+  // content/opengraph-images.liquid paginates collections.post with
+  // permalink "/opengraph{{ entry.url }}". Derive the expected set from the
+  // real built post pages (not from the front-matter permalink string
+  // itself, which would make this circular) — the same approach the
+  // pagefind check above uses for its own expected set.
+  const postPages = globSync("_site/{articles,bookmarks,likes,notes,photos,replies}/*/index.html");
+  assert.ok(postPages.length > 0, "no built post pages found under _site — this check would be vacuous");
+  for (const postPage of postPages) {
+    const permalink = postPage.replace(/^_site/, "").replace(/index\.html$/, "");
+    const cardPage = `_site/opengraph${permalink}index.html`;
+    assert.ok(existsSync(cardPage), `no OG card built at ${cardPage} for post ${postPage}`);
+  }
+
+  // The draft note (content/notes/fixture-draft-note.md) is dropped from
+  // collections.post entirely under a build-mode run (eleventy.config.js's
+  // drafts preprocessor) — it must have no card either, not a leftover one
+  // for a page that was never actually published.
+  assert.ok(
+    !existsSync("_site/opengraph/notes/fixture-draft-note/index.html"),
+    "a dropped draft still got an OG card — it should not have been paginated at all",
+  );
+});
+
+await checkAsync(
+  "OG card page set is gated to build mode only — one per non-draft post under build, zero under serve",
+  async () => {
+    // Plan Task 20 step 2: report the flag and the count in both modes.
+    // Flag: process.env.ELEVENTY_RUN_MODE === "build" (eleventy.config.js's
+    // OG_CARD_TEMPLATE ignore, imagePlugin.js's IMAGE_CACHE_DURATION, and
+    // the drafts preprocessor all already key on the same value — this
+    // reuses that idiom rather than a second custom env var like source's
+    // own PRODUCTION_BUILD).
+    //
+    // `--serve` starts a real dev server (forbidden here). The only way to
+    // reach runMode "serve" without one is programmatic — same pattern as
+    // "under serve mode, critical CSS is linked..." above.
+    const buildOutDir = "_site-og-mode-build";
+    const serveOutDir = "_site-og-mode-serve";
+    rmSync(buildOutDir, { recursive: true, force: true });
+    rmSync(serveOutDir, { recursive: true, force: true });
+    try {
+      const build = new Eleventy(undefined, buildOutDir, { source: "cli", quietMode: true });
+      await build.write();
+      const serve = new Eleventy(undefined, serveOutDir, {
+        source: "cli",
+        quietMode: true,
+        runMode: "serve",
+      });
+      await serve.write();
+
+      const buildCards = globSync(`${buildOutDir}/opengraph/**/*.html`);
+      const serveCards = globSync(`${serveOutDir}/opengraph/**/*.html`);
+
+      // Independently derived expected count: every post actually built
+      // under build mode (the draft is already excluded from this set by
+      // the drafts preprocessor, not by this check).
+      const builtPosts = globSync(`${buildOutDir}/{articles,bookmarks,likes,notes,photos,replies}/*/index.html`);
+      assert.ok(builtPosts.length > 0, "no posts built under build mode — this check would be vacuous");
+
+      assert.equal(
+        buildCards.length,
+        builtPosts.length,
+        `build mode: expected one OG card per built post (${builtPosts.length}), got ${buildCards.length}`,
+      );
+      assert.equal(
+        serveCards.length,
+        0,
+        `serve mode: expected 0 OG cards (ELEVENTY_RUN_MODE gate), got ${serveCards.length}`,
+      );
+    } finally {
+      rmSync(buildOutDir, { recursive: true, force: true });
+      rmSync(serveOutDir, { recursive: true, force: true });
+    }
+  },
+);
+
+check("each post type's OG card carries its own type-appropriate content, not an empty heading", () => {
+  // Plan Task 20 step 3's exact per-type table. Reads each real built card
+  // rather than grepping the whole _site tree for a string, so a match in
+  // the wrong file (or the wrong post's card) can't produce a false pass.
+  const card = (permalink) => readFileSync(`_site/opengraph${permalink}index.html`, "utf8");
+
+  // article: its own title, as a real heading — not empty.
+  const article = card("/articles/fixture-article/");
+  assert.ok(
+    /<h1 class="og-hed"(?: id="[^"]*")?><span class="og-box">An example article<\/span><\/h1>/.test(article),
+    `article card heading missing or wrong: ${article}`,
+  );
+
+  // note: its own content, HTML-stripped — never the synthetic
+  // "Note · <date>" fallback title eleventyComputed.js gives it elsewhere.
+  const note = card("/notes/fixture-note/");
+  assert.ok(note.includes("MARKER_note"), `note card does not carry its own body content: ${note}`);
+  assert.ok(!note.includes("Note ·"), `note card leaked the synthetic date-label title instead of its own content: ${note}`);
+
+  // bookmark: kicker + the bookmarked page's title.
+  const bookmark = card("/bookmarks/fixture-bookmark/");
+  assert.ok(bookmark.includes("Bookmarked · example.com"), `bookmark card missing its kicker: ${bookmark}`);
+  assert.ok(bookmark.includes("An example bookmark"), `bookmark card missing its title: ${bookmark}`);
+
+  // untitled bookmark: kicker + the URL itself (eleventyComputed.js's own
+  // "title, else the URL" fallback, reused here rather than reinvented).
+  const untitledBookmark = card("/bookmarks/fixture-untitled-bookmark/");
+  assert.ok(
+    untitledBookmark.includes("https://example.com/untitled-bookmark-fixture"),
+    `untitled bookmark card did not fall back to its URL: ${untitledBookmark}`,
+  );
+
+  // like: the honest sparse case — kicker + hostname, and DELIBERATELY no
+  // invented headline (no <h1> at all — this theme has no "liked title"
+  // data to show).
+  const like = card("/likes/fixture-like/");
+  assert.ok(like.includes("Liked · example.com"), `like card missing its kicker: ${like}`);
+  assert.ok(!/<h1/.test(like), `like card invented a headline where the spec calls for a sparse card: ${like}`);
+
+  // reply: kicker naming the target, but the HEADLINE is the reply's own
+  // words — never the target URL itself appearing as the heading text.
+  const reply = card("/replies/fixture-reply/");
+  assert.ok(reply.includes("Reply to · example.com"), `reply card missing its kicker: ${reply}`);
+  assert.ok(reply.includes("MARKER_reply"), `reply card does not show its own words: ${reply}`);
+  assert.ok(
+    !/<h1[^>]*>.*example\.com\/z.*<\/h1>/.test(reply),
+    `reply card's heading shows the parent's URL instead of the reply's own content: ${reply}`,
+  );
+
+  // photo: still gets a card (archive consistency), captioned from its own
+  // alt text, with the photo as the card's own background.
+  const photo = card("/photos/fixture-photo/");
+  assert.ok(photo.includes("A sample image"), `photo card missing its caption: ${photo}`);
+  assert.ok(
+    photo.includes("--og-bgimage: url('http://localhost:8080/media/sample.png')"),
+    `photo card background does not reference the post's own photo: ${photo}`,
+  );
+});
+
+check("og:image on every built post/homepage page is the right mechanism and never empty", () => {
+  // Plan Task 20 step 6. Default config (site.json's opengraph.
+  // screenshotUrlTemplate is empty) — cardsEnabled() is false, so every
+  // non-photo page falls back to the static default image; the photo post
+  // uses its own photo. Neither is ever "" (contrast the port source,
+  // imagePlugin.js:219 — see content/opengraph-images.liquid's front-matter
+  // comment for why that isn't ported).
+  const pages = globSync("_site/{index,articles/*/index,notes/*/index,bookmarks/*/index,likes/*/index,replies/*/index,photos/*/index}.html");
+  assert.ok(pages.length > 0, "no pages found — this check would be vacuous");
+
+  for (const file of pages) {
+    const html = readFileSync(file, "utf8");
+    const ogImage = html.match(/<meta property="og:image" content="([^"]*)">/);
+    const twitterImage = html.match(/<meta name="twitter:image" content="([^"]*)">/);
+    assert.ok(ogImage, `no og:image tag at all in ${file}`);
+    assert.ok(twitterImage, `no twitter:image tag at all in ${file}`);
+    assert.notEqual(ogImage[1], "", `og:image is an empty string in ${file} — must fall back to the default image instead`);
+    assert.equal(ogImage[1], twitterImage[1], `og:image and twitter:image disagree in ${file} — both must come from the same ogImageSource call`);
+
+    if (file.startsWith("_site/photos/")) {
+      assert.equal(
+        ogImage[1],
+        "http://localhost:8080/media/sample.png",
+        `photo post's og:image does not point at its own photo: ${file} -> ${ogImage[1]}`,
+      );
+    } else {
+      assert.equal(
+        ogImage[1],
+        "http://localhost:8080/img/og-default.png",
+        `expected the static default image (cards disabled by default) in ${file}, got ${ogImage[1]}`,
+      );
+    }
+
+    // Mechanism separation, checked on the tag VALUES specifically (not the
+    // whole page — base.liquid's unrelated <link rel="preconnect"> hint to
+    // that same host is pre-existing and out of scope here): og:image must
+    // never be built from getOpenGraphImageUrl (mechanism 2 —
+    // v1.opengraph.11ty.dev, which reads a THIRD-PARTY page's own og:image
+    // and has no business filling this site's own tag).
+    assert.ok(
+      !ogImage[1].includes("opengraph.11ty.dev"),
+      `${file}'s og:image references mechanism 2 (v1.opengraph.11ty.dev): ${ogImage[1]}`,
+    );
+  }
+});
+
+await checkAsync(
+  "og:image uses the screenshot-card mechanism only when configured for a publicly reachable site.url, and never for localhost",
+  async () => {
+    // Mirrors the "speedlify renders..." check's throwaway-site.json
+    // pattern. Two builds: (a) a template configured but site.url still
+    // the theme's own localhost default — must refuse and fall back to the
+    // static default, with no "localhost" ever inside an emitted
+    // screenshot URL; (b) template + a publicly-reachable site.url — must
+    // emit the real screenshot URL, still never for the photo post.
+    const sitePath = "_data/site.json";
+    const original = readFileSync(sitePath);
+    const template = "https://screenshot.example.org/{url}/opengraph/";
+    const localOutDir = "_site-og-cards-localhost-check";
+    const publicOutDir = "_site-og-cards-public-check";
+
+    try {
+      const config = JSON.parse(original.toString("utf8"));
+      config.opengraph.screenshotUrlTemplate = template;
+      // config.url is left at its existing http://localhost:8080 default.
+      writeFileSync(sitePath, JSON.stringify(config, null, 2) + "\n");
+
+      rmSync(localOutDir, { recursive: true, force: true });
+      execFileSync(
+        process.execPath,
+        ["node_modules/.bin/eleventy", `--output=${localOutDir}`, "--quiet"],
+        { stdio: "pipe", env: { ...process.env, NPM_DOWNLOADS_OFFLINE: "1" } },
+      );
+      const localHtml = readFileSync(`${localOutDir}/articles/fixture-article/index.html`, "utf8");
+      const localOgImage = localHtml.match(/<meta property="og:image" content="([^"]*)">/)[1];
+      assert.equal(
+        localOgImage,
+        "http://localhost:8080/img/og-default.png",
+        `a configured screenshotUrlTemplate against a localhost site.url must still fall back to the default image, got ${localOgImage}`,
+      );
+      // The default image itself legitimately lives on site.url (which IS
+      // localhost here by design — a dev checkout of this theme) — the
+      // requirement is that the CONFIGURED SCREENSHOT SERVICE is never
+      // handed that localhost target, not that "localhost" can't appear in
+      // og:image at all. The equality assertion above already proves no
+      // screenshot-template URL was built; this names the mechanism it must
+      // not be, for a reader who skips straight to this assertion.
+      assert.ok(
+        !localOgImage.includes("screenshot.example.org"),
+        `no localhost target may ever reach the configured screenshot service, got ${localOgImage}`,
+      );
+
+      config.url = "https://example.org";
+      writeFileSync(sitePath, JSON.stringify(config, null, 2) + "\n");
+
+      rmSync(publicOutDir, { recursive: true, force: true });
+      execFileSync(
+        process.execPath,
+        ["node_modules/.bin/eleventy", `--output=${publicOutDir}`, "--quiet"],
+        { stdio: "pipe", env: { ...process.env, NPM_DOWNLOADS_OFFLINE: "1" } },
+      );
+      const publicArticleHtml = readFileSync(`${publicOutDir}/articles/fixture-article/index.html`, "utf8");
+      const publicOgImage = publicArticleHtml.match(/<meta property="og:image" content="([^"]*)">/)[1];
+      assert.equal(
+        publicOgImage,
+        `https://screenshot.example.org/${encodeURIComponent("https://example.org/opengraph/articles/fixture-article/")}/opengraph/`,
+        `article og:image does not match the configured screenshot template, got ${publicOgImage}`,
+      );
+
+      const publicPhotoHtml = readFileSync(`${publicOutDir}/photos/fixture-photo/index.html`, "utf8");
+      const publicPhotoOgImage = publicPhotoHtml.match(/<meta property="og:image" content="([^"]*)">/)[1];
+      assert.equal(
+        publicPhotoOgImage,
+        "https://example.org/media/sample.png",
+        `photo post's og:image must still be its own photo even with cards enabled, got ${publicPhotoOgImage}`,
+      );
+    } finally {
+      writeFileSync(sitePath, original);
+      rmSync(localOutDir, { recursive: true, force: true });
+      rmSync(publicOutDir, { recursive: true, force: true });
+      assert.ok(
+        readFileSync(sitePath).equals(original),
+        "_data/site.json was not restored to its original bytes",
+      );
+    }
+  },
+);
+
+check("OG card pages appear in neither the Atom feed nor the homepage's h-feed", () => {
+  // Plan Task 20 step 5. content/opengraph-images.liquid sets
+  // eleventyExcludeFromCollections: true and carries no `tags: post` — both
+  // the feed (feedPlugin's collection: "post") and the homepage
+  // (collections.post | reverse) read only that same tagged collection, so
+  // neither can pick up a card page. Asserted directly against the built
+  // output rather than trusted by construction.
+  const feed = readFileSync("_site/feed.xml", "utf8");
+  assert.ok(!feed.includes("/opengraph/"), "an OG card URL leaked into the Atom feed");
+
+  const home = readFileSync("_site/index.html", "utf8");
+  assert.ok(!home.includes("/opengraph/"), "an OG card URL leaked into the homepage's h-feed");
 });
 
 const failed = checks.filter((c) => !c).length;

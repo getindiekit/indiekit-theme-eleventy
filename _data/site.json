@@ -4,5 +4,9 @@
   "description": "A reference Eleventy theme for Indiekit.",
   "author": { "name": "", "url": "" },
   "speedlify": { "url": "", "enabled": false },
-  "timezone": "Europe/Brussels"
+  "timezone": "Europe/Brussels",
+  "opengraph": {
+    "defaultImage": "/img/og-default.png",
+    "screenshotUrlTemplate": ""
+  }
 }

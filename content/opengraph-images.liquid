@@ -1,0 +1,66 @@
+---
+layout: layouts/opengraph.liquid
+eleventyImport:
+  collections: ["post"]
+pagination:
+  data: "collections.post"
+  size: 1
+  alias: "entry"
+permalink: "/opengraph{{ entry.url }}"
+eleventyExcludeFromCollections: true
+---
+{% comment %}
+Task 20. One OG card page per post (spec §A.1/§F.4), adapted to this
+theme's content/ input dir. Source paginates `collections.posts` with
+permalink "/opengraph{{ post.url }}" against a project-root input dir; this
+theme's six post-type directories already give output-relative permalinks
+(content/{articles,notes,bookmarks,likes,replies,photos}/<slug>.11tydata.js
+—> "/articles/<slug>/" etc.), and permalinks are output-relative regardless
+of dir.input (spec §F.1), so the identical "/opengraph" + own-permalink
+pattern transfers unchanged: "/opengraph/articles/<slug>/",
+"/opengraph/notes/<slug>/", and so on for all six.
+
+collections.post is every post-type fixture tagged "post" (see each
+<type>.11tydata.js) — this page set is deliberately NOT added to that
+collection itself (eleventyExcludeFromCollections above), so it can never
+recursively include itself, and so it stays out of the Atom feed
+(eleventy.config.js's feedPlugin reads collection "post") and the
+homepage's h-feed (content/index.liquid loops collections.post) without
+depending on this template simply lacking a `tags: post` key — that
+absence alone would already work, but the explicit flag makes the exclusion
+a deliberate property of this file rather than an accident of what its
+front matter happens to omit (plan Task 20 step 5).
+
+Pagefind: the built output lands under /opengraph/<type>/<slug>/, outside
+every one of the six directories package.json's search-index script scopes
+its --glob to. That glob is already an allow-list of exactly the six
+post-type output directories (not this one), so it already excludes this
+page set with no changes needed — verified in test/build.mjs's "pagefind
+indexes only content pages" check, extended in this task to assert
+/opengraph/ specifically never appears in the indexed set.
+
+Gated to build mode only (eleventy.config.js: OG_CARD_TEMPLATE ignore) —
+this theme's existing ELEVENTY_RUN_MODE idiom (see that file and
+_11ty/imagePlugin.js), not a second custom env var like source's
+PRODUCTION_BUILD (spec §A.5's intent, this repo's own idiom for the gate).
+
+Photo posts still get a card here for archive consistency (spec §F.6) even
+though og:image (_11ty/imagePlugin.js's ogImageSource) never points at it
+for that type — the photo itself is always the better, more honest preview,
+and needs no screenshot service at all.
+
+The 60-day/git-created-timestamp freshness check the port source runs before
+returning a screenshot URL (imagePlugin.js:211-222, returning "" for a post
+too new to have a git-committed timestamp yet) is deliberately NOT ported:
+its premise doesn't hold here. This build renders the post page AND its OG
+card in the same Eleventy pass, so by the time ogImageSource emits a URL
+for a given post, /opengraph<that post's permalink> has already been
+written to _site in this exact build — there is no staged-deploy race for
+it to guard against, and Indiekit's file-system store gives no general
+guarantee of a git-committed timestamp to key that check on regardless
+(spec §E.11). og:image is designed to never return "" instead (see
+ogImageSource's own comment) — an empty content attribute is worse than
+omitting the tag, and omitting the tag isn't available here since base.liquid
+always emits one.
+{% endcomment %}
+{%- include "partials/opengraph-card.liquid", entry: entry, page: entry -%}

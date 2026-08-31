@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { resolveDate } from "./_11ty/dateResolver.js";
 import pluginSass from "./_11ty/sassPlugin.js";
 import pluginSyntaxHighlight from "./_11ty/syntaxHighlightPlugin.js";
-import pluginImage from "./_11ty/imagePlugin.js";
+import pluginImage, { OG_CARD_TEMPLATE } from "./_11ty/imagePlugin.js";
 import pluginImageAvatar from "./_11ty/imageAvatarPlugin.js";
 import pluginWebmentions from "./_11ty/webmentionsPlugin.js";
 import pluginWebc from "@11ty/eleventy-plugin-webc";
@@ -77,10 +77,19 @@ export default function (eleventyConfig) {
 
   // Source also dev-gates eleventyConfig.ignores.add() for expensive page
   // sets outside production (:91-94: a network feed-aggregation page and an
-  // OG-image page). This theme has neither yet — no equivalent aggregation
-  // page, and Task 20's OG-image page set doesn't exist. Nothing here
-  // qualifies, so no ignore is added; inventing one for a page set that
-  // doesn't exist would be dead configuration.
+  // OG-image page). This theme has no equivalent aggregation page, but
+  // Task 20 adds the OG-image page set (content/opengraph-images.liquid,
+  // one render per post) — same idea as source, same run-mode idiom this
+  // repo already uses elsewhere (drafts above, IMAGE_CACHE_DURATION in
+  // imagePlugin.js) rather than a second PRODUCTION_BUILD-style env var.
+  // Under --serve/--watch this page set costs a full render per post for a
+  // page nothing points at yet (og:image only uses it when a screenshot
+  // service is configured — see _11ty/imagePlugin.js's cardsEnabled()), so
+  // skip it there the same way source skips its own OG page set outside
+  // PRODUCTION_BUILD.
+  if (process.env.ELEVENTY_RUN_MODE !== "build") {
+    eleventyConfig.ignores.add(OG_CARD_TEMPLATE);
+  }
 
   // content/static/defer.js.liquid `{% include %}`s a dependency out of
   // node_modules (see that file's own comment for why it lives under

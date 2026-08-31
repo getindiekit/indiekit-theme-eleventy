@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Image, { eleventyImageTransformPlugin } from "@11ty/eleventy-img";
 import { getImageColors } from "@11ty/image-color";
+import siteData from "../_data/site.json" with { type: "json" };
 
 const SIZES_INLINE = "(min-width: 75em) 44.5625em, (min-width: 61.25em) 40.6875em, (min-width: 41.25em) 36.8125em, 96vw";
 
@@ -50,6 +51,68 @@ export function getOpenGraphImageUrl(url, format = "") {
 
 	return `https://v1.opengraph.11ty.dev/${encodeURIComponent(u.toString())}/${format ? `auto/${format}/` : ""}`;
 }
+
+// --- Task 20: og:image (mechanism 1 — this site's OWN social cards) ------
+//
+// Deliberately kept apart from getOpenGraphImageUrl() above. That function
+// (v1.opengraph.11ty.dev) reads the og:image a THIRD-PARTY page already
+// declares — see its call sites (opengraphImageHtmlWithClass, used for
+// <browser-window> link previews of someone else's URL). It has never been
+// wired to this site's own og:image tag and still isn't: doing so would ask
+// that service to read the og:image of the page currently being generated.
+//
+// This block builds the value that DOES fill this site's own og:image:
+// either a real photo, a screenshot-service URL of a card page this theme
+// generates (content/opengraph-images.liquid), or a static default image.
+// Confirmed from source (documentation-central/docs/2026-08-30-zachleat-
+// opengraph-implementation.md §B.3, verified against zachleat.com/_11ty/
+// imagePlugin.js:100-234 directly): the screenshot service is never called
+// at build time either there or here — getScreenshotUrl()/
+// getScreenshotUrlFromPath() only concatenate a string; nothing in this
+// file or that one issues an HTTP request. The render happens later, in
+// the screenshot service's own process, the first time something requests
+// that URL. So there is no fetch to gate offline and no cache to manage
+// here — site.json's opengraph.screenshotUrlTemplate is opt-in precisely
+// because it's a third-party host, not because of any network cost at
+// build time.
+const LOCAL_HOST_RE = /^https?:\/\/(localhost|127\.|0\.0\.0\.0|\[::1\]|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i;
+
+function absoluteSiteUrl(pathOrUrl) {
+	return new URL(pathOrUrl, siteData.url).toString();
+}
+
+// Single source of truth for "should og:image point at a generated card".
+// False whenever no third-party screenshot service is configured (the
+// theme's own default — see _data/site.json) or when site.url can't be
+// reached by an external service, which is always true of the theme's own
+// http://localhost:8080 default. A screenshot service given a localhost
+// target can never render it, so refusing to emit that URL at all — falling
+// back to the static default image instead — is the only honest behaviour.
+function cardsEnabled() {
+	const template = siteData.opengraph && siteData.opengraph.screenshotUrlTemplate;
+	if (!template) {
+		return false;
+	}
+	if (LOCAL_HOST_RE.test(siteData.url)) {
+		console.warn(
+			`[opengraph] screenshotUrlTemplate is set but site.url (${siteData.url}) is not publicly reachable by an external service; og:image will use the static default image instead.`,
+		);
+		return false;
+	}
+	return true;
+}
+
+// content/opengraph-images.liquid, the card page set this builds one-per-
+// post. Ignored outside build mode — the same ELEVENTY_RUN_MODE idiom
+// already used for image caching (IMAGE_CACHE_DURATION below) and for
+// dropping drafts (eleventy.config.js), not a second custom env var —
+// mirroring the port source's own PRODUCTION_BUILD-only gate (spec §A.5)
+// without inventing a new flag this repo doesn't otherwise use. Building
+// the page set is independent of cardsEnabled(): it costs one extra render
+// per post regardless of whether a screenshot service is configured, but
+// costs nothing extra to gate on run mode alone, and keeps "how many card
+// pages get built" answerable without also depending on site.json.
+export const OG_CARD_TEMPLATE = "./content/opengraph-images.liquid";
 
 async function opengraphImageHtmlWithClass(targetUrl, alt = "", cls = "") {
 	let fullUrl = getOpenGraphImageUrl(targetUrl);
@@ -152,6 +215,71 @@ export default function(eleventyConfig) {
 	/* Hosted image service to optimize webmention photos */
 	eleventyConfig.addLiquidFilter("eleventyImageServiceAvatar", (url) => {
 		return `https://v1.image.11ty.dev/${encodeURIComponent(url)}/jpeg/72/`;
+	});
+
+	// og:image for THIS site's own pages (mechanism 1 — see the block above
+	// getOpenGraphImageUrl for why this is a separate mechanism). Called
+	// from _includes/layouts/base.liquid as
+	// `{% ogImageSource page.url, postType, photo %}` — postType/photo are
+	// already in scope there via the ordinary Liquid data cascade, the same
+	// way `title`/`noindex` already are.
+	//
+	// Never returns "" (contrast zachleat.com's own imagePlugin.js:219,
+	// which does for a post under 60 days old with no git-committed
+	// timestamp yet — see content/opengraph-images.liquid's front-matter
+	// comment for why that freshness check isn't ported).
+	eleventyConfig.addLiquidShortcode("ogImageSource", (pageUrl, postType, photo) => {
+		// 1. A photo post's own image always wins — real content beats a
+		// generated card, on every platform, whether or not cards are
+		// enabled. Skips the card entirely, per plan Task 20 step 3.
+		const photoUrl = Array.isArray(photo) && photo.length > 0 ? photo[0].url : undefined;
+		if (postType === "photo" && photoUrl) {
+			return absoluteSiteUrl(photoUrl);
+		}
+
+		// 2. A generated card, only for an actual post (postType set) and
+		// only when a screenshot service is configured for a publicly
+		// reachable site.url. `/opengraph${pageUrl}` matches the permalink
+		// content/opengraph-images.liquid builds for this same post.
+		if (postType && cardsEnabled()) {
+			const target = absoluteSiteUrl(`/opengraph${pageUrl}`);
+			return siteData.opengraph.screenshotUrlTemplate.replace("{url}", encodeURIComponent(target));
+		}
+
+		// 3. Static default — a real file committed in this theme
+		// (static/img/og-default.png), never an empty string.
+		const defaultImage = (siteData.opengraph && siteData.opengraph.defaultImage) || "/img/og-default.png";
+		return absoluteSiteUrl(defaultImage);
+	});
+
+	eleventyConfig.addLiquidShortcode("ogImageAlt", (postType, photo, title) => {
+		const photoAlt = Array.isArray(photo) && photo.length > 0 ? photo[0].alt : undefined;
+		if (postType === "photo" && photoAlt) {
+			return photoAlt;
+		}
+		if (title) {
+			return `Social card for “${title}”`;
+		}
+		return `Social card for ${siteData.name}`;
+	});
+
+	// Plain-text extraction for a note/reply's own body (content/opengraph-
+	// images.liquid) — strips markup rather than reusing the existing
+	// `truncate` filter (webmentionsPlugin.js), which appends a literal
+	// `<span class="tag-inline">Truncated</span>` HTML fragment. That's
+	// correct for a webmention comment rendered as HTML; the OG card needs
+	// plain text with no injected markup, so this is a separate, smaller
+	// filter rather than a shared one with divergent output shapes.
+	eleventyConfig.addLiquidFilter("ogPlain", (html) => {
+		return String(html ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+	});
+
+	eleventyConfig.addLiquidFilter("ogTruncate", (text, max = 200) => {
+		const s = String(text ?? "");
+		if (s.length <= max) {
+			return s;
+		}
+		return s.slice(0, max).replace(/\s+\S*$/, "") + "…";
 	});
 
 };

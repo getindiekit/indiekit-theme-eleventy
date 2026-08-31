@@ -1,0 +1,61 @@
+{%- comment %}
+Renders one OG card's <main>. Split out from content/opengraph-images.liquid
+so `page: entry` can be passed as an include-local: isoInstant/humanDate
+(eleventy.config.js) read `this.page.inputPath` to detect an explicit UTC
+offset in the CURRENT page's own front matter. Without this override,
+`this.page` stays bound to opengraph-images.liquid's own front matter (which
+has no `date:` key at all) for every one of its paginated outputs — the
+exact trap _includes/partials/post-list-entry.liquid's own comment documents
+and fixes with the identical `page: post` pattern; this reuses it rather
+than re-deriving it.
+
+Card content per post type (spec §F.6, plan Task 20 step 3): four of six
+Indiekit post types have no title, so a title-centric card is wrong for the
+majority. `d.title` is used ONLY for article/bookmark below — for
+note/reply it deliberately is not: _data/eleventyComputed.js already
+overwrites an absent title with a synthetic "<Type> · <date>" label (for
+feed/SEO purposes, so <title> is never empty), and that label is not the
+author's own words. Showing it here would misrepresent a note as having a
+real headline — the opposite of the honest-sparse-card requirement below.
+{% endcomment -%}
+{%- assign d = entry.data -%}
+{%- assign type = d.postType -%}
+{%- assign date = d.date -%}
+{%- assign photoUrl = "" -%}
+{%- if d.photo and d.photo.size > 0 -%}{%- assign photoUrl = d.photo[0].url -%}{%- endif -%}
+<main class="og og-{{ type }}"{% if type == "photo" and photoUrl != "" %} style="--og-bgimage: url('{{ site.url }}{{ photoUrl }}')"{% endif %}>
+{%- if type == "bookmark" or type == "like" or type == "reply" -%}
+	{%- assign kickerUrl = d.bookmarkOf | default: d.likeOf | default: d.inReplyTo -%}
+	<p class="og-kicker"><span class="og-box">{% case type %}{% when "bookmark" %}Bookmarked{% when "like" %}Liked{% when "reply" %}Reply to{% endcase %} · {{ kickerUrl | hostnameFromUrl }}</span></p>
+{%- endif -%}
+{%- assign headline = "" -%}
+{%- case type -%}
+	{%- when "article" -%}
+		{%- assign headline = d.title -%}
+	{%- when "bookmark" -%}
+		{%- comment %} eleventyComputed.js already resolves an untitled
+		bookmark's title to its bookmarkOf URL — exactly the "title, else
+		the URL" rule. {% endcomment -%}
+		{%- assign headline = d.title -%}
+	{%- when "note", "reply" -%}
+		{%- comment %} The post's own words, not the parent's (spec: reply
+		must show its OWN content, never inReplyTo's). entry.templateContent
+		is the rendered post body before any layout wraps it — same field
+		post-list-entry.liquid already reads for the same reason.
+		{% endcomment -%}
+		{%- assign headline = entry.templateContent | ogPlain | ogTruncate: 220 -%}
+	{%- when "photo" -%}
+		{%- if photoUrl != "" -%}{%- assign headline = d.photo[0].alt -%}{%- endif -%}
+{%- endcase -%}
+{%- comment %} "like" falls through with an empty headline on purpose: this
+theme has no "liked page title" data to show, and inventing text where there
+is none would be dishonest — see spec §F.6, "a like is the one type where a
+near-empty card is honest." Kicker + hostname above carry it. {% endcomment -%}
+{%- if headline and headline != "" -%}
+<h1 class="og-hed{% if type == "note" or type == "reply" %} og-hed-body{% endif %}{% if type == "photo" %} og-hed-photo{% endif %}"><span class="og-box">{{ headline }}</span></h1>
+{%- endif -%}
+<p class="og-meta">
+	<strong class="og-box">{{ site.name }}</strong>
+	<span class="og-box og-nowrap">{% if date %}{{ date | humanDate }}{% endif %}</span>
+</p>
+</main>
