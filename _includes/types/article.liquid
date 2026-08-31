@@ -4,8 +4,15 @@ to layouts/entry.liquid — the standalone permalink's <article class="h-entry">
 wrapper (also moved, to entry.liquid and post-list-entry.liquid, the two
 callers) now owns it, so it's the h-entry's title there. This branch (lcp
 set, i.e. entry.liquid — the whole page) no longer needs to supply p-name
-itself: the h1 already does. {% endcomment -%}
-<a class="u-url" href="{{ page.url }}">{{ title }}</a>
+itself: the h1 already does. Visible text on this anchor would repeat the
+h1's own title right below it (the "AN EXAMPLE ARTICLE" hero heading
+followed by a second, plain "An example article" link — a real defect
+found by screenshot review) — sr-only keeps u-url reachable to mf2 parsers
+and assistive tech without printing the title twice. Source has no
+equivalent visible anchor on a real permalink at all (post.liquid); this
+theme keeps an explicit one for robustness rather than relying on implicit
+page-URL fallback, just hidden. {% endcomment -%}
+<a class="u-url sr-only" href="{{ page.url }}">{{ title }}</a>
 {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
 {%- comment %} Task 18 (§7.4): source (page.liquid:9-11, post.liquid:55-57)
 wraps the content div's body in <heading-anchors selector="h2,h3">. h2/h3 is
@@ -19,8 +26,11 @@ progressive enhancement on top, so the ids work with JS disabled. {% endcomment 
 {%- comment %} Task S4 (audit §2.2, corrected — see task-s4-report.md): the
 feed-listing branch. An article always has a real title, so the source's own
 link-list shape applies unchanged — the anchor IS the entry's substance, no
-body needed (that's what the permalink is for). {% endcomment -%}
+body needed (that's what the permalink is for). `.posts .date` no longer
+hides <time> in this port (see sass/theme-posts.scss) — <time> now sits
+after `.tags` so the dotted leader runs from the title to the date.
+{% endcomment -%}
 <a class="posts-link p-name u-url" href="{{ page.url }}">{{ title }}</a>
-{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
 <span class="tags"></span>
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
 {%- endif -%}

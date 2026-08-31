@@ -72,11 +72,19 @@ through to site.description below — not an error case. {% endcomment -%}
 		<meta name="robots" content="noindex">
 {%- endif %}
 
-		{% comment %} TODO(Task 11): favicon assets are a README/asset concern — restore once the icon files exist in this theme.
+		{% comment %} TODO(Task 11): a real favicon is a README/asset concern —
+		restore the source's <link rel="apple-touch-icon-precomposed">/site
+		avatar icon once the icon files exist in this theme.
 		<!-- Icons -->
 		<link rel="apple-touch-icon-precomposed" href="{% getUrlForImage site.avatarImgSrc, 192, 'png' %}">
 		<link rel="icon" href="{% getUrlForImage site.avatarImgSrc, 192, 'jpeg' %}" sizes="192x192" type="image/jpeg">
 		{% endcomment %}
+		{% comment %} Task (visual fix): with no <link rel="icon"> at all,
+		every page 404s on the browser's own default GET /favicon.ico — this
+		theme genuinely ships no icon (see TODO above), so an explicit empty
+		icon reference is "reference none" made real, not a new asset.
+		{% endcomment %}
+		<link rel="icon" href="data:,">
 
 		<!-- Social -->
 		{% comment %} Task 20. og:image is `ogImageSource` (_11ty/imagePlugin.js)

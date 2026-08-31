@@ -1,0 +1,57 @@
+
+// Ported verbatim from the port source's static/sass/_theme.scss:1190-1207.
+// .footer-badge is skipped — that styles his "built with Eleventy" GIF badge,
+// which this theme's neutral footer does not ship.
+.footer {
+	margin-top: clamp(2em, 15vh, 4em);
+	margin-bottom: 1em;
+	font-size: 1rem;
+	line-height: 130%;
+	font-style: italic;
+}
+.footer strong {
+	font-style: normal;
+	font-size: 150%;
+	vertical-align: text-bottom;
+}
+
+// Ported verbatim from the port source's static/sass/_theme.scss:1190-1207.
+// .footer-badge is skipped — it styles his "built with Eleventy" GIF badge,
+// which this theme's neutral footer does not ship.
+.footer {
+	margin-top: clamp(2em, 15vh, 4em);
+	margin-bottom: 1em;
+	font-size: 1rem;
+	line-height: 130%;
+	font-style: italic;
+}
+.footer strong {
+	font-style: normal;
+	font-size: 150%;
+	vertical-align: text-bottom;
+}
+
+// Ported from the port source's static/sass/_theme.scss:1217-1234 — the
+// `.tag-inline` badge and the shared `.tag` sizing. This theme's own
+// `truncate` filter emits `<span class="tag-inline">Truncated</span>`, which
+// rendered as bare literal text in the h-feed until these landed.
+// `.tags:empty { display: none }` matters here too: the listing emits an
+// empty `<span class="tags">` for post types that carry none.
+.tag-inline {
+	font-family: system-ui, sans-serif;
+	font-weight: 800;
+}
+.tags:empty {
+	display: none;
+}
+.tag-inline,
+.tags .tag {
+	display: inline-block;
+	font-size: 0.6315789473684em; /* 12px /19 */
+	height: 1.5625rem; /* 25px /16 */
+	font-style: normal;
+	color: #666;
+	padding: .25em .5em;
+	text-decoration: none;
+	border-radius: var(--z-border-radius-2);
+}

@@ -6,13 +6,27 @@ eleventyImport:
   collections: ["post"]
 ---
 
-<h1 class="primary-title">{{ title }}</h1>
+{%- comment %} Task (visual fix): source's own homepage (index.liquid:2-3,
+`titleScreenReaderOnly: true`) never shows a visible <h1> repeating the
+site name — its identity is already shown in the rail header
+(default.liquid's `.hed-h1`) — pagealign.liquid:7 renders it sr-only
+instead: `<h1 class="primary-title{% if titleScreenReaderOnly %} sr-only{% endif %}">`.
+The homepage still needs exactly one real <h1> (an existing guard checks
+this), so keep it — screen-reader/SEO only, matching source's own
+convention for this exact page. {%- endcomment -%}
+<h1 class="primary-title sr-only">{{ title }}</h1>
 
 {%- comment %} Task 18 (§7.4): this is the first (and only) image ahead of the
    h-feed, so it's this page's LCP candidate — the counterpart of the port
    source's own site avatar (default.liquid:16), which this theme has none
-   of. {% endcomment -%}
-<img src="./_fixtures/sample.png" alt="A sample image" loading="eager" fetchpriority="high">
+   of.
+
+   Task (visual fix): this image had no width constraint beyond the bare
+   `img{max-width:100%}` reset (content/_css/sass/_reset.scss) — 100% of
+   `.content-main`, which at `.tmpl-page` desktop widths is deliberately
+   unbounded (sass/_layout.scss's `.tmpl-page .content-main{max-width:none}`,
+   Task S3's own reading-measure column lives on `.content-grid` instead).
+   Wrapping it in `.content-grid` (already ported, Task S3) gives it that
 
 <p>downloads: {{ npmDownloads.downloads }}</p>
 

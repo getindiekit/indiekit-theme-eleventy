@@ -1,6 +1,16 @@
 {%- if lcp -%}
-<a class="u-url" href="{{ page.url }}">{{ title }}</a>
+<a class="u-url sr-only" href="{{ page.url }}">{{ title }}</a>{% comment %} Visual fix: sr-only so the permalink's own title isn't printed twice (h1 above already carries p-name) — see types/article.liquid's comment. {% endcomment %}
 {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+{%- comment %} Task (visual fix): the image loop used to sit as a sibling
+*before* `.content-grid`, so it inherited no width constraint beyond the
+bare `img{max-width:100%}` reset — 100% of `.content-main`, which at
+tmpl-page desktop widths is unbounded (sass/_layout.scss's own
+`.tmpl-page .content-main{max-width:none}`), not the reading-measure column.
+Moving the loop inside `.content-grid` (Task S3, already ported) gives it
+the same already-ported width clamp every other in-content image gets — no
+new CSS, just putting the image where the existing grid can reach it.
+{% endcomment -%}
+<div class="content-grid e-content">
 {%- for image in photo %}
 {%- comment %} Task 18 (§7.4): the port source marks exactly one LCP image
    per page loading="eager" fetchpriority="high" (its own site avatar,
@@ -18,21 +28,26 @@
 {%- endif %}
 {%- endfor %}
 {%- comment %} Task 18 (§7.4): see types/article.liquid for why h2,h3. {% endcomment -%}
-<div class="content-grid e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
+<heading-anchors selector="h2,h3">{{ content }}</heading-anchors>
+</div>
 {%- else -%}
-{%- comment %} Task S4 (audit §2.2, corrected — see task-s4-report.md): a
-photo is titleless by IndieWeb design (see types/note.liquid for the same
-"<Type> · <date>" fallback / .sr-only reasoning). Its own substance is the
-photo: show the first image, small, as the row's visible content — wrapped
-in a plain (unmarked) link back to the permalink rather than the u-url one,
-so u-url/p-name still resolve unambiguously to the single hidden anchor
-above and a real mf2 parser has no second `u-*`-classed link to reconcile.
-{%- endcomment -%}
-<a class="p-name u-url sr-only" href="{{ page.url }}">{{ title }}</a>
-{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
-<span class="tags"></span>
+{%- comment %} Task (visual fix, corrected from the prior S4 pass): a photo
+is titleless by IndieWeb design (see types/note.liquid for the fallback
+label / visible-link-text reasoning), but its "substance" isn't a sentence —
+it's the photo. The visible link text is the image's own alt text (falling
+back to a plain, non-date-duplicating "Photo" label only when the fixture
+supplies none), matching `.posts-link` like every other type; the thumbnail
+itself still sits in a second, plain (unmarked) link so u-url/p-name resolve
+unambiguously to the one `u-*`-classed anchor. `.posts .spark-img` (already
+ported, sass/theme-posts.scss) is the only rule in this port that constrains
+an image's width *inside* `.posts` — reused here so the thumbnail reads as a
+small preview next to the title instead of a near-full-width image blowing
+out the row. {%- endcomment -%}
 {%- assign firstPhoto = photo | first -%}
+<a class="posts-link p-name u-url" href="{{ page.url }}">{{ firstPhoto.alt | default: "Photo" }}</a>
+<span class="tags"></span>
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
 {%- if firstPhoto %}
-<a href="{{ page.url }}"><img class="u-photo" src="{{ firstPhoto.url }}" alt="{{ firstPhoto.alt | default: '' }}" loading="lazy" decoding="async" eleventy:optional="keep"></a>
+<a href="{{ page.url }}"><img class="u-photo spark-img" src="{{ firstPhoto.url }}" alt="{{ firstPhoto.alt | default: '' }}" loading="lazy" decoding="async" eleventy:optional="keep"></a>
 {%- endif %}
 {%- endif -%}

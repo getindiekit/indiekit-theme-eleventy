@@ -27,8 +27,24 @@ tmpl: page
    page.liquid). Each type partial's own <a class="u-url"> still supplies
    p-name for the feed-listing render, where this <h1> never appears — see
    types/article.liquid for how it tells the two contexts apart. {% endcomment -%}
+{%- comment %} Task (visual fix): source's own post.liquid:7 —
+`<h1 class="p-name primary-title{% if smalltitle %} primary-title-smalltitle{% endif %}">`
+— is the scoping mechanism for `--fluid-type` (theme-typography.scss:192-199,
+source _theme.scss:600-607): `.primary-title` gets the 68-120px hero clamp by
+default, `.primary-title-smalltitle` (added alongside it) overrides to the
+44-90px clamp. That conditional class never existed in this port at all —
+restored verbatim here, reading an optional `smalltitle` front-matter flag,
+same opt-in as source (checked: only 2 of the source's 471 real posts set
+it, both unusually long titles — "DOMContentLoaded Inconsistencies (in
+Browsers and JavaScript Libraries)", "Selecting XML Nodes with JavaScript, or
+the Peril of getElementsByTagName" — so the *default*, no-flag case is the
+large clamp, matching typical short titles like "Checklist for Web
+Applications" in the source's own corpus. A short fixture title like "An
+example article" falls in that same default bucket in source too — the
+large rendering is faithful, not a leftover scoping bug; see
+task-visual-fix-report.md for the full evidence trail. {%- endcomment -%}
 <article class="h-entry">
-  <h1 class="p-name primary-title">{{ title }}</h1>
+  <h1 class="p-name primary-title{% if smalltitle %} primary-title-smalltitle{% endif %}">{{ title }}</h1>
   {% case postType %}
     {% when "article" %}{% include "types/article.liquid" %}
     {% when "bookmark" %}{% include "types/bookmark.liquid" %}

@@ -1,15 +1,16 @@
 {%- if lcp -%}
-<a class="u-url" href="{{ page.url }}">{{ title }}</a>
+<a class="u-url sr-only" href="{{ page.url }}">{{ title }}</a>{% comment %} Visual fix: sr-only so the permalink's own title isn't printed twice (h1 above already carries p-name) — see types/article.liquid's comment. {% endcomment %}
 {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
 {%- if likeOf %}<p>Liked <a class="u-like-of" href="{{ likeOf }}">{{ likeOf }}</a></p>{% endif %}
 {%- else -%}
-{%- comment %} Task S4 (audit §2.2, corrected — see task-s4-report.md): a
-like is titleless by IndieWeb design and has no text of its own (see
-types/note.liquid for the same "<Type> · <date>" fallback / .sr-only
-reasoning) — its substance is the thing being liked, so that's what's shown.
-{% endcomment -%}
-<a class="p-name u-url sr-only" href="{{ page.url }}">{{ title }}</a>
-{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+{%- comment %} Task (visual fix, corrected from the prior S4 pass): a like
+is titleless by IndieWeb design and has no text of its own (see
+types/note.liquid for the fallback label / visible-link-text reasoning) —
+its substance is the thing being liked, shown as the visible `.posts-link`
+text (plain "Liked <url>", not a nested `<a>` — invalid inside the outer
+anchor; u-like-of is still carried on the permalink page's own lcp branch
+above). {% endcomment -%}
+<a class="posts-link p-name u-url" href="{{ page.url }}">{% if likeOf %}Liked {{ likeOf }}{% endif %}</a>
 <span class="tags"></span>
-{%- if likeOf %}<p class="description">Liked <a class="u-like-of" href="{{ likeOf }}">{{ likeOf }}</a></p>{% endif %}
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
 {%- endif -%}

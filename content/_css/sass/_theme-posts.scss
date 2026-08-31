@@ -134,8 +134,19 @@ a[href]:is(:focus, :hover) .project_img {
 		margin-top: 18px;
 	}
 }
+// Task (visual fix): source (static/sass/_theme.scss:1002) hides <time>
+// here unconditionally — the source's real homepage groups its `.posts`
+// rows under year `.subhed` headings (post-list-entry.html:1-9, not ported:
+// this theme has no year-grouped homepage) and relies on hover/the anchor's
+// own title for the exact date, never showing it per-row. Without those
+// subheads this port has no other way to convey a row's date at all, and a
+// row with no visible title AND no visible date is the exact defect this
+// fix exists for (screenshot review: "no title, no visible date"). Reusing
+// the source's own `undo-a11y-only` mixin (sass/_mixins.scss, already
+// ported) rather than deleting the rule or inventing new CSS — this is a
+// documented, deliberate deviation, not an oversight.
 .posts .date {
-	@include mixins.a11y-only;
+	@include mixins.undo-a11y-only;
 }
 .posts .deprecated,
 .posts .deprecated :link,

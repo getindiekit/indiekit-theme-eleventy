@@ -1,20 +1,24 @@
 {%- if lcp -%}
-<a class="u-url" href="{{ page.url }}">{{ title }}</a>
+<a class="u-url sr-only" href="{{ page.url }}">{{ title }}</a>{% comment %} Visual fix: sr-only so the permalink's own title isn't printed twice (h1 above already carries p-name) — see types/article.liquid's comment. {% endcomment %}
 {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
 {%- comment %} Task 18 (§7.4): see types/article.liquid for why h2,h3. {% endcomment -%}
 <div class="content-grid e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
 {%- else -%}
-{%- comment %} Task S4 (audit §2.2, corrected — see task-s4-report.md): a
-note is titleless by IndieWeb design — eleventyComputed.js's fallback title
-is the generic "Note · <date>" label, needed only so the Atom feed's
-atom:title is never empty. Showing it here would sit right next to <time>
-repeating the same date, so it's kept but visually hidden (.sr-only — still
-reachable to a real mf2 parser and assistive tech, same technique the source
-itself uses for `.posts .date`). A note's own substance IS its text: show
-that instead, truncated and HTML-stripped — this is a feed row summarising a
-post, not the post itself. {% endcomment -%}
-<a class="p-name u-url sr-only" href="{{ page.url }}">{{ title }}</a>
-{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+{%- comment %} Task (visual fix, corrected from the prior S4 pass): a note is
+titleless by IndieWeb design — eleventyComputed.js's fallback title is the
+generic "Note · <date>" label, needed only so the Atom feed's atom:title is
+never empty. That label duplicates the adjacent <time>, so it's never shown
+— but the prior fix hid the ENTIRE anchor (.sr-only), which also matches
+none of the source's `.posts .posts-link` styling: the row rendered as a
+bare dotted rule with nothing on either end. The source's `.posts` system is
+a link list — `.posts-link` is the visible anchor the dotted leader runs
+from — so a note's own substance (its text, truncated to a single line, not
+the full 280-char tweet-length default the `truncate` filter otherwise
+uses) becomes the visible link text instead of the synthetic label,
+matching `.posts-link` the same way article/bookmark's real titles already
+do. `.posts .date` (sass/theme-posts.scss) no longer hides <time> in this
+port — see that rule's own comment for why. {% endcomment -%}
+<a class="posts-link p-name u-url" href="{{ page.url }}">{{ content | strip_html | truncate: 70 }}</a>
 <span class="tags"></span>
-<p class="description">{{ content | strip_html | truncate }}</p>
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
 {%- endif -%}

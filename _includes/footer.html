@@ -1,0 +1,22 @@
+{% comment %} Ported from the port source's _includes/footer.html, adapted.
+Kept: the <footer class="content-grid-sibling"> + .footer structure that
+_theme.scss:1190-1207 styles, the Eleventy build credit, and the speedlify
+score (already a feature of this theme, gated on site.json config).
+Dropped as source-specific: his licence/style-guide/Twitter-archive links, the
+"edit this page" GitHub link, his page-view counter and blog birthday, the
+built-with-eleventy badge, and the CSS/web-font toggle buttons — all of which
+depend on his data or his repository. {% endcomment %}
+<footer class="content-grid-sibling">
+	<div class="footer">
+		Built with <a href="https://www.11ty.dev/">Eleventy v{{ eleventy.version }}</a>
+		· Published with <a href="https://getindiekit.com/">Indiekit</a>
+		{%- if site.url %}
+		· <a href="/feed.xml">Feed</a>
+		{%- endif %}
+{%- capture urlWithOrigin %}{{ site.url }}{{ page.url }}{% endcapture -%}
+{%- if site.speedlify.enabled and site.speedlify.url %}
+		<script type="module" src="/js/speedlify2-score.js"></script>
+		<speedlify2-score theme="light" speedlify-url="{{ site.speedlify.url }}" url="{{ urlWithOrigin }}"></speedlify2-score>
+{%- endif %}
+	</div>
+</footer>

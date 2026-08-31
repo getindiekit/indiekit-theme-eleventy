@@ -1393,9 +1393,9 @@ check("a Micropub draft is dropped from pages, the feed and the h-feed in a prod
     "draft note built its own page in a production build",
   );
   const feed = readFileSync("_site/feed.xml", "utf8");
-  assert.ok(!feed.includes("MARKER_draft_note"), "draft note's marker leaked into feed.xml");
+  assert.ok(!feed.includes("Half-finished thought"), "draft note's marker leaked into feed.xml");
   const homepage = readFileSync("_site/index.html", "utf8");
-  assert.ok(!homepage.includes("MARKER_draft_note"), "draft note's marker leaked into the h-feed homepage listing");
+  assert.ok(!homepage.includes("Half-finished thought"), "draft note's marker leaked into the h-feed homepage listing");
   assert.ok(
     !homepage.includes("/notes/fixture-draft-note/"),
     "draft note has an h-feed entry linking to its (nonexistent) page",
@@ -1427,10 +1427,10 @@ await checkAsync("the same Micropub draft is present under serve mode", async ()
       "draft note did not build its own page under serve mode",
     );
     const feed = readFileSync(`${outDir}/feed.xml`, "utf8");
-    assert.ok(feed.includes("MARKER_draft_note"), "draft note's marker is missing from feed.xml under serve mode");
+    assert.ok(feed.includes("Half-finished thought"), "draft note's marker is missing from feed.xml under serve mode");
     const homepage = readFileSync(`${outDir}/index.html`, "utf8");
     assert.ok(
-      homepage.includes("MARKER_draft_note"),
+      homepage.includes("Half-finished thought"),
       "draft note's marker is missing from the h-feed homepage listing under serve mode",
     );
     assert.ok(
@@ -2979,7 +2979,7 @@ check("each post type's OG card carries its own type-appropriate content, not an
   // note: its own content, HTML-stripped — never the synthetic
   // "Note · <date>" fallback title eleventyComputed.js gives it elsewhere.
   const note = card("/notes/fixture-note/");
-  assert.ok(note.includes("MARKER_note"), `note card does not carry its own body content: ${note}`);
+  assert.ok(note.includes("webmention spec again"), `note card does not carry its own body content: ${note}`);
   assert.ok(!note.includes("Note ·"), `note card leaked the synthetic date-label title instead of its own content: ${note}`);
 
   // bookmark: kicker + the bookmarked page's title.
@@ -3006,7 +3006,7 @@ check("each post type's OG card carries its own type-appropriate content, not an
   // words — never the target URL itself appearing as the heading text.
   const reply = card("/replies/fixture-reply/");
   assert.ok(reply.includes("Reply to · example.com"), `reply card missing its kicker: ${reply}`);
-  assert.ok(reply.includes("MARKER_reply"), `reply card does not show its own words: ${reply}`);
+  assert.ok(reply.includes("content-addressed"), `reply card does not show its own words: ${reply}`);
   assert.ok(
     !/<h1[^>]*>.*example\.com\/z.*<\/h1>/.test(reply),
     `reply card's heading shows the parent's URL instead of the reply's own content: ${reply}`,
@@ -3335,12 +3335,12 @@ check("og:description is the page's own text, never the old \"A post by \" place
     );
   }
 
-  // article and note each show their own fixture body text (MARKER_article /
-  // MARKER_note) — differs across post types, so a constant string would
+  // article and note each show their own fixture body text (syndicate elsewhere /
+  // phrase from each — differs across post types, so a constant string would
   // fail this.
   assert.notEqual(article, note, "og:description is identical for article and note — looks like a constant, not per-page text");
-  assert.ok(article.includes("MARKER_article"), `article's og:description does not contain its own body text: "${article}"`);
-  assert.ok(note.includes("MARKER_note"), `note's og:description does not contain its own body text: "${note}"`);
+  assert.ok(article.includes("syndicate elsewhere"), `article's og:description does not contain its own body text: "${article}"`);
+  assert.ok(note.includes("webmention spec again"), `note's og:description does not contain its own body text: "${note}"`);
 
   // like's fixture has an empty body — proves the site.description fallback
   // fires rather than emitting an empty string.

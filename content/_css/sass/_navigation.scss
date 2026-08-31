@@ -1,5 +1,37 @@
 @use "config";
 
+// Task (visual fix): source static/sass/_theme.scss:10-14 — the nav <ul>
+// (default.liquid: class="list-flush tags-rail-links") carried both classes
+// from the start, but neither had any compiled CSS backing it, so the list
+// rendered with default browser bullets. Ported verbatim, including the
+// triple-repeated selector (a specificity bump against the reset's own list
+// styles, source's own technique, not this port's invention).
+.list-flush.list-flush.list-flush {
+	list-style: "";
+	padding-left: 0;
+}
+
+// Task (visual fix): source static/sass/_theme.scss:847-872 (desktop/
+// two-column only, matching source's own media query) — nav link transition
+// plus the hover/focus-within affordances for `.tags-rail-links` and
+// `.social`. `.rail .my-avatar` (source :846-856) skipped — personal avatar,
+// this theme has no equivalent.
+@media (min-width: config.$twoColLayoutMinWidth) {
+	.navigation a[href] {
+		transition: all 200ms;
+	}
+	.tags-rail-links .z-icon {
+		width: 1.15em;
+		height: 1.15em;
+	}
+	.tags-rail-links a[href]:is(:hover, :focus-within) {
+		transform: scale(1.12);
+	}
+	.social a[href]:is(:hover, :focus-within) {
+		transform: scale(1.4);
+	}
+}
+
 /* Wide viewports (two-column layout): links sit in the .rail sidebar as
    plain, always-visible list items. No toggle needed. */
 .navigation-toggle {
