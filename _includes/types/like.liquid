@@ -1,5 +1,3 @@
-<article class="h-entry">
-  <a class="u-url" href="{{ page.url }}">{{ title }}</a>
-  {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
-  {%- if likeOf %}<p>Liked <a class="u-like-of" href="{{ likeOf }}">{{ likeOf }}</a></p>{% endif %}
-</article>
+<a class="u-url{% unless lcp %} p-name{% endunless %}" href="{{ page.url }}">{{ title }}</a>
+{%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+{%- if likeOf %}<p>Liked <a class="u-like-of" href="{{ likeOf }}">{{ likeOf }}</a></p>{% endif %}

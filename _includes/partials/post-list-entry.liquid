@@ -66,6 +66,19 @@ page renders itself.
 {%- assign photo = post.data.photo -%}
 {%- assign postType = post.data.postType -%}
 <li>
+	{%- comment -%}
+	Task S3 (audit §2.3): the type partials are body-only now — the
+	<article class="h-entry"> wrapper moved here and into
+	layouts/entry.liquid, the two callers, so each can put its own h1
+	(entry.liquid only) or nothing (here) inside the h-entry boundary that
+	actually owns it, instead of baking a heading into a partial reused by
+	both. The `lcp` variable is never assigned in this file, so the type
+	partials' own unless-lcp check on their u-url anchor (see
+	types/article.liquid) resolves true here — this render is the one that
+	puts p-name on that anchor, since no h1 exists in this context to carry
+	it instead.
+	{%- endcomment -%}
+	<article class="h-entry">
 	{% case postType %}
 		{% when "article" %}{% include "types/article.liquid" %}
 		{% when "bookmark" %}{% include "types/bookmark.liquid" %}
@@ -74,4 +87,5 @@ page renders itself.
 		{% when "reply" %}{% include "types/reply.liquid" %}
 		{% else %}{% include "types/note.liquid" %}
 	{% endcase %}
+	</article>
 </li>

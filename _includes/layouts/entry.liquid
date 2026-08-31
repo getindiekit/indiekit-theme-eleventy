@@ -1,5 +1,6 @@
 ---
 layout: layouts/default.liquid
+tmpl: page
 ---
 {% comment %} Task 18 (§7.4): was layouts/base.liquid, which skips the rail/nav
    AND the skip link (default.liquid:10-46) entirely — the six post-type
@@ -14,14 +15,29 @@ layout: layouts/default.liquid
    further down the homepage) — its own image, if it has one, is the page's
    LCP candidate. See types/photo.liquid. {% endcomment -%}
 {%- assign lcp = true -%}
-{% case postType %}
-  {% when "article" %}{% include "types/article.liquid" %}
-  {% when "bookmark" %}{% include "types/bookmark.liquid" %}
-  {% when "like" %}{% include "types/like.liquid" %}
-  {% when "photo" %}{% include "types/photo.liquid" %}
-  {% when "reply" %}{% include "types/reply.liquid" %}
-  {% else %}{% include "types/note.liquid" %}
-{% endcase %}
+{%- comment %} Task S3 (audit §2.3): <h1 class="p-name primary-title"> lives
+   here, not in types/article.liquid — that partial is shared with
+   post-list-entry.liquid's feed loop, and a heading baked into it produced a
+   second homepage <h1> and zero on the five titleless permalink types. It
+   has to sit *inside* <article class="h-entry"> to count as that entry's
+   p-name to a real mf2 parser (the exact class of bug already fixed once
+   for u-url, see post-list-entry.liquid's own comment) — so the article/
+   h-entry wrapper moves here too, and the type partials render body-only
+   (mirrors the same pattern already used, unreachably, by layouts/
+   page.liquid). Each type partial's own <a class="u-url"> still supplies
+   p-name for the feed-listing render, where this <h1> never appears — see
+   types/article.liquid for how it tells the two contexts apart. {% endcomment -%}
+<article class="h-entry">
+  <h1 class="p-name primary-title">{{ title }}</h1>
+  {% case postType %}
+    {% when "article" %}{% include "types/article.liquid" %}
+    {% when "bookmark" %}{% include "types/bookmark.liquid" %}
+    {% when "like" %}{% include "types/like.liquid" %}
+    {% when "photo" %}{% include "types/photo.liquid" %}
+    {% when "reply" %}{% include "types/reply.liquid" %}
+    {% else %}{% include "types/note.liquid" %}
+  {% endcase %}
+</article>
 
 {%- capture absoluteUrl %}{{ site.url }}{{ page.url }}{% endcapture -%}
 {% include "webmentionlist.liquid" %}

@@ -1,12 +1,20 @@
-<article class="h-entry">
-  {%- if title %}<h1 class="p-name"><a class="u-url" href="{{ page.url }}">{{ title }}</a></h1>{% endif %}
-  {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
-  {%- comment %} Task 18 (§7.4): source (page.liquid:9-11, post.liquid:55-57)
-  wraps the content div's body in <heading-anchors selector="h2,h3">. h2/h3 is
-  the source's own choice (its h1 is reserved for the page/post title above,
-  matching this partial's own <h1 class="p-name"> — content headings start at
-  h2). IdAttributePlugin (eleventy.config.js) already stamps every heading
-  with an id server-side; heading-anchors adds the visible anchor link as a
-  progressive enhancement on top, so the ids work with JS disabled. {% endcomment -%}
-  <div class="e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
-</article>
+<a class="u-url{% unless lcp %} p-name{% endunless %}" href="{{ page.url }}">{{ title }}</a>
+{%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+{%- comment %} Task S3 (audit §2.3): <h1 class="p-name primary-title"> moved
+to layouts/entry.liquid — the standalone permalink's <article class="h-entry">
+wrapper (also moved, to entry.liquid and post-list-entry.liquid, the two
+callers) now owns it, so it's the h-entry's title there. This partial no
+longer renders inside a title context of its own: when it's the whole page
+(entry.liquid sets `lcp`), the h1 already supplies p-name, so this anchor
+stays a plain u-url self-link, matching bookmark/like/note/photo/reply below
+— when it's a feed-listing entry (post-list-entry.liquid, `lcp` unset), no
+h1 exists here at all, so the anchor carries p-name itself, or the feed's
+h-entry would have no name. {% endcomment -%}
+{%- comment %} Task 18 (§7.4): source (page.liquid:9-11, post.liquid:55-57)
+wraps the content div's body in <heading-anchors selector="h2,h3">. h2/h3 is
+the source's own choice (its h1 is reserved for the page/post title above,
+matching entry.liquid's own <h1 class="p-name"> — content headings start at
+h2). IdAttributePlugin (eleventy.config.js) already stamps every heading
+with an id server-side; heading-anchors adds the visible anchor link as a
+progressive enhancement on top, so the ids work with JS disabled. {% endcomment -%}
+<div class="content-grid e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>

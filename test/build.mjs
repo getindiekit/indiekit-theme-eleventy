@@ -1235,6 +1235,95 @@ check("every h-entry in the homepage listing carries its own u-url", () => {
   );
 });
 
+check("every post permalink carries tmpl-page and has exactly one <h1>; the homepage has exactly one", () => {
+  // Task S3 (audit §2.3–§2.5): entry.liquid set no `tmpl`, so .content-grid,
+  // the reading measure, .primary-title's width clamp and the desktop type
+  // ramp never applied to a single real post — and <h1 class="p-name"> lived
+  // inside types/article.liquid, shared with the feed listing, so five of
+  // six permalink types shipped zero <h1> and the homepage shipped two
+  // (article's own duplicated into the feed loop). _site/opengraph/** is a
+  // separate page set rendered through layouts/opengraph.liquid and
+  // legitimately carries neither tmpl-page nor this <h1> convention —
+  // excluded by construction below (the per-type globs never reach it),
+  // matching the established exemption used elsewhere in this suite.
+  const types = ["articles", "notes", "bookmarks", "likes", "replies", "photos"];
+  let checkedPages = 0;
+  for (const type of types) {
+    const files = globSync(`_site/${type}/**/index.html`);
+    assert.ok(files.length > 0, `no built page under _site/${type}/ — scan is vacuous`);
+    for (const file of files) {
+      checkedPages++;
+      const html = readFileSync(file, "utf8");
+      const h1Count = (html.match(/<h1[\s>]/g) || []).length;
+      assert.equal(h1Count, 1, `${file}: expected exactly one <h1>, found ${h1Count}`);
+      const htmlTag = html.match(/<html\b[^>]*>/)?.[0] ?? "";
+      assert.ok(
+        /\bclass="[^"]*\btmpl-page\b/.test(htmlTag),
+        `${file}: <html> does not carry tmpl-page (${htmlTag})`,
+      );
+    }
+  }
+  assert.ok(checkedPages > 0, "found no post permalink pages to check — scan is vacuous");
+
+  const home = readFileSync("_site/index.html", "utf8");
+  const homeH1Count = (home.match(/<h1[\s>]/g) || []).length;
+  assert.equal(homeH1Count, 1, `homepage: expected exactly one <h1>, found ${homeH1Count}`);
+});
+
+check("every post's content wrapper carries both content-grid and e-content", () => {
+  // Task S3 (audit §2.5): the six type partials wrapped their body in
+  // <div class="e-content"> alone — content-grid never appeared in built
+  // output, so .tmpl-page .content-grid's reading-measure grid never
+  // applied to a real post. "like" has no e-content div at all (its body is
+  // just a URL — see "heading-anchors wraps..." above) and is excluded
+  // here for the same reason, not missed.
+  const types = ["articles", "notes", "bookmarks", "replies", "photos"];
+  let checkedPages = 0;
+  for (const type of types) {
+    const files = globSync(`_site/${type}/**/index.html`);
+    assert.ok(files.length > 0, `no built page under _site/${type}/ — scan is vacuous`);
+    for (const file of files) {
+      checkedPages++;
+      const html = readFileSync(file, "utf8");
+      assert.ok(
+        /class="[^"]*\bcontent-grid\b[^"]*\be-content\b[^"]*"/.test(html) ||
+          /class="[^"]*\be-content\b[^"]*\bcontent-grid\b[^"]*"/.test(html),
+        `${file}: no element carries both content-grid and e-content`,
+      );
+    }
+  }
+  assert.ok(checkedPages > 0, "found no pages to check — scan is vacuous");
+});
+
+check("every h-entry — permalink and feed listing alike — still carries a p-name", () => {
+  // Task S3: moving <h1 class="p-name"> out of types/article.liquid into
+  // entry.liquid must not silently drop p-name from the feed listing, where
+  // entry.liquid's <h1> never renders (post-list-entry.liquid calls the
+  // type partials directly, not through entry.liquid) — an h-entry with no
+  // name at all is a real mf2 regression, not just a missing heading.
+  const homeBlocks = extractHEntryBlocks(readFileSync("_site/index.html", "utf8"));
+  assert.equal(homeBlocks.length, 7, `expected 7 h-entry blocks in the feed, found ${homeBlocks.length}`);
+  const feedMissing = homeBlocks
+    .map((block, i) => ({ i, hasName: /\bp-name\b/.test(block) }))
+    .filter((b) => !b.hasName);
+  assert.equal(
+    feedMissing.length,
+    0,
+    `${feedMissing.length} feed h-entry blocks have no p-name (indices: ${feedMissing.map((m) => m.i).join(", ")})`,
+  );
+
+  const types = ["articles", "notes", "bookmarks", "likes", "replies", "photos"];
+  for (const type of types) {
+    const files = globSync(`_site/${type}/**/index.html`);
+    for (const file of files) {
+      const html = readFileSync(file, "utf8");
+      const blocks = extractHEntryBlocks(html);
+      assert.equal(blocks.length, 1, `${file}: expected exactly one h-entry, found ${blocks.length}`);
+      assert.ok(/\bp-name\b/.test(blocks[0]), `${file}: its h-entry has no p-name`);
+    }
+  }
+});
+
 check("a Micropub draft is dropped from pages, the feed and the h-feed in a production build", () => {
   // Task 17. content/notes/fixture-draft-note.md carries `draft: true` (the
   // field @indiekit/preset-eleventy actually writes for a Micropub
@@ -2408,8 +2497,9 @@ check("heading-anchors wraps the real e-content body in every post type that has
   // heading would still pass every check above. Source (page.liquid:9-11,
   // post.liquid:55-57) wraps its content div's body in
   // <heading-anchors selector="h2,h3"> — h2,h3 because h1 is reserved for
-  // the page/post title (this partial's own <h1 class="p-name">), so body
-  // content headings start at h2. "like" has no e-content div (its body is
+  // the page/post title (layouts/entry.liquid's own <h1 class="p-name">,
+  // Task S3), so body content headings start at h2. "like" has no e-content
+  // div (its body is
   // just a URL, see types/like.liquid) — deliberately excluded, not missed.
   const types = ["article", "note", "bookmark", "reply", "photo"];
   for (const type of types) {
