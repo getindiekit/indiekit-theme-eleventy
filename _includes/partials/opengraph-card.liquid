@@ -23,7 +23,16 @@ real headline — the opposite of the honest-sparse-card requirement below.
 {%- assign date = d.date -%}
 {%- assign photoUrl = "" -%}
 {%- if d.photo and d.photo.size > 0 -%}{%- assign photoUrl = d.photo[0].url -%}{%- endif -%}
-<main class="og og-{{ type }}"{% if type == "photo" and photoUrl != "" %} style="--og-bgimage: url('{{ site.url }}{{ photoUrl }}')"{% endif %}>
+{%- comment %} Task 20 review fix (Finding 1): photoUrl (d.photo[0].url) and
+headline (d.title, or the note/reply's own content) are both Micropub-
+supplied. photoUrl below is raw string concatenation into a style="" attribute
+— unlike ogImageSource (imagePlugin.js), which runs photo URLs through
+`new URL()`/`absoluteSiteUrl` and gets `"`/`<`/`>` percent-encoded for free,
+this line never goes through that helper, so an unescaped `"` in a photo URL
+would break out of style="..." into raw markup. headline below is escaped for
+the same reason — same defect class as _11ty/imageAvatarPlugin.js's
+escapeAttr fix. {% endcomment -%}
+<main class="og og-{{ type }}"{% if type == "photo" and photoUrl != "" %} style="--og-bgimage: url('{{ site.url }}{{ photoUrl | escape }}')"{% endif %}>
 {%- if type == "bookmark" or type == "like" or type == "reply" -%}
 	{%- assign kickerUrl = d.bookmarkOf | default: d.likeOf | default: d.inReplyTo -%}
 	<p class="og-kicker"><span class="og-box">{% case type %}{% when "bookmark" %}Bookmarked{% when "like" %}Liked{% when "reply" %}Reply to{% endcase %} · {{ kickerUrl | hostnameFromUrl }}</span></p>
@@ -52,7 +61,7 @@ theme has no "liked page title" data to show, and inventing text where there
 is none would be dishonest — see spec §F.6, "a like is the one type where a
 near-empty card is honest." Kicker + hostname above carry it. {% endcomment -%}
 {%- if headline and headline != "" -%}
-<h1 class="og-hed{% if type == "note" or type == "reply" %} og-hed-body{% endif %}{% if type == "photo" %} og-hed-photo{% endif %}"><span class="og-box">{{ headline }}</span></h1>
+<h1 class="og-hed{% if type == "note" or type == "reply" %} og-hed-body{% endif %}{% if type == "photo" %} og-hed-photo{% endif %}"><span class="og-box">{{ headline | escape }}</span></h1>
 {%- endif -%}
 <p class="og-meta">
 	<strong class="og-box">{{ site.name }}</strong>

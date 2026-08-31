@@ -2810,6 +2810,193 @@ check("OG card pages appear in neither the Atom feed nor the homepage's h-feed",
   assert.ok(!home.includes("/opengraph/"), "an OG card URL leaked into the homepage's h-feed");
 });
 
+// --- Task 20 review fix: attribute-injection and description-chain checks --
+
+await checkAsync(
+  "every meta content attribute — and the OG card's own render — survives an untrusted title/photo URL containing quotes, ampersands and angle brackets",
+  async () => {
+    // Review finding (blocker): og:image:alt, twitter:title, twitter:
+    // description, twitter:image:alt (added by this task), and the
+    // pre-existing og:title/og:description, all interpolated `title`/
+    // `description` into a `content="..."` attribute with no escaping —
+    // Micropub post titles are remote input. Reproduces the review's exact
+    // repro string. Also covers opengraph-card.liquid's own <h1> (the same
+    // title reaches the card's own heading) and its style="--og-bgimage:
+    // url('...')" attribute (a photo URL is equally remote input, and was
+    // never escaped at all, unlike og:image which goes through `new URL()`
+    // and gets "/</>/ percent-encoded for free — see _includes/partials/
+    // opengraph-card.liquid's own comment).
+    const articlePath = "content/articles/fixture-article.md";
+    const photoPath = "content/photos/fixture-photo.md";
+    const originalArticle = readFileSync(articlePath, "utf8");
+    const originalPhoto = readFileSync(photoPath, "utf8");
+    const outDir = "_site-attribute-injection-check";
+    // The review's own reproduction string, verbatim.
+    const maliciousTitle = 'He said "hi" & <b>bold</b>';
+    const maliciousPhotoUrl = '/media/sample.png" data-pwned="1';
+
+    try {
+      assert.ok(
+        originalArticle.includes("title: An example article"),
+        "fixture-article.md's title line has changed shape — update this check's replace target",
+      );
+      writeFileSync(
+        articlePath,
+        originalArticle.replace(
+          "title: An example article",
+          `title: ${JSON.stringify(maliciousTitle)}`,
+        ),
+      );
+      assert.ok(
+        originalPhoto.includes("url: /media/sample.png"),
+        "fixture-photo.md's photo url line has changed shape — update this check's replace target",
+      );
+      writeFileSync(
+        photoPath,
+        originalPhoto.replace(
+          "url: /media/sample.png",
+          `url: ${JSON.stringify(maliciousPhotoUrl)}`,
+        ),
+      );
+
+      rmSync(outDir, { recursive: true, force: true });
+      execFileSync(
+        process.execPath,
+        ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe", env: { ...process.env, NPM_DOWNLOADS_OFFLINE: "1" } },
+      );
+
+      // 1. Every meta tag that interpolates title/description must parse as
+      // a single well-formed `content="..."` attribute — not merely contain
+      // the escaped string somewhere. A regex requiring the value to end in
+      // `">` immediately (via `[^"]*` bounded by the surrounding literal
+      // quotes) fails to match at all if an embedded raw `"` terminated the
+      // attribute early, or a raw `<`/`>` corrupted the tag around it.
+      const articleHtml = readFileSync(`${outDir}/articles/fixture-article/index.html`, "utf8");
+      const metaPatterns = {
+        "og:title": /<meta property="og:title" content="([^"]*)">/,
+        "og:description": /<meta property="og:description" content="([^"]*)">/,
+        "og:image:alt": /<meta property="og:image:alt" content="([^"]*)">/,
+        "twitter:title": /<meta name="twitter:title" content="([^"]*)">/,
+        "twitter:description": /<meta name="twitter:description" content="([^"]*)">/,
+        "twitter:image:alt": /<meta name="twitter:image:alt" content="([^"]*)">/,
+        description: /<meta name="description" content="([^"]*)">/,
+      };
+      const values = {};
+      for (const [name, pattern] of Object.entries(metaPatterns)) {
+        const match = articleHtml.match(pattern);
+        assert.ok(
+          match,
+          `${name}'s meta tag did not parse as a single well-formed content="..." attribute — the malicious title broke out of it`,
+        );
+        values[name] = match[1];
+        assert.ok(
+          !match[1].includes("<"),
+          `${name}'s content attribute contains a raw "<" — escaping failed: ${match[1]}`,
+        );
+      }
+
+      // 2. Prove escaping actually ran (not just "nothing visibly broke") —
+      // the three tags that embed the title verbatim must carry its escaped
+      // form: an HTML entity for the embedded quote, the ampersand, and the
+      // <b> tag.
+      for (const name of ["og:title", "twitter:title", "og:image:alt", "twitter:image:alt"]) {
+        const v = values[name];
+        assert.ok(
+          /&#34;|&quot;/.test(v),
+          `${name} does not contain an escaped quote — title escaping is not wired up: ${v}`,
+        );
+        assert.ok(v.includes("&amp;"), `${name} does not contain an escaped ampersand: ${v}`);
+        assert.ok(v.includes("&lt;b&gt;"), `${name} does not contain an escaped <b> tag: ${v}`);
+      }
+
+      // 3. The OG card's own heading (opengraph-card.liquid) — the review's
+      // second reproduction: the raw <b> must never appear as a real element
+      // in the card markup, only as its escaped text form.
+      const cardHtml = readFileSync(`${outDir}/opengraph/articles/fixture-article/index.html`, "utf8");
+      assert.ok(
+        !cardHtml.includes("<b>bold</b>"),
+        `OG card headline contains a literal, unescaped <b> element: ${cardHtml}`,
+      );
+      assert.ok(
+        cardHtml.includes("&lt;b&gt;bold&lt;/b&gt;"),
+        `OG card headline is not the escaped form of the malicious title: ${cardHtml}`,
+      );
+
+      // 4. The photo card's style="--og-bgimage: url('...')" attribute — a
+      // raw quote in the photo URL must not break out of it and inject a
+      // real HTML attribute.
+      const photoCardHtml = readFileSync(`${outDir}/opengraph/photos/fixture-photo/index.html`, "utf8");
+      assert.ok(
+        !photoCardHtml.includes('data-pwned="1"'),
+        `photo OG card's style attribute leaked a real, unescaped attribute from the photo URL: ${photoCardHtml}`,
+      );
+      const styleMatch = photoCardHtml.match(/<main class="[^"]*" style="([^"]*)">/);
+      assert.ok(
+        styleMatch,
+        `photo OG card's <main style="..."> attribute did not parse as a single well-formed attribute: ${photoCardHtml}`,
+      );
+    } finally {
+      writeFileSync(articlePath, originalArticle);
+      writeFileSync(photoPath, originalPhoto);
+      rmSync(outDir, { recursive: true, force: true });
+      assert.equal(
+        readFileSync(articlePath, "utf8"),
+        originalArticle,
+        "content/articles/fixture-article.md was not restored to its original contents",
+      );
+      assert.equal(
+        readFileSync(photoPath, "utf8"),
+        originalPhoto,
+        "content/photos/fixture-photo.md was not restored to its original contents",
+      );
+    }
+  },
+);
+
+check("og:description is the page's own text, never the old \"A post by \" placeholder, and differs across post types", () => {
+  // Review finding (medium): og:description (and twitter:description, and
+  // meta name=description) rendered the literal string "A post by " on
+  // every page, because site.author.name is empty by design (this theme is
+  // neutral). Spec §F.7's chain: explicit `description`, else the page's
+  // own body text, else site.description — asserted against the real
+  // baseline build (no fixture mutation needed: none of the fixtures set an
+  // explicit `description`, so every page here already exercises the
+  // "own body" or "site fallback" branch of the chain).
+  const article = readFileSync("_site/articles/fixture-article/index.html", "utf8").match(
+    /<meta property="og:description" content="([^"]*)">/,
+  )[1];
+  const note = readFileSync("_site/notes/fixture-note/index.html", "utf8").match(
+    /<meta property="og:description" content="([^"]*)">/,
+  )[1];
+  const like = readFileSync("_site/likes/fixture-like/index.html", "utf8").match(
+    /<meta property="og:description" content="([^"]*)">/,
+  )[1];
+
+  for (const [name, value] of [["article", article], ["note", note], ["like", like]]) {
+    assert.notEqual(value, "", `${name}'s og:description is empty`);
+    assert.ok(
+      !value.startsWith("A post by"),
+      `${name}'s og:description is still the old placeholder text: "${value}"`,
+    );
+  }
+
+  // article and note each show their own fixture body text (MARKER_article /
+  // MARKER_note) — differs across post types, so a constant string would
+  // fail this.
+  assert.notEqual(article, note, "og:description is identical for article and note — looks like a constant, not per-page text");
+  assert.ok(article.includes("MARKER_article"), `article's og:description does not contain its own body text: "${article}"`);
+  assert.ok(note.includes("MARKER_note"), `note's og:description does not contain its own body text: "${note}"`);
+
+  // like's fixture has an empty body — proves the site.description fallback
+  // fires rather than emitting an empty string.
+  assert.equal(
+    like,
+    "A reference Eleventy theme for Indiekit.",
+    `like's og:description (empty body, no explicit description) should fall back to site.description, got: "${like}"`,
+  );
+});
+
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;
 const skipNote = skipped ? `, ${skipped} skipped` : "";

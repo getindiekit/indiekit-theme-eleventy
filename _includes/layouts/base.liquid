@@ -1,4 +1,53 @@
+---
+eleventyImport:
+  collections: ["post"]
+---
+{%- comment %} Task 20 review fix (Finding 2): this layout is the root of
+every page's layout chain, so declaring the collections.post dependency here
+once — rather than on every individual content file — covers all of them;
+matches the same eleventyImport convention content/opengraph-images.liquid
+already uses for its own collections.post read (test/build.mjs, "templates
+reading collections declare eleventyImport where it can take effect").
+
+Deliberately collections.post, not collections.all: only post pages have a
+`selfEntry` to look up below (homepage/about/search fall straight through to
+site.description, no lookup needed). collections.all also transitively pulls
+in @11ty/eleventy-plugin-rss's virtual feed template — which itself declares
+`eleventyImport: { collections: ["post"] }` and is otherwise excluded only
+from collections.post, not collections.all (node_modules/@11ty/eleventy-
+plugin-rss/src/virtualTemplate.js) — creating a real dependency-graph
+interaction: proven empirically (25 warm-up Eleventy() instantiations in one
+process, then a build+serve pair, matching test/build.mjs's "OG card page
+set is gated..." check) to drop one post's OG card from the paginated set.
+collections.post alone does not reproduce it, and is exactly what
+content/opengraph-images.liquid already depends on without issue. {% endcomment -%}
 {%- capture fullUrl %}{{ site.url }}{{ page.url }}{% endcapture -%}
+{%- comment %} Task 20 review fix (Finding 2): "A post by " was a literal
+string — site.author.name is empty by design (theme is neutral). Compute a
+real description per spec §F.7's chain: explicit front matter `description`,
+else this page's own body text (plain, truncated), else the site's own
+description — never empty, never the old placeholder.
+
+`content` here is NOT this page's own body: base.liquid is the outermost
+layout, so by this point `content` already holds default.liquid's full
+rendered output (skip link + nav rail + menu) with the real page body buried
+inside it (see default.liquid, entry.liquid, page.liquid). Piping that
+through ogPlain would put "Skip to Content <site name> Home About Archives
+Projects Speaking Uses Domains Menu" ahead of the real text on every page.
+Look this page up in collections.post instead (see the comment on
+eleventyImport above for why collections.post and not collections.all) and
+read `.templateContent` — Eleventy's pre-layout render of just this page's
+own body, the same property content/opengraph-images.liquid's own partial
+already reads via `entry.templateContent` (see that file's comment),
+resolved here by URL instead of being handed a pagination alias directly.
+Safe to read here: collections (including templateContent) are fully
+resolved before any individual page is rendered/written — the same reason
+the OG card partial already does this without a circular-reference error.
+A non-post page (homepage, search, about) has no entry in collections.post,
+so `selfEntry` is simply undefined there and the chain falls straight
+through to site.description below — not an error case. {% endcomment -%}
+{%- assign selfEntry = collections.post | where: "url", page.url | first -%}
+{%- assign ogDesc = description | default: selfEntry.templateContent | ogPlain | ogTruncate: 200 | default: site.description -%}
 <!doctype html>
 <html lang="en"{% if tmpl or templateclass or classes.html %} class="{% if tmpl %}tmpl-{{ tmpl }}{% endif %}{% if templateclass %} {{ templateclass }}{% endif %}{%- if classes.html %} {{ classes.html }}{% endif -%}"{% endif %}{% if eleventy.env.runMode == "serve" %} data-eleventy-runmode="{{ eleventy.env.runMode }}"{% endif %}>
 	<head>
@@ -11,7 +60,7 @@
 		<link rel="preload" href="/static/fonts/hex-franklin/HEX_Franklin_v0.2_Tyght_Variable-subset.woff2" as="font" type="font/woff2" crossorigin>
 
 		<meta name="author" content="{{ site.author.name }}">
-		<meta name="description" content="{% if description %}{{ description }}, {% endif %}{% if title %}A post by {% endif %}{{ site.author.name }}">
+		<meta name="description" content="{{ ogDesc | escape }}">
 		<meta name="generator" content="{{ eleventy.generator }}">
 
 {%- if noindex %}
@@ -40,14 +89,28 @@
 		(contrast the port source, imagePlugin.js:219 — see
 		content/opengraph-images.liquid's front-matter comment for why that
 		isn't ported). {% endcomment %}
-		<meta property="og:title" content="{% if title %}{{ title }}—{{ site.name }}{% else %}{{ site.name }}{% endif %}">
+{%- comment %} Task 20 review fix (Finding 1): title/description are
+Micropub-supplied, i.e. remote input — every interpolation of them (and of
+ogAlt, which embeds title too) into an attribute value below is `| escape`d.
+Same defect class as _11ty/imageAvatarPlugin.js's escapeAttr fix: an
+unescaped value here breaks out of `content="..."` at the first `"` and
+leaks raw markup into the tag. og:image/twitter:image are NOT escaped here —
+they're URLs built by `absoluteSiteUrl`/`encodeURIComponent` in
+_11ty/imagePlugin.js, which already percent-encode `"`/`<`/`>` in the path,
+so no raw quote or bracket ever reaches this attribute. ogAlt is captured
+once and reused for both og:image:alt and twitter:image:alt — a shortcode
+call can't be piped through `| escape` directly (`{% tag %} | filter` isn't
+valid Liquid), so it's captured into a variable first, same as `fullUrl`
+above. {% endcomment -%}
+{%- capture ogAlt %}{% ogImageAlt postType, photo, title %}{% endcapture -%}
+		<meta property="og:title" content="{% if title %}{{ title | escape }}—{{ site.name }}{% else %}{{ site.name }}{% endif %}">
 		<meta property="og:type" content="{% if postType %}article{% else %}website{% endif %}">
 		<meta property="og:site_name" content="{{ site.name }}">
-		<meta property="og:description" content="{% if description %}{{ description }}, {% endif %}{% if title %}A post by {% endif %}{{ site.author.name }}">
+		<meta property="og:description" content="{{ ogDesc | escape }}">
 		<meta property="og:image" content="{% ogImageSource page.url, postType, photo %}">
 		<meta property="og:image:width" content="1200">
 		<meta property="og:image:height" content="630">
-		<meta property="og:image:alt" content="{% ogImageAlt postType, photo, title %}">
+		<meta property="og:image:alt" content="{{ ogAlt | escape }}">
 		<meta property="og:url" content="{{ site.url }}{{ page.url }}">
 {%- if postType and date %}
 		<meta property="article:published_time" content="{{ date | isoInstant }}">
@@ -56,10 +119,10 @@
 		<!-- X / Twitter: og:* covers most of it; these five change the card
 		size and are cheap to add (spec §G.11 — source has none at all). -->
 		<meta name="twitter:card" content="summary_large_image">
-		<meta name="twitter:title" content="{% if title %}{{ title }}—{{ site.name }}{% else %}{{ site.name }}{% endif %}">
-		<meta name="twitter:description" content="{% if description %}{{ description }}, {% endif %}{% if title %}A post by {% endif %}{{ site.author.name }}">
+		<meta name="twitter:title" content="{% if title %}{{ title | escape }}—{{ site.name }}{% else %}{{ site.name }}{% endif %}">
+		<meta name="twitter:description" content="{{ ogDesc | escape }}">
 		<meta name="twitter:image" content="{% ogImageSource page.url, postType, photo %}">
-		<meta name="twitter:image:alt" content="{% ogImageAlt postType, photo, title %}">
+		<meta name="twitter:image:alt" content="{{ ogAlt | escape }}">
 
 		<!-- SEO/Feeds -->
 		<link rel="canonical" href="{{ fullUrl }}">
