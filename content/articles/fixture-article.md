@@ -3,6 +3,8 @@ date: 2026-08-30T10:00:00.000Z
 title: Publishing to your own site first
 ---
 
+[[toc]]
+
 The IndieWeb idea is simple enough to state in a sentence: publish on your own
 site, then syndicate elsewhere. The part that takes work is everything
 underneath — a permalink you control, markup other sites can read, and a way to

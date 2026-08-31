@@ -70,7 +70,7 @@ npm install
 npm run build      # one-off production build to _site/
 npm start           # eleventy --serve --incremental, dev server on :8090
 npm test            # runs test/build.mjs against a real build
-npm run search-index  # builds the Pagefind search index (separate step, see below)
+# (the search index is built automatically as part of every build)
 ```
 
 `node_modules` must exist before building — the deferred JS bundle
@@ -117,14 +117,18 @@ Search is client-side, powered by [Pagefind](https://pagefind.app/), and
 the page never looks broken, but it won't actually return results until
 Pagefind's client bundle loads.
 
-Building the search index is a **separate step** from building the site:
+The index is built as part of the build itself, from an `eleventy.after` hook,
+so there is no separate step to forget:
 
 ```sh
-npm run build          # 1. build the site into _site/
-npm run search-index   # 2. index it — indexes only content pages, not the homepage or /search/ itself
+npm run build          # builds the site and its search index into _site/
 ```
 
-Forgetting step 2 means `_site/` has a search page with no index behind it.
+This matters more than it looks. `pagefind-search.js` replaces its own light-DOM
+children before loading Pagefind's UI — so if the index is missing, the
+component has already removed the no-JS form and cannot replace it, and the
+page renders empty. Indexing from the build means that cannot happen. Indexing
+is skipped under `--serve`, where the cost is not worth it.
 
 ## Open Graph cards
 

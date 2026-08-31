@@ -8,6 +8,7 @@ import pluginImageAvatar from "./_11ty/imageAvatarPlugin.js";
 import pluginWebmentions from "./_11ty/webmentionsPlugin.js";
 import pluginWebc from "@11ty/eleventy-plugin-webc";
 import { feedPlugin } from "@11ty/eleventy-plugin-rss";
+import markdownItToc from "markdown-it-table-of-contents";
 import { IdAttributePlugin } from "@11ty/eleventy";
 import fontAwesomePlugin from "@11ty/font-awesome";
 
@@ -153,6 +154,14 @@ export default function (eleventyConfig) {
   // actually needs instead — narrow enough that no other project-root file,
   // and no other npm package, is reachable this way.
   eleventyConfig.setLiquidOptions({
+    // Matches the port source (eleventy.config.js:100-102). Without it Liquid
+    // uses its own truthiness rules, where "" and 0 are TRUTHY — so a post with
+    // an empty string field, or a genuine zero, branches the opposite way from
+    // the source with nothing looking broken.
+    jsTruthy: true,
+    // Narrowed from the source's default. A "." root would let a Micropub-
+    // authored post body {% include %} any project file; this reaches only the
+    // one package the deferred bundle needs.
     root: ["_includes", "content", "node_modules/@11ty/is-land"],
   });
 
@@ -163,6 +172,26 @@ export default function (eleventyConfig) {
   eleventyConfig.addPlugin(pluginWebmentions);
   eleventyConfig.addPlugin(pluginWebc, { components: "_components/**/*.webc" });
   eleventyConfig.addPlugin(IdAttributePlugin);
+
+  // Wire [[toc]] in markdown — ported from the port source
+  // (eleventy.config.js:570-584). markdown-it-table-of-contents was already a
+  // pinned dependency here but was never registered, so `[[toc]]` rendered as
+  // literal text in a post body.
+  //
+  // The slugify is Eleventy's own built-in filter, exactly as the source does
+  // it (`eleventyConfig.getFilter("slugify")`) — no extra dependency, and it
+  // is the same slugifier IdAttributePlugin above uses to generate heading
+  // ids, so the generated links actually resolve to the headings.
+  eleventyConfig.amendLibrary("md", (mdLib) => {
+    const slugify = eleventyConfig.getFilter("slugify");
+    mdLib.use(markdownItToc, {
+      includeLevel: [2, 3, 4],
+      slugify: (str) => slugify(str),
+      format: (heading) => heading,
+      transformLink: (link) =>
+        typeof link === "string" ? link.replace(/%60/g, "") : link,
+    });
+  });
 
   // Source (zachleat.com) passes { transform: false, shortcode: "icon",
   // defaultAttributes: {...} } — reproduced verbatim (paths/site identity

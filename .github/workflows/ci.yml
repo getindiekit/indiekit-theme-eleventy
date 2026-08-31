@@ -18,5 +18,3 @@ jobs:
         run: npm run build
       - name: Test
         run: npm test
-      - name: Search index
-        run: npm run search-index

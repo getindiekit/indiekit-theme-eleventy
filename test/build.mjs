@@ -431,6 +431,63 @@ check("a plain build produces a working search index", () => {
   assert.ok(fragments.length > 0, "pagefind wrote no fragments — nothing was indexed");
 });
 
+check("every class the markup emits has a rule in the compiled CSS", () => {
+  // This is the guard for the failure that made this theme ship visually
+  // broken: 82 of its 107 CSS selectors targeted markup it never emitted, and
+  // 23 of the 48 classes it did emit had no CSS at all — because the port took
+  // the source's stylesheet and separately invented new markup. Every
+  // structural test passed the whole time.
+  //
+  // Microformats classes are deliberately exempt: h-entry, e-content, u-photo
+  // and friends carry MEANING, not styling — the source's own classes sit
+  // alongside them and carry the visuals. Styling them would be the mistake.
+  const mf2 = new Set([
+    "h-entry", "h-feed", "h-card", "e-content", "p-name", "p-author",
+    "u-url", "u-photo", "u-like-of", "u-in-reply-to", "u-bookmark-of",
+    "dt-published", "u-syndication",
+    // Emitted by the webmention templates when fixture data is loaded:
+    // h-cite is the mf2 vocabulary for a cited/quoted post, u-comment and
+    // p-content are its properties. Semantic, like the rest of this list.
+    "h-cite", "u-comment", "p-content",
+  ]);
+  // Unstyled in the port source too — its own webmentionlist.liquid uses these
+  // exact class names with no Sass behind them. Faithful, not a gap.
+  const unstyledInSource = new Set([
+    "button", "hed-h4",
+    // markdown-it-table-of-contents' default container. The source wires the
+    // same plugin and never styles this class either — the generated <ul>
+    // inherits the theme's list styling. Verified: zero occurrences in its
+    // entire Sass tree.
+    "table-of-contents",
+  ]);
+
+  const pages = globSync("_site/**/*.html").filter((f) => !f.includes("/opengraph/"));
+  assert.ok(pages.length > 0, "no pages found — this check scanned nothing");
+  const used = new Set();
+  for (const file of pages) {
+    for (const m of readFileSync(file, "utf8").matchAll(/class="([^"]+)"/g)) {
+      for (const c of m[1].split(/\s+/)) if (c) used.add(c);
+    }
+  }
+  assert.ok(used.size > 0, "no classes found in markup — this check is vacuous");
+
+  // Scoped to this theme's own two bundles: an unscoped glob picks up
+  // opengraph.css and pagefind's shipped UI CSS and manufactures a pass.
+  const css = [...globSync("_site/_css/initial.css"), ...globSync("_site/_css/defer.css")]
+    .map((f) => readFileSync(f, "utf8")).join("");
+  assert.ok(css.length > 0, "no compiled CSS found — this check is vacuous");
+  const defined = new Set([...css.matchAll(/\.([A-Za-z][\w-]*)/g)].map((m) => m[1]));
+
+  const unstyled = [...used].filter(
+    (c) => !defined.has(c) && !mf2.has(c) && !unstyledInSource.has(c),
+  );
+  assert.deepEqual(
+    unstyled.sort(),
+    [],
+    `classes emitted by the markup with no rule in the compiled CSS: ${unstyled.join(", ")}`,
+  );
+});
+
 check("every internal link on every page resolves to something built", () => {
   // The nav shipped six hardcoded links copied from the port source's own
   // page list (/uses/, /domains/, /projects/, /web/speaking/) — all 404 here.
@@ -3032,7 +3089,10 @@ check("each post type's OG card carries its own type-appropriate content, not an
   // photo: still gets a card (archive consistency), captioned from its own
   // alt text, with the photo as the card's own background.
   const photo = card("/photos/fixture-photo/");
-  assert.ok(photo.includes("A sample image"), `photo card missing its caption: ${photo}`);
+  assert.ok(
+      photo.includes("A long exposure of the coast at dusk"),
+      `photo card missing its caption: ${photo}`,
+    );
   assert.ok(
     photo.includes("--og-bgimage: url('http://localhost:8080/media/sample.png')"),
     `photo card background does not reference the post's own photo: ${photo}`,
