@@ -61,6 +61,33 @@ export default function (eleventyConfig) {
   // a generated one. Layouts use this flag to keep a synthesised heading in the
   // document for microformats and screen readers without rendering it as a hero
   // heading — "PHOTO · 30 AUG 2026" is not a page title.
+  // Build the Pagefind search index as part of the build itself.
+  //
+  // This was a separate `npm run search-index` script, which broke the search
+  // page twice: pagefind-search.js's connectedCallback() calls
+  // replaceChildren() — removing the light-DOM fallback form — and then loads
+  // /pagefind/pagefind-ui.js. If that directory is absent the component has
+  // destroyed the fallback and cannot replace it, so the page renders empty.
+  //
+  // Chaining the script onto `npm run build` was not enough: several checks in
+  // test/build.mjs run `npx @11ty/eleventy` directly, so `npm test` rebuilt
+  // _site without the index and left the search page broken every time.
+  // Running it from eleventy.after means any Eleventy build produces a working
+  // search page — there is no longer a way to build the site without it.
+  //
+  // Scoped to the six post-type directories so OG cards, the search page
+  // itself and the homepage never enter the index.
+  eleventyConfig.on("eleventy.after", async ({ dir, runMode }) => {
+    if (runMode === "serve" || runMode === "watch") return; // dev: skip the cost
+    const { createIndex } = await import("pagefind");
+    const { index } = await createIndex();
+    await index.addDirectory({
+      path: dir.output,
+      glob: "{articles,bookmarks,likes,notes,photos,replies}/**/*.html",
+    });
+    await index.writeFiles({ outputPath: `${dir.output}/pagefind` });
+  });
+
   eleventyConfig.addPreprocessor("real-title", "*", (data) => {
     data.title_isReal =
       Boolean(data.title) ||

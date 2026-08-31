@@ -6,7 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "npx @11ty/eleventy && npm run search-index",
+    "build": "npx @11ty/eleventy",
     "start": "npx @11ty/eleventy --serve --port=8090 --incremental",
     "clean": "rm -rf _site .cache",
     "search-index": "npx pagefind --site _site --glob \"{articles,bookmarks,likes,notes,photos,replies}/**/*.html\"",

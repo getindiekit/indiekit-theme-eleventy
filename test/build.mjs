@@ -410,6 +410,27 @@ check("pages render through the base layout", () => {
   assert.ok(html.includes("</html>"), "output is not a full document");
 });
 
+check("a plain build produces a working search index", () => {
+  // The search page broke twice. pagefind-search.js's connectedCallback calls
+  // replaceChildren() — destroying the light-DOM fallback form — then loads
+  // /pagefind/pagefind-ui.js. Absent that directory the component has removed
+  // the fallback and cannot replace it, so the page renders empty.
+  //
+  // It was a separate npm script, so any build that did not also run it left
+  // the page broken — including `npm test` itself, several of whose checks
+  // rebuild _site with a bare `npx @11ty/eleventy`. Indexing now runs from
+  // eleventy.after, so this asserts the index is present after whatever build
+  // this suite just ran.
+  for (const f of ["pagefind-ui.js", "pagefind-ui.css", "pagefind.js"]) {
+    assert.ok(
+      existsSync(`_site/pagefind/${f}`),
+      `_site/pagefind/${f} missing — the search page will render empty`,
+    );
+  }
+  const fragments = globSync("_site/pagefind/fragment/*");
+  assert.ok(fragments.length > 0, "pagefind wrote no fragments — nothing was indexed");
+});
+
 check("every internal link on every page resolves to something built", () => {
   // The nav shipped six hardcoded links copied from the port source's own
   // page list (/uses/, /domains/, /projects/, /web/speaking/) — all 404 here.
