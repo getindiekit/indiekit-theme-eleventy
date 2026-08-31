@@ -50,7 +50,15 @@ task-visual-fix-report.md for the full evidence trail. {%- endcomment -%}
    that flag — and the 68-120px hero clamp renders a normal-length post title
    across three lines. Default to the smaller clamp and let a post opt OUT with
    `hugeTitle: true` if it ever wants the hero size. {% endcomment -%}
-  <h1 class="p-name primary-title{% unless hugeTitle %} primary-title-smalltitle{% endunless %}">{{ title }}</h1>
+  {%- comment %} Four of the six Indiekit post types are titleless by design.
+   _data/eleventyComputed.js synthesises a "<Type> · <date>" title for them so
+   the Atom feed has a non-empty <title> — but rendering that as a hero heading
+   puts "PHOTO · 30 AUG 2026" at the top of a photo post, which is noise.
+   The source already has this mechanism: page.liquid adds `sr-only` to its own
+   <h1> when `removeTitle` is set. Apply it to the synthetic case, so the
+   heading stays in the document for microformats and screen readers and stops
+   dominating the page. {% endcomment -%}
+    <h1 class="p-name primary-title{% unless hugeTitle %} primary-title-smalltitle{% endunless %}{% unless title_isReal %} sr-only{% endunless %}">{{ title }}</h1>
   {% case postType %}
     {% when "article" %}{% include "types/article.liquid" %}
     {% when "bookmark" %}{% include "types/bookmark.liquid" %}

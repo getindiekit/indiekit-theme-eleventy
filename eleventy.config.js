@@ -54,6 +54,19 @@ export default function (eleventyConfig) {
   // it, and is dropped only from a `build` — keyed on the real
   // process.env.ELEVENTY_RUN_MODE (confirmed live in this project's own
   // Task 15 probe, not assumed), not a hand-maintained flag.
+  // Stamped BEFORE _data/eleventyComputed.js runs, so it sees the author's raw
+  // front matter. eleventyComputed synthesises a "<Type> · <date>" title for
+  // titleless post types (the Atom feed requires a non-empty <title>), which
+  // means anything reading data.title afterwards cannot tell a real title from
+  // a generated one. Layouts use this flag to keep a synthesised heading in the
+  // document for microformats and screen readers without rendering it as a hero
+  // heading — "PHOTO · 30 AUG 2026" is not a page title.
+  eleventyConfig.addPreprocessor("real-title", "*", (data) => {
+    data.title_isReal =
+      Boolean(data.title) ||
+      (data.postType === "bookmark" && Boolean(data.bookmarkOf));
+  });
+
   eleventyConfig.addPreprocessor("drafts", "*", (data) => {
     if (data.draft) {
       if (data.draft === "ignore") {
