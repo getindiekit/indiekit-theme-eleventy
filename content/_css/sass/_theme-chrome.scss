@@ -146,3 +146,31 @@ svg.z-icon {
 	color: #f4f4f4;
 	background-color: config.$primaryColor;
 }
+
+/* List-page layout — port source _theme.scss:217-220 and the .tmpl-list rules
+   at :252-254 and :301-310. Task S4 deleted these as dead because nothing
+   emitted .tmpl-list; the homepage and archive now use pagealign.liquid, which
+   does. A list page gets a wider centred column than a single post's reading
+   measure. */
+.layout-list {
+	margin: 0 auto;
+	max-width: 45em;
+}
+@media (min-width: 25em) { /* 400px */
+	.tmpl-list .content-main {
+		margin-left: auto;
+		margin-right: auto;
+	}
+}
+@media (min-width: 40.625em) { /* 650px */
+	.tmpl-list .content-main {
+		max-width: none;
+		margin-left: initial;
+		margin-right: initial;
+	}
+	.tmpl-list .content-grid-sibling {
+		max-width: 45em;
+		margin-left: auto;
+		margin-right: auto;
+	}
+}

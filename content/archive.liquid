@@ -1,0 +1,16 @@
+---
+title: Archive
+layout: layouts/pagealign.liquid
+permalink: /archive/
+eleventyImport:
+  collections: ["post"]
+---
+{%- comment %} Every post, newest first. The homepage shows only the most
+   recent few and links here — the source's own "…see full archives" pattern
+   (index.liquid), which needs somewhere to point. {% endcomment -%}
+<ol class="posts h-feed">
+{%- assign allPosts = collections.post | reverse -%}
+{%- for post in allPosts %}
+  {%- include "partials/post-list-entry.liquid", post: post, page: post -%}
+{%- endfor %}
+</ol>

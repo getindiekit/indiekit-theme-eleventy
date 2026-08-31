@@ -1,54 +1,32 @@
 ---
-layout: layouts/default.liquid
-tmpl: page
 title: Indiekit reference theme
+titleScreenReaderOnly: true
+layout: layouts/pagealign.liquid
 eleventyImport:
   collections: ["post"]
 ---
+{%- comment %} Structured after the port source's own index.liquid: an intro
+   block, then curated sections of a few posts each, each ending in a link to
+   the fuller list — not a flat dump of every post.
 
-{%- comment %} Task (visual fix): source's own homepage (index.liquid:2-3,
-`titleScreenReaderOnly: true`) never shows a visible <h1> repeating the
-site name — its identity is already shown in the rail header
-(default.liquid's `.hed-h1`) — pagealign.liquid:7 renders it sr-only
-instead: `<h1 class="primary-title{% if titleScreenReaderOnly %} sr-only{% endif %}">`.
-The homepage still needs exactly one real <h1> (an existing guard checks
-this), so keep it — screen-reader/SEO only, matching source's own
-convention for this exact page. {%- endcomment -%}
-<h1 class="primary-title sr-only">{{ title }}</h1>
+   The source has two sections, "Newest" and "Popular". Popular is not ported:
+   it reads collections.popularPostsRanked, which _11ty/analyticsPlugin.js
+   builds from a committed JSON of his page views. An Indiekit site has no
+   equivalent data source, and inventing a ranking would be fiction. Newest is
+   the section that carries over; the archive holds everything.
+   {% endcomment -%}
+<div class="about-description">
+	<p>{{ site.description }}</p>
+</div>
 
-{%- comment %} Task 18 (§7.4): this is the first (and only) image ahead of the
-   h-feed, so it's this page's LCP candidate — the counterpart of the port
-   source's own site avatar (default.liquid:16), which this theme has none
-   of.
-
-   Task (visual fix): this image had no width constraint beyond the bare
-   `img{max-width:100%}` reset (content/_css/sass/_reset.scss) — 100% of
-   `.content-main`, which at `.tmpl-page` desktop widths is deliberately
-   unbounded (sass/_layout.scss's `.tmpl-page .content-main{max-width:none}`,
-   Task S3's own reading-measure column lives on `.content-grid` instead).
-   Wrapping it in `.content-grid` (already ported, Task S3) gives it that
-
-
-{%- comment -%}
-Task 12a: an h-feed listing every post, newest first. Deliberately NOT
-layouts/page.liquid (the placeholder homepage this replaces used it) — that
-layout wraps its whole `{{ content }}` in a single `<article class="h-entry">`,
-which would mark the entire homepage as one h-entry containing this h-feed's
-own h-entry children: a nested-entry relationship that means something
-specific in microformats2 (a post's children, e.g. comments) and is wrong for
-a top-level listing. layouts/default.liquid carries no such wrapper.
-
-collections.post is already sorted oldest-first (Eleventy's own default sort,
-ascending by date) — `reverse` here, not a second sort, is what gives
-newest-first.
-
-Task S4 (audit §2.2): `.posts` is the source's own class carrying the whole
-listing's flex-column layout and the two-col-viewport dotted-leader row
-(sass/theme-posts.scss) — `h-feed` sits alongside it, not instead of it.
-{%- endcomment -%}
+<h2>Newest</h2>
 <ol class="posts h-feed">
-	{%- assign posts = collections.post | reverse -%}
-	{%- for post in posts -%}
-		{%- include "partials/post-list-entry.liquid", post: post, page: post -%}
-	{%- endfor -%}
+{%- comment %} reverse THEN limit. LiquidJS applies `limit` before `reversed`,
+   so `collections.post reversed limit: 5` takes the five OLDEST posts and
+   reverses those — not the five newest. {% endcomment -%}
+{%- assign recentPosts = collections.post | reverse -%}
+{%- for post in recentPosts limit: 5 %}
+  {%- include "partials/post-list-entry.liquid", post: post, page: post -%}
+{%- endfor %}
+	<li><em><a href="/archive/" class="posts-link posts-link-more">…see the full archive.</a></em></li>
 </ol>

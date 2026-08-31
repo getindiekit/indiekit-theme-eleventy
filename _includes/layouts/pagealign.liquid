@@ -1,0 +1,17 @@
+---
+layout: layouts/default.liquid
+tmpl: list
+---
+{%- comment %} Ported from the port source's _includes/layouts/pagealign.liquid.
+   Used by the homepage and the archive: a centred, wider column for list
+   pages, as opposed to entry.liquid's reading measure for a single post.
+   `tmpl: list` puts .tmpl-list on <html>, which the layout rules key off.
+   {% endcomment -%}
+<div class="layout-list">
+	<article>
+		<h1 class="primary-title{% if titleScreenReaderOnly %} sr-only{% endif %}">{{ title }}</h1>
+		<heading-anchors selector="h2,h3">
+			{{ content }}
+		</heading-anchors>
+	</article>
+</div><!-- /.layout-list -->

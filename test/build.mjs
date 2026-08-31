@@ -1083,13 +1083,13 @@ for (const [type, classes] of Object.entries(mf2)) {
   });
 }
 
-check("the homepage is an h-feed listing every post", () => {
+check("the archive is an h-feed listing every post", () => {
   // Task 12a: found during Task 12 — the theme built 8 pages and the
   // homepage linked to none of them. This asserts every post type is
   // represented, so a listing that silently drops the titleless types
   // (note/bookmark/like/reply — the majority of Indiekit's post types)
   // fails, not just a listing that shows articles alone.
-  const html = readFileSync("_site/index.html", "utf8");
+  const html = readFileSync("_site/archive/index.html", "utf8");
   assert.ok(/class="[^"]*\bh-feed\b/.test(html), "homepage is not marked up as an h-feed");
   for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos"]) {
     assert.ok(
@@ -1099,21 +1099,21 @@ check("the homepage is an h-feed listing every post", () => {
   }
 });
 
-check("h-feed entries carry h-entry, not bare links", () => {
+check("archive h-feed entries carry h-entry, not bare links", () => {
   // The check above would also pass if the listing were a plain <a> list
   // with no microformats at all — assert each entry is itself a valid
   // h-entry, one per post-tagged fixture (7: see the feed entry-count
   // check above for why it's 7, not 6).
-  const html = readFileSync("_site/index.html", "utf8");
+  const html = readFileSync("_site/archive/index.html", "utf8");
   const entryCount = (html.match(/class="h-entry"/g) || []).length;
   assert.equal(entryCount, 7, `expected 7 h-entry listing entries, found ${entryCount}`);
 });
 
-check("h-feed lists posts newest first", () => {
+check("archive h-feed lists posts newest first", () => {
   // Would pass trivially if the listing were unordered and happened to
   // match — compare the actual href order against fixture dates sorted
   // descending, not just "some order exists".
-  const html = readFileSync("_site/index.html", "utf8");
+  const html = readFileSync("_site/archive/index.html", "utf8");
   const feedSection = html.split(/class="[^"]*\bh-feed\b[^"]*"/)[1] ?? "";
   // Task S4: the photo type's feed row (types/photo.liquid) wraps its
   // thumbnail in a second, plain (unmarked) link back to the same
@@ -1146,7 +1146,7 @@ check("h-feed lists posts newest first", () => {
   assert.deepEqual(actualOrder, expectedOrder, "h-feed entries are not sorted newest-first");
 });
 
-check("h-feed entry dates match the same instant as the post's own page", () => {
+check("archive h-feed entry dates match the same instant as the post's own page", () => {
   // The listing reuses the isoInstant/humanDate filters (_11ty/dateResolver.js)
   // via the Task 6 type partials. Those filters re-read the *current* page's
   // own front matter (`this.page.inputPath`) to detect an explicit UTC
@@ -1157,7 +1157,7 @@ check("h-feed entry dates match the same instant as the post's own page", () => 
   // timezone's offset (+2h for Europe/Brussels in August) — a plausible
   // string that is simply wrong. Compare real instants (epoch ms), not
   // string shape, against each fixture's own permalink page.
-  const html = readFileSync("_site/index.html", "utf8");
+  const html = readFileSync("_site/archive/index.html", "utf8");
   const fixtures = [
     ["articles", "fixture-article"],
     ["notes", "fixture-note"],
@@ -1235,7 +1235,7 @@ function extractHEntryBlocks(html, tagName = "article") {
   return blocks;
 }
 
-check("every h-entry in the homepage listing carries its own u-url", () => {
+check("every h-entry in the archive listing carries its own u-url", () => {
   // The bug this guards against: the permalink <a class="u-url"> rendered
   // as a sibling *before* each <article class="h-entry">, not inside it. A
   // real mf2 parser confirmed the consequence — all 7 permalinks collapsed
@@ -1243,7 +1243,7 @@ check("every h-entry in the homepage listing carries its own u-url", () => {
   // Flat regex/string checks (the four `h-feed ...` checks above) cannot
   // see this: they all matched a `u-url` and an `h-entry` existing
   // *somewhere* on the page, never whether one is nested inside the other.
-  const html = readFileSync("_site/index.html", "utf8");
+  const html = readFileSync("_site/archive/index.html", "utf8");
   const blocks = extractHEntryBlocks(html, "li");
 
   // Guards against the "scan matching no files passes forever" false-green
@@ -1330,7 +1330,7 @@ check("every h-entry — permalink and feed listing alike — still carries a p-
   // entry.liquid's <h1> never renders (post-list-entry.liquid calls the
   // type partials directly, not through entry.liquid) — an h-entry with no
   // name at all is a real mf2 regression, not just a missing heading.
-  const homeBlocks = extractHEntryBlocks(readFileSync("_site/index.html", "utf8"), "li");
+  const homeBlocks = extractHEntryBlocks(readFileSync("_site/archive/index.html", "utf8"), "li");
   assert.equal(homeBlocks.length, 7, `expected 7 h-entry blocks in the feed, found ${homeBlocks.length}`);
   const feedMissing = homeBlocks
     .map((block, i) => ({ i, hasName: /\bp-name\b/.test(block) }))
@@ -1374,7 +1374,7 @@ check("the homepage listing emits .posts/.posts-link/.date and each has a matchi
   assert.ok(/\.posts\s+\.date\s*\{[^}]*\}/.test(css), "no `.posts .date { ... }` rule in compiled page CSS");
 });
 
-check("the homepage listing never embeds a full post body — no content-grid/e-content inside any <li>", () => {
+check("the archive listing never embeds a full post body — no content-grid/e-content inside any <li>", () => {
   // Task S4, corrected per task-s4-report.md: the first pass at this
   // listing rendered the same content-grid e-content div the permalink page
   // uses into every feed row, making the homepage a wall of repeated post
@@ -1383,7 +1383,7 @@ check("the homepage listing never embeds a full post body — no content-grid/e-
   // Pin this so it can't come back, for both listing shapes (titled: no
   // body at all; titleless: a compact .description excerpt, never the full
   // e-content wrapper).
-  const html = readFileSync("_site/index.html", "utf8");
+  const html = readFileSync("_site/archive/index.html", "utf8");
   const blocks = extractHEntryBlocks(html, "li");
   assert.equal(blocks.length, 7, `expected 7 h-entry <li> blocks, found ${blocks.length}`);
   const withBody = blocks
@@ -1411,8 +1411,8 @@ check("a Micropub draft is dropped from pages, the feed and the h-feed in a prod
   );
   const feed = readFileSync("_site/feed.xml", "utf8");
   assert.ok(!feed.includes("Half-finished thought"), "draft note's marker leaked into feed.xml");
-  const homepage = readFileSync("_site/index.html", "utf8");
-  assert.ok(!homepage.includes("Half-finished thought"), "draft note's marker leaked into the h-feed homepage listing");
+  const homepage = readFileSync("_site/archive/index.html", "utf8");
+  assert.ok(!homepage.includes("Half-finished thought"), "draft note's marker leaked into the h-feed archive listing");
   assert.ok(
     !homepage.includes("/notes/fixture-draft-note/"),
     "draft note has an h-feed entry linking to its (nonexistent) page",
@@ -1445,10 +1445,10 @@ await checkAsync("the same Micropub draft is present under serve mode", async ()
     );
     const feed = readFileSync(`${outDir}/feed.xml`, "utf8");
     assert.ok(feed.includes("Half-finished thought"), "draft note's marker is missing from feed.xml under serve mode");
-    const homepage = readFileSync(`${outDir}/index.html`, "utf8");
+    const homepage = readFileSync(`${outDir}/archive/index.html`, "utf8");
     assert.ok(
       homepage.includes("Half-finished thought"),
-      "draft note's marker is missing from the h-feed homepage listing under serve mode",
+      "draft note's marker is missing from the h-feed archive listing under serve mode",
     );
     assert.ok(
       homepage.includes("/notes/fixture-draft-note/"),
