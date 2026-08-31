@@ -171,6 +171,16 @@ export default function (eleventyConfig) {
     [resolveModule("@zachleat/heading-anchors")]: "heading-anchors.js",
   });
 
+  // Task 19 (§9.2): @zachleat/pagefind-search is the other pinned dependency
+  // that nothing referenced until now. Same resolveModule() passthrough
+  // idiom as heading-anchors above, same root-not-"static/" output path for
+  // the same reason (this theme's {static: "/"} mapping strips that prefix
+  // from every vendored asset). content/search.md's own inline
+  // `<script type="module" src="/pagefind-search.js">` is adapted to match.
+  eleventyConfig.addPassthroughCopy({
+    [resolveModule("@zachleat/pagefind-search")]: "pagefind-search.js",
+  });
+
   // Source (zachleat.com, eleventy.config.js:656-674) pins one timezone
   // across three date-parsing branches so YAML dates, ISO strings and a
   // fallback all resolve to the same wall-clock day — see

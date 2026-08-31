@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { existsSync, readFileSync, writeFileSync, rmSync, globSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { gunzipSync } from "node:zlib";
 import Eleventy from "@11ty/eleventy";
 import npmDownloads from "../_data/npmDownloads.js";
 
@@ -2334,6 +2335,172 @@ check("every same-origin script src and stylesheet href emitted by any built pag
   // also has to remove the now-dead exemption entry.
   for (const exempt of referenceExempt) {
     assert.ok(seenExempt.has(exempt), `${exempt} is exempted but no page references it — remove the stale exemption`);
+  }
+});
+
+await checkAsync(
+  "pagefind indexes only content pages — the homepage and the search page itself are excluded",
+  async () => {
+    // Task 19 (§9.1). package.json's search-index script now scopes
+    // Pagefind's --glob to the six post-type output directories, mirroring
+    // the port source's own {web,resume} scoping (search.html's sibling
+    // eleventy.config.js) — the homepage (an h-feed listing every post) and
+    // the search page itself must never enter the index. A check that only
+    // asserts "an index got built" would pass identically whether the
+    // scoping worked or Pagefind indexed the entire site — this actually
+    // runs Pagefind against the real build, decompresses every resulting
+    // fragment (each is gzip: "pagefind_dcd" + JSON, confirmed by hand with
+    // zcat before wiring this in) and reads back the exact set of indexed
+    // URLs, rather than trusting a glob string or a file count.
+    //
+    // Runs against the real `_site` produced above the same way "every
+    // same-origin script src…" does; --output-path keeps Pagefind's own
+    // output out of `_site/pagefind` so this doesn't race or interfere with
+    // that check.
+    //
+    // The --glob value is extracted from package.json's own "search-index"
+    // script rather than hardcoded a second time here — a hardcoded copy
+    // would let this check keep passing even if package.json's script
+    // regressed to an unscoped (or differently-scoped) glob, since nothing
+    // would ever exercise the real script string. Confirmed by hand: with a
+    // hardcoded glob, reverting package.json's script to the old unscoped
+    // "npx pagefind --site _site" left this check green.
+    const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+    const searchIndexScript = packageJson.scripts["search-index"];
+    const globMatch = /--glob\s+"([^"]+)"/.exec(searchIndexScript);
+    assert.ok(
+      globMatch,
+      `package.json's "search-index" script has no --glob argument to scope the index: ${searchIndexScript}`,
+    );
+    const glob = globMatch[1];
+
+    const outputPath = "_site-pagefind-check";
+    rmSync(outputPath, { recursive: true, force: true });
+    try {
+      execFileSync(
+        "node_modules/.bin/pagefind",
+        ["--site", "_site", "--glob", glob, "--output-path", outputPath],
+        { stdio: "pipe", env: { ...process.env, NPM_DOWNLOADS_OFFLINE: "1" } },
+      );
+
+      const fragments = globSync(`${outputPath}/fragment/*.pf_fragment`);
+      assert.ok(fragments.length > 0, "pagefind produced no fragments — this check would be vacuous");
+
+      const indexedUrls = fragments
+        .map((f) => {
+          const decompressed = gunzipSync(readFileSync(f)).toString("utf8");
+          return JSON.parse(decompressed.replace(/^pagefind_dcd/, "")).url;
+        })
+        .sort();
+
+      // Independently derived from the real build output (not from the
+      // glob string itself, which would make this circular) — every
+      // index.html actually built under one of the six post-type
+      // directories, converted to the same clean-URL shape Pagefind reports.
+      const expectedUrls = globSync("_site/{articles,bookmarks,likes,notes,photos,replies}/*/index.html")
+        .map((f) => `/${f.replace(/^_site\//, "").replace(/index\.html$/, "")}`)
+        .sort();
+
+      assert.ok(expectedUrls.length > 0, "no built content pages found under _site — this check would be vacuous");
+      assert.deepEqual(
+        indexedUrls,
+        expectedUrls,
+        `indexed URL set does not match the built content-page set\n  indexed:  ${JSON.stringify(indexedUrls)}\n  expected: ${JSON.stringify(expectedUrls)}`,
+      );
+
+      for (const excludedUrl of ["/", "/search/"]) {
+        assert.ok(
+          !indexedUrls.includes(excludedUrl),
+          `${excludedUrl} was indexed even though it falls outside the scoped glob — the scoping failed`,
+        );
+      }
+    } finally {
+      rmSync(outputPath, { recursive: true, force: true });
+    }
+  },
+);
+
+check("the search page ships a real, unguarded <form> as its no-JS fallback", () => {
+  // Task 19 (§9.2). @zachleat/pagefind-search's connectedCallback() only
+  // discards its light-DOM children once pagefind-search.js actually loads
+  // and the element upgrades — verified by reading
+  // node_modules/@zachleat/pagefind-search/pagefind-search.js directly, not
+  // assumed from the README. So the <form> inside <pagefind-search> in
+  // content/search.md IS the no-JS fallback, and it only works as one if it
+  // is real markup present unconditionally — not inside the
+  // `{% if JS_ENABLED %}` guard that wraps the pagefind-search.js <script>
+  // tag and the ?q= deep-link <script> right next to it.
+  //
+  // A check that just grep'd the whole rendered page for `<form` and
+  // `type="submit"` separately would pass even if both moved inside an
+  // `{% if JS_ENABLED %}` block, or even if they ended up in two unrelated
+  // parts of the page — this instead isolates the exact
+  // `<pagefind-search>…</pagefind-search>` element (the thing whose
+  // JS-driven replaceChildren() is what makes "outside the guard" matter at
+  // all), and checks the form is nested inside SPECIFICALLY that, with a
+  // real submit control, in the actually-built output — not the source
+  // template — so a Liquid conditional wrapping it at render time would
+  // still be caught.
+  const html = readFileSync("_site/search/index.html", "utf8");
+
+  const pagefindSearchMatch = /<pagefind-search[^>]*>([\s\S]*?)<\/pagefind-search>/.exec(html);
+  assert.ok(pagefindSearchMatch, "no <pagefind-search> element found in the built search page");
+
+  const inner = pagefindSearchMatch[1];
+  assert.ok(
+    /<form[^>]*\bmethod="get"[^>]*>[\s\S]*<\/form>/.test(inner),
+    "<pagefind-search> does not contain a <form method=\"get\">…</form> — the no-JS fallback is missing",
+  );
+  assert.ok(
+    /<button[^>]*\btype="submit"[^>]*>/.test(inner) || /<input[^>]*\btype="submit"[^>]*>/.test(inner),
+    "the fallback form has no submit control (button/input type=\"submit\")",
+  );
+
+  // The specific defect this guards against: the whole
+  // <pagefind-search>...</pagefind-search> block sitting inside an
+  // `{% if JS_ENABLED %}` in the template, which would make it vanish
+  // from a JS_ENABLED=false build entirely rather than degrade to a form.
+  // Prove it directly against a real JS_ENABLED=false build, not by
+  // re-reading the Liquid source (which can't tell where a conditional's
+  // boundaries actually land after rendering).
+  const outDir = "_site-search-nojs-check";
+  rmSync(outDir, { recursive: true, force: true });
+  try {
+    const configPath = "eleventy.config.js";
+    const original = readFileSync(configPath, "utf8");
+    const patched = original.replace(
+      "const JS_ENABLED = true;",
+      "const JS_ENABLED = false;",
+    );
+    assert.notEqual(patched, original, "could not locate `const JS_ENABLED = true;` to patch — check drifted from source");
+    writeFileSync(configPath, patched);
+    try {
+      execFileSync(
+        process.execPath,
+        ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe", env: { ...process.env, NPM_DOWNLOADS_OFFLINE: "1" } },
+      );
+    } finally {
+      writeFileSync(configPath, original);
+      assert.ok(
+        readFileSync(configPath, "utf8") === original,
+        "eleventy.config.js was not restored to its original contents",
+      );
+    }
+
+    const noJsHtml = readFileSync(`${outDir}/search/index.html`, "utf8");
+    const noJsMatch = /<pagefind-search[^>]*>([\s\S]*?)<\/pagefind-search>/.exec(noJsHtml);
+    assert.ok(noJsMatch, "<pagefind-search> is missing entirely from a JS_ENABLED=false build — the no-JS fallback was guarded away");
+    assert.ok(
+      /<form[^>]*\bmethod="get"[^>]*>[\s\S]*<\/form>/.test(noJsMatch[1]),
+      "the fallback <form> is missing from a JS_ENABLED=false build",
+    );
+    assert.ok(
+      !noJsHtml.includes("/pagefind-search.js"),
+      "pagefind-search.js is still referenced in a JS_ENABLED=false build — the JS_ENABLED guard around its <script> tag is not working",
+    );
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
   }
 });
 
