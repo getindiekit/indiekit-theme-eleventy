@@ -2612,7 +2612,7 @@ Body text.
   },
 );
 
-check("every same-origin script src and stylesheet href emitted by any built page resolves to a real file in _site", () => {
+check("every same-origin script src, stylesheet href and image src emitted by any built page resolves to a real file in _site", () => {
   // Scoped to same-origin absolute paths (starts with "/", not "//") —
   // external URLs (https://…) and data: URIs are never built by this theme
   // and are out of scope. Scans every built .html page, not just index.html
@@ -2639,6 +2639,7 @@ check("every same-origin script src and stylesheet href emitted by any built pag
 
   let scriptCount = 0;
   let stylesheetCount = 0;
+  let imageCount = 0;
   const seenExempt = new Set();
 
   for (const file of files) {
@@ -2648,6 +2649,12 @@ check("every same-origin script src and stylesheet href emitted by any built pag
     const stylesheetHrefs = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]*>/g)]
       .map((m) => m[0].match(/href="([^"]+)"/)?.[1])
       .filter(Boolean);
+
+    // <img src> was the one element class this guard did not cover, and the
+    // photo post — the one type whose entire purpose is an image — 404'd on
+    // it. The fixture's src was correct and asserted; nothing checked the
+    // file was ever built.
+    const imageSrcs = [...html.matchAll(/<img[^>]+src="([^"]+)"[^>]*>/g)].map((m) => m[1]);
 
     for (const src of scriptSrcs) {
       if (!src.startsWith("/") || src.startsWith("//")) continue; // external / protocol-relative
@@ -2672,12 +2679,23 @@ check("every same-origin script src and stylesheet href emitted by any built pag
         `${file} references stylesheet ${href}, which does not exist in _site`,
       );
     }
+
+    for (const src of imageSrcs) {
+      if (!src.startsWith("/") || src.startsWith("//")) continue;
+      imageCount++;
+      const cleanPath = src.split(/[?#]/)[0];
+      assert.ok(
+        existsSync(`_site${cleanPath}`),
+        `${file} references image ${src}, which does not exist in _site`,
+      );
+    }
   }
 
   // Non-vacuous: a change that stopped this check from finding any scripts
   // or stylesheets at all must fail loudly, not pass by having nothing left
   // to inspect.
   assert.ok(scriptCount > 0, "no same-origin scripts found across any built page — this check is vacuous");
+  assert.ok(imageCount > 0, "no same-origin images found across any built page — this check is vacuous");
   assert.ok(stylesheetCount > 0, "no same-origin stylesheets found across any built page — this check is vacuous");
 
   // The exemption must not rot: it has to actually be exercised (still

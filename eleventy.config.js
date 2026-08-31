@@ -159,6 +159,13 @@ export default function (eleventyConfig) {
   // its "static/" output tree via the same passthrough pattern; do the same
   // so health-score.js is actually reachable, not just copied into the repo.
   eleventyConfig.addPassthroughCopy({ static: "/" });
+
+  // Fixture media. In production Indiekit's media store writes uploads to
+  // /media/, and post front matter references them at that URL — so the
+  // fixtures use the real production path rather than a theme-local one.
+  // Without this the photo post's <img> 404s: the src was correct and the
+  // file was simply never copied into the build.
+  eleventyConfig.addPassthroughCopy({ "content/_fixtures": "/media" });
   // Extension-limited (not the whole _components dir): publishing the raw
   // .webc source templates into _site would ship build inputs as if they
   // were output. This theme maps {static: "/"} to root (not the source's
