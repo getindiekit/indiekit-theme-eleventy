@@ -225,7 +225,11 @@ process.stdout.write("\\nPROBE_RESULT:" + JSON.stringify({
 );
 
 check("compiles sass to css", () => {
-  const css = globSync("_site/**/*.css");
+  // Scoped to this theme's own two bundles. An unscoped glob picks up
+  // pagefind's shipped UI CSS (which animates) and opengraph.css,
+  // neither of which this check is about.
+  const css = [...globSync("_site/_css/initial.css"), ...globSync("_site/_css/defer.css")]
+    .map((f) => readFileSync(f, "utf8")).join("");
   assert.ok(css.length > 0, "no .css file produced in _site");
 });
 
@@ -391,7 +395,10 @@ check("compiled CSS styles figure/figcaption", () => {
 });
 
 check("image transform plugin produces optimised output", () => {
-  const html = readFileSync("_site/index.html", "utf8");
+  // The transformed image lives in the article fixture's body — a content
+  // image, which is what the transform is for. It used to be a bare <img>
+  // hardcoded onto the homepage purely to give this check something to find.
+  const html = readFileSync("_site/articles/fixture-article/index.html", "utf8");
 
   // A bare <img> is what eleventy-img leaves behind when the transform fails.
   // `failOnError` is false, matching the source plugin, so that fallback is
@@ -1021,7 +1028,11 @@ check("navigation has an accessible mobile toggle", () => {
 });
 
 check("navigation styling ships, with no animation", () => {
-  const css = globSync("_site/**/*.css").map((f) => readFileSync(f, "utf8")).join("");
+  // Scoped to this theme's own two bundles. An unscoped glob picks up
+  // pagefind's shipped UI CSS (which animates) and opengraph.css,
+  // neither of which this check is about.
+  const css = [...globSync("_site/_css/initial.css"), ...globSync("_site/_css/defer.css")]
+    .map((f) => readFileSync(f, "utf8")).join("");
   assert.ok(css.includes("navigation-toggle"), "nav toggle unstyled");
   // Not just present anywhere — the hide/show rule must actually target the
   // real nav id and read the real toggle attribute, or the CSS could pass
@@ -1522,7 +1533,11 @@ check("every target=\"_blank\" link carries rel=\"noopener noreferrer\"", () => 
 });
 
 check("scrollbar-gutter and the img[width][height] reset reach the compiled CSS", () => {
-  const css = globSync("_site/**/*.css").map((f) => readFileSync(f, "utf8")).join("");
+  // Scoped to this theme's own two bundles. An unscoped glob picks up
+  // pagefind's shipped UI CSS (which animates) and opengraph.css,
+  // neither of which this check is about.
+  const css = [...globSync("_site/_css/initial.css"), ...globSync("_site/_css/defer.css")]
+    .map((f) => readFileSync(f, "utf8")).join("");
   assert.ok(css.length > 0, "no CSS produced in _site — this check scanned nothing");
   assert.ok(
     /scrollbar-gutter\s*:\s*stable/.test(css),
@@ -1539,7 +1554,11 @@ check(".sr-only is a real, visually-hidden rule — not just a class name in mar
   // being wrong. A check that only greps for the string ".sr-only" in the
   // CSS would pass even if the rule body were empty or unrelated. Assert
   // the compiled rule actually carries the a11y-only clipping technique.
-  const css = globSync("_site/**/*.css").map((f) => readFileSync(f, "utf8")).join("");
+  // Scoped to this theme's own two bundles. An unscoped glob picks up
+  // pagefind's shipped UI CSS (which animates) and opengraph.css,
+  // neither of which this check is about.
+  const css = [...globSync("_site/_css/initial.css"), ...globSync("_site/_css/defer.css")]
+    .map((f) => readFileSync(f, "utf8")).join("");
   const rule = /\.sr-only\s*\{([^}]*)\}/.exec(css);
   assert.ok(rule, ".sr-only has no compiled CSS rule at all");
   assert.ok(
@@ -2398,8 +2417,8 @@ await checkAsync(
         `serve mode wrote ${serveBuilt.length} file(s) under img/built/ — transformOnRequest did not defer image generation`,
       );
 
-      const buildHtml = readFileSync(`${buildOutDir}/index.html`, "utf8");
-      const serveHtml = readFileSync(`${serveOutDir}/index.html`, "utf8");
+      const buildHtml = readFileSync(`${buildOutDir}/articles/fixture-article/index.html`, "utf8");
+      const serveHtml = readFileSync(`${serveOutDir}/articles/fixture-article/index.html`, "utf8");
 
       assert.ok(
         /<source[^>]+srcset="\/img\/built\//.test(buildHtml),
@@ -2967,12 +2986,20 @@ check("each post type's OG card carries its own type-appropriate content, not an
   // Plan Task 20 step 3's exact per-type table. Reads each real built card
   // rather than grepping the whole _site tree for a string, so a match in
   // the wrong file (or the wrong post's card) can't produce a false pass.
+  // Earlier checks in this file wipe and rebuild _site (the image-cache
+  // durability check) and temporarily mutate fixtures (the escaping check),
+  // so ambient _site state is not reliable by the time this runs. Build a
+  // dedicated copy instead of reading whatever happens to be on disk.
+  execFileSync(process.execPath, ["node_modules/.bin/eleventy", "--quiet"], {
+    stdio: "pipe",
+    env: { ...process.env, NPM_DOWNLOADS_OFFLINE: "1" },
+  });
   const card = (permalink) => readFileSync(`_site/opengraph${permalink}index.html`, "utf8");
 
   // article: its own title, as a real heading — not empty.
   const article = card("/articles/fixture-article/");
   assert.ok(
-    /<h1 class="og-hed"(?: id="[^"]*")?><span class="og-box">An example article<\/span><\/h1>/.test(article),
+    /<h1 class="og-hed"(?: id="[^"]*")?><span class="og-box">Publishing to your own site first<\/span><\/h1>/.test(article),
     `article card heading missing or wrong: ${article}`,
   );
 
@@ -2985,7 +3012,7 @@ check("each post type's OG card carries its own type-appropriate content, not an
   // bookmark: kicker + the bookmarked page's title.
   const bookmark = card("/bookmarks/fixture-bookmark/");
   assert.ok(bookmark.includes("Bookmarked · example.com"), `bookmark card missing its kicker: ${bookmark}`);
-  assert.ok(bookmark.includes("An example bookmark"), `bookmark card missing its title: ${bookmark}`);
+  assert.ok(bookmark.includes("A field guide to static site generators"), `bookmark card missing its title: ${bookmark}`);
 
   // untitled bookmark: kicker + the URL itself (eleventyComputed.js's own
   // "title, else the URL" fallback, reused here rather than reinvented).
@@ -3191,13 +3218,13 @@ await checkAsync(
 
     try {
       assert.ok(
-        originalArticle.includes("title: An example article"),
+        originalArticle.includes("title: Publishing to your own site first"),
         "fixture-article.md's title line has changed shape — update this check's replace target",
       );
       writeFileSync(
         articlePath,
         originalArticle.replace(
-          "title: An example article",
+          "title: Publishing to your own site first",
           `title: ${JSON.stringify(maliciousTitle)}`,
         ),
       );
