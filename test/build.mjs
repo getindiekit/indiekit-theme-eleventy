@@ -257,6 +257,36 @@ check("pages render through the base layout", () => {
   assert.ok(html.includes("</html>"), "output is not a full document");
 });
 
+check("every internal link on every page resolves to something built", () => {
+  // The nav shipped six hardcoded links copied from the port source's own
+  // page list (/uses/, /domains/, /projects/, /web/speaking/) — all 404 here.
+  // The existing asset guard only covered <script src> and <link rel=
+  // stylesheet>, so nothing looked at <a href>. A theme that links to pages it
+  // does not build is broken for every visitor, not just for a parser.
+  const files = globSync("_site/**/*.html");
+  assert.ok(files.length > 0, "no HTML produced — this check scanned nothing");
+  const broken = [];
+  let checked = 0;
+  for (const file of files) {
+    const html = readFileSync(file, "utf8");
+    for (const m of html.matchAll(/<a\b[^>]*\shref="(\/[^"#?]*)/g)) {
+      const href = m[1];
+      checked++;
+      const asDir = `_site${href.endsWith("/") ? href : `${href}/`}index.html`;
+      const asFile = `_site${href}`;
+      if (!existsSync(asDir) && !existsSync(asFile)) {
+        broken.push(`${href} (linked from ${file})`);
+      }
+    }
+  }
+  assert.ok(checked > 0, "found no internal links to check — the scan is vacuous");
+  assert.equal(
+    broken.length,
+    0,
+    `internal links point at pages this theme never builds: ${[...new Set(broken)].join("; ")}`,
+  );
+});
+
 check("no zachleat.com references leak into output", () => {
   // Scan every built page, not just the index. The index uses no entry
   // layout, so it can never see a leak confined to entry.liquid or the

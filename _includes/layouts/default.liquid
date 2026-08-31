@@ -28,13 +28,13 @@ modules:
 				<div class="navigation">
 					<button type="button" class="navigation-toggle" aria-expanded="false" aria-controls="site-nav">Menu</button>
 					<ul class="list-flush tags-rail-links" id="site-nav">
+						{% comment %} Only destinations this theme actually builds. The source's
+						page list (/uses/, /domains/, /projects/, /web/speaking/) was hardcoded
+						chrome for that site and 404'd here. Indiekit sites create their own pages
+						through the page post type at runtime, so the theme must not invent a
+						structure a first-time user would only delete. {% endcomment %}
 						<li><a href="/" {% if page.url == '/' %}class="active"{% endif %}>Home</a></li>
-						<li><a href="/about/" {% if page.url == '/about/' %}class="active"{% endif %}>About</a></li>
-						<li><a href="/web/" {% if page.url == '/web/' %}class="active"{% endif %}>Archives</a></li>
-						<li><a href="/projects/" {% if page.url == '/projects/' %}class="active"{% endif %}>Projects</a></li>
-						<li><a href="/web/speaking/" {% if page.url == '/web/speaking/' %}class="active"{% endif %}>Speaking</a></li>
-						<li class="hide-singlecol"><a href="/uses/" {% if page.url == '/uses/' %}class="active"{% endif %}>Uses</a></li>
-						<li class="hide-singlecol"><a href="/domains/" {% if page.url == '/domains/' %}class="active"{% endif %}>Domains</a></li>
+						<li><a href="/search/" {% if page.url == '/search/' %}class="active"{% endif %}>Search</a></li>
 					</ul>
 				</div>
 			</nav>
