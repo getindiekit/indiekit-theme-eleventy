@@ -1,3 +1,4 @@
+@use "config";
 
 // Ported verbatim from the port source's static/sass/_theme.scss:1190-1207.
 // .footer-badge is skipped — that styles his "built with Eleventy" GIF badge,
@@ -109,4 +110,39 @@ html:root {
 }
 svg.z-icon {
 	margin-inline-end: .3em;
+}
+
+/* Rail header — port source _theme.scss:803-823. `.rail .my-avatar` that
+   follows there is skipped: it styles his personal avatar, which this neutral
+   theme does not ship. */
+.rail .header {
+	display: flex;
+	gap: .35em;
+	align-items: top;
+	justify-content: space-between;
+	margin: 0;
+	text-decoration: none;
+
+	@media (max-width: config.$oneColLayoutMaxWidth) {
+		justify-content: center;
+	}
+}
+.rail .hed-h1 {
+	margin: 0;
+	padding: 0;
+	font-size: 2.25em; /* 36px /16 */
+	vertical-align: bottom;
+	font-weight: 900;
+	line-height: 1;
+	color: #4c713e;
+	text-transform: uppercase;
+}
+
+/* Current-page nav state — port source _theme.scss:1421-1425. This theme's nav
+   emits `.active` on the current link (default.liquid) and it had no styling,
+   so "you are here" was invisible. */
+.tags-rail-links :any-link.active {
+	--icon-color-override: #f4f4f4;
+	color: #f4f4f4;
+	background-color: config.$primaryColor;
 }

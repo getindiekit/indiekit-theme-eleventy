@@ -1,0 +1,71 @@
+@use "config";
+
+/* Tables — port source _theme.scss:738-791 verbatim. No fixture exercised a
+   table until now, so this shipped unstyled: a markdown table rendered as
+   unaligned text with no rules or padding. */
+table {
+	border-collapse: collapse;
+	min-width: 100%;
+}
+.content-main table {
+	line-height: 1.4;
+}
+tr {
+	margin: 0 !important;
+	border-bottom: 1px solid #ddd;
+}
+caption {
+	margin-top: 1.5em;
+	border-bottom: 3px double #999;
+	padding-bottom: .6em;
+}
+td,
+th {
+	font-size: 0.625em; /* 10px /16 */
+	padding: .45em .3em;
+	vertical-align: top;
+}
+td.numeric,
+th.numeric {
+	text-align: right;
+	white-space: nowrap;
+}
+table-saw :is(th, td) {
+	font-size: 0.8125em; /* 13px /16 */
+}
+@media ( min-width: 25em ) {
+	td, th {
+		font-size: .8125em;
+	}
+}
+.table-scroll {
+	position: relative;
+	width: calc(100% + .5rem);
+	overflow-x: auto;
+	margin-inline: -.25rem;
+}
+@media ( min-width: 25em ) { /* 400px */
+	.table-scroll {
+		width: calc(100% + 1.5rem);
+		margin-inline: -.75rem;
+	}
+}
+.table-scroll > table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+
+
+
+/* Nested list indentation — port source _theme.scss:414-423. */
+.content-main ol:not(.posts),
+.content-main ul:not(.posts) {
+	padding-left: 1.5em;
+}
+@media (min-width: 41.25em) {
+	.content-main ol,
+	.content-main ul {
+		padding-left: 0;
+	}
+}

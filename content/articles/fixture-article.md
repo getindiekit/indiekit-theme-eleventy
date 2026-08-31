@@ -20,3 +20,21 @@ Images in post bodies go through Eleventy's image transform, which generates
 responsive `avif` and `jpeg` variants at several widths and emits a `<picture>`
 element. Images that Indiekit's media store writes — a photo post's own
 `u-photo` — keep the URL Indiekit gave them instead.
+
+## What Indiekit sends
+
+| Post type | Distinguishing property | Has a title? |
+| --- | --- | --- |
+| article | `name` plus `content` | yes |
+| note | `content` only | no |
+| bookmark | `bookmark-of` | sometimes |
+| reply | `in-reply-to` | no |
+
+Four of the six types carry no title at all, which shapes how a theme has to
+present them:
+
+- a list built around headlines silently drops most of the feed
+- the Atom feed still needs a non-empty `<title>` on every entry
+- so the title is synthesised for the feed, and hidden on the page
+  - present in the accessibility tree
+  - present for microformats parsers
