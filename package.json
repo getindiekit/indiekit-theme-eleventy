@@ -8,6 +8,8 @@
   "scripts": {
     "build": "npx @11ty/eleventy",
     "start": "npx @11ty/eleventy --serve --port=8090 --incremental",
+    "demo": "WEBMENTIONS_FIXTURE=test/fixtures/webmentions-demo.json npx @11ty/eleventy",
+    "demo:serve": "WEBMENTIONS_FIXTURE=test/fixtures/webmentions-demo.json npx @11ty/eleventy --serve --port=8090 --incremental",
     "clean": "rm -rf _site .cache",
     "search-index": "npx pagefind --site _site --glob \"{articles,bookmarks,likes,notes,photos,replies}/**/*.html\"",
     "test": "node test/build.mjs"

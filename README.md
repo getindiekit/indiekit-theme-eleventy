@@ -55,7 +55,19 @@ Every key:
 | `author.name`, `author.url` | Site owner identity. `author.url` also renders a `rel="me"` link for IndieAuth. |
 | `timezone` | An IANA timezone name (e.g. `Europe/Brussels`). All dates render in this zone, regardless of what timezone the build machine is in, so a build is reproducible no matter where it runs. Falls back to UTC if unset. |
 | `speedlify.enabled` | Turns the `<speedlify2-score>` Lighthouse-score widget on or off, site-wide. |
-| `speedlify.url` | The Speedlify API base URL the widget queries when enabled. |
+| `speedlify.url` | Base URL of the Speedlify instance to query, e.g. `https://www.speedlify.dev/`. |
+
+A Speedlify instance is not a public submission service — it is a self-hosted
+Eleventy project that measures a URL list its owner configures, published at
+`<instance>/api/urls.json`. The badge is gated on that index
+(`_data/speedlify.js`), so a page the instance does not measure renders no
+badge rather than an empty box. `www.speedlify.dev` is the canonical public
+instance but only covers its own curated set, so to get scores for your own
+domain you run your own instance and point `speedlify.url` at it.
+
+Build-time escape hatches, matching the other network-backed data files:
+`SPEEDLIFY_OFFLINE=1` skips the fetch, and `SPEEDLIFY_FIXTURE=<path>` reads a
+local `urls.json` instead. A disabled site never fetches at all.
 | `opengraph.defaultImage` | The bundled fallback `og:image`/`twitter:image`, used whenever a screenshot card isn't available. |
 | `opengraph.screenshotUrlTemplate` | A URL template (with a `{url}` placeholder) for an external screenshot service. When set **and** `site.url` is publicly reachable (not `localhost`, `127.*`, `0.0.0.0`, `::1`, or a private `10.*`/`192.168.*`/`172.16-31.*` address), `og:image` uses a generated screenshot card instead of the default image. A `localhost` URL can never be screenshotted by an external service, so this is skipped automatically rather than shipping a broken image link — check your build logs for a `[opengraph]` warning if it doesn't kick in. |
 
@@ -69,9 +81,36 @@ the site owner's to populate as spam/abuse shows up.
 npm install
 npm run build      # one-off production build to _site/
 npm start           # eleventy --serve --incremental, dev server on :8090
+npm run demo        # build with sample webmentions (see below)
+npm run demo:serve  # same, with the dev server on :8090
 npm test            # runs test/build.mjs against a real build
 # (the search index is built automatically as part of every build)
 ```
+
+### Previewing the populated state — `npm run demo`
+
+A fresh checkout has no webmentions, so the parts of the theme that only appear
+once a site has been out in the world — the like/repost/reply counts on listing
+rows, the reposts/likes/bookmarks facepiles and the comment list on a
+permalink — all render as nothing. That is correct, and it also makes them
+impossible to look at, review, or restyle.
+
+`npm run demo` builds the site against `test/fixtures/webmentions-demo.json`:
+63 sample webmentions of all five types (`like-of`, `repost-of`, `in-reply-to`,
+`mention-of`, `bookmark-of`) spread unevenly across the fixture posts, so both
+the populated and the empty case appear in the same build.
+
+```sh
+npm run demo:serve      # then open /articles/fixture-article/
+```
+
+That page carries the fullest set: 6 reposts, 14 likes, 2 bookmarks and 3
+comments. Nothing is fetched at build time — the fixture is read from disk, so
+the demo works offline. Avatars are resolved client-side by
+`v1.indieweb-avatar.11ty.dev` and degrade to a fallback when unreachable.
+
+The fixture is sample data for previewing, **not** test data: the suite reads
+`test/fixtures/webmentions.json`, which is separate and asserted against.
 
 `node_modules` must exist before building — the deferred JS bundle
 `{% include %}`s `@11ty/is-land` directly out of `node_modules`, so

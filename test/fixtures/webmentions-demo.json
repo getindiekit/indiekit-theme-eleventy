@@ -1,0 +1,850 @@
+{
+  "children": [
+    {
+      "type": "entry",
+      "wm-id": 2001,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://tantek.com/articles-fixture-article-like-of-2001",
+      "published": "2026-08-30T18:27:00Z",
+      "author": {
+        "name": "Tantek \u00c7elik",
+        "url": "https://tantek.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2002,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://aaronparecki.com/articles-fixture-article-like-of-2002",
+      "published": "2026-08-30T19:34:00Z",
+      "author": {
+        "name": "Aaron Parecki",
+        "url": "https://aaronparecki.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2003,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://jacky.wtf/articles-fixture-article-like-of-2003",
+      "published": "2026-08-30T20:41:00Z",
+      "author": {
+        "name": "Jacky Alcine",
+        "url": "https://jacky.wtf/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2004,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://martymcgui.re/articles-fixture-article-like-of-2004",
+      "published": "2026-08-30T09:48:00Z",
+      "author": {
+        "name": "Marty McGuire",
+        "url": "https://martymcgui.re/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2005,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://example.social/@sarah/articles-fixture-article-like-of-2005",
+      "published": "2026-08-30T10:55:00Z",
+      "author": {
+        "name": "Sarah H\u00f6fler",
+        "url": "https://example.social/@sarah",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2006,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://ohhelloana.blog/articles-fixture-article-like-of-2006",
+      "published": "2026-08-30T11:02:00Z",
+      "author": {
+        "name": "Ana Rodrigues",
+        "url": "https://ohhelloana.blog/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2007,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://boffosocko.com/articles-fixture-article-like-of-2007",
+      "published": "2026-08-30T12:09:00Z",
+      "author": {
+        "name": "Chris Aldrich",
+        "url": "https://boffosocko.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2008,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://www.jvt.me/articles-fixture-article-like-of-2008",
+      "published": "2026-08-30T13:16:00Z",
+      "author": {
+        "name": "Jamie Tanna",
+        "url": "https://www.jvt.me/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2009,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://kitt.hodsden.org/articles-fixture-article-like-of-2009",
+      "published": "2026-08-30T14:23:00Z",
+      "author": {
+        "name": "Kitt Hodsden",
+        "url": "https://kitt.hodsden.org/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2010,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://snarfed.org/articles-fixture-article-like-of-2010",
+      "published": "2026-08-30T15:30:00Z",
+      "author": {
+        "name": "Ryan Barrett",
+        "url": "https://snarfed.org/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2011,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://unicyclic.com/articles-fixture-article-like-of-2011",
+      "published": "2026-08-30T16:37:00Z",
+      "author": {
+        "name": "Malcolm Blaney",
+        "url": "https://unicyclic.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2012,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://jgregorymcverry.com/articles-fixture-article-like-of-2012",
+      "published": "2026-08-30T17:44:00Z",
+      "author": {
+        "name": "Greg McVerry",
+        "url": "https://jgregorymcverry.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2013,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://tantek.com/articles-fixture-article-like-of-2013",
+      "published": "2026-08-30T18:51:00Z",
+      "author": {
+        "name": "Tantek \u00c7elik",
+        "url": "https://tantek.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2014,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://aaronparecki.com/articles-fixture-article-like-of-2014",
+      "published": "2026-08-30T19:58:00Z",
+      "author": {
+        "name": "Aaron Parecki",
+        "url": "https://aaronparecki.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2015,
+      "wm-property": "repost-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://martymcgui.re/articles-fixture-article-repost-of-2015",
+      "published": "2026-08-30T20:05:00Z",
+      "author": {
+        "name": "Marty McGuire",
+        "url": "https://martymcgui.re/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2016,
+      "wm-property": "repost-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://example.social/@sarah/articles-fixture-article-repost-of-2016",
+      "published": "2026-08-30T09:12:00Z",
+      "author": {
+        "name": "Sarah H\u00f6fler",
+        "url": "https://example.social/@sarah",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2017,
+      "wm-property": "repost-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://ohhelloana.blog/articles-fixture-article-repost-of-2017",
+      "published": "2026-08-30T10:19:00Z",
+      "author": {
+        "name": "Ana Rodrigues",
+        "url": "https://ohhelloana.blog/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2018,
+      "wm-property": "repost-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://boffosocko.com/articles-fixture-article-repost-of-2018",
+      "published": "2026-08-30T11:26:00Z",
+      "author": {
+        "name": "Chris Aldrich",
+        "url": "https://boffosocko.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2019,
+      "wm-property": "repost-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://www.jvt.me/articles-fixture-article-repost-of-2019",
+      "published": "2026-08-30T12:33:00Z",
+      "author": {
+        "name": "Jamie Tanna",
+        "url": "https://www.jvt.me/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2020,
+      "wm-property": "bookmark-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://boffosocko.com/articles-fixture-article-bookmark-of-2020",
+      "published": "2026-08-30T13:40:00Z",
+      "author": {
+        "name": "Chris Aldrich",
+        "url": "https://boffosocko.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2021,
+      "wm-property": "bookmark-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://www.jvt.me/articles-fixture-article-bookmark-of-2021",
+      "published": "2026-08-30T14:47:00Z",
+      "author": {
+        "name": "Jamie Tanna",
+        "url": "https://www.jvt.me/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2022,
+      "wm-property": "in-reply-to",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://aaronparecki.com/articles-fixture-article-in-reply-to-2022",
+      "published": "2026-08-30T15:54:00Z",
+      "author": {
+        "name": "Aaron Parecki",
+        "url": "https://aaronparecki.com/",
+        "photo": ""
+      },
+      "content": {
+        "text": "The permalink-first framing is the part people skip. Syndication is easy; owning the canonical URL is the work."
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2023,
+      "wm-property": "in-reply-to",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://jacky.wtf/articles-fixture-article-in-reply-to-2023",
+      "published": "2026-08-30T16:01:00Z",
+      "author": {
+        "name": "Jacky Alcine",
+        "url": "https://jacky.wtf/",
+        "photo": ""
+      },
+      "content": {
+        "text": "Been running this setup for three years now. The bit that finally made it click was treating webmentions as the reply channel rather than bolting comments on."
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2024,
+      "wm-property": "in-reply-to",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://martymcgui.re/articles-fixture-article-in-reply-to-2024",
+      "published": "2026-08-30T17:08:00Z",
+      "author": {
+        "name": "Marty McGuire",
+        "url": "https://martymcgui.re/",
+        "photo": ""
+      },
+      "content": {
+        "text": "Good writeup. One thing I'd add: microformats2 pays off the moment a second consumer shows up \u2014 a reader, a search tool, Bridgy. Before that it feels like ceremony."
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2025,
+      "wm-property": "mention-of",
+      "wm-target": "http://localhost:8080/articles/fixture-article/",
+      "url": "https://snarfed.org/articles-fixture-article-mention-of-2025",
+      "published": "2026-08-30T18:15:00Z",
+      "author": {
+        "name": "Ryan Barrett",
+        "url": "https://snarfed.org/",
+        "photo": ""
+      },
+      "content": {
+        "text": "Linked this in my weekly roundup \u2014 the clearest short explanation of publish-then-syndicate I've read."
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2026,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://tantek.com/notes-fixture-note-like-of-2026",
+      "published": "2026-08-30T19:22:00Z",
+      "author": {
+        "name": "Tantek \u00c7elik",
+        "url": "https://tantek.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2027,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://aaronparecki.com/notes-fixture-note-like-of-2027",
+      "published": "2026-08-30T20:29:00Z",
+      "author": {
+        "name": "Aaron Parecki",
+        "url": "https://aaronparecki.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2028,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://jacky.wtf/notes-fixture-note-like-of-2028",
+      "published": "2026-08-30T09:36:00Z",
+      "author": {
+        "name": "Jacky Alcine",
+        "url": "https://jacky.wtf/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2029,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://martymcgui.re/notes-fixture-note-like-of-2029",
+      "published": "2026-08-30T10:43:00Z",
+      "author": {
+        "name": "Marty McGuire",
+        "url": "https://martymcgui.re/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2030,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://example.social/@sarah/notes-fixture-note-like-of-2030",
+      "published": "2026-08-30T11:50:00Z",
+      "author": {
+        "name": "Sarah H\u00f6fler",
+        "url": "https://example.social/@sarah",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2031,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://ohhelloana.blog/notes-fixture-note-like-of-2031",
+      "published": "2026-08-30T12:57:00Z",
+      "author": {
+        "name": "Ana Rodrigues",
+        "url": "https://ohhelloana.blog/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2032,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://boffosocko.com/notes-fixture-note-like-of-2032",
+      "published": "2026-08-30T13:04:00Z",
+      "author": {
+        "name": "Chris Aldrich",
+        "url": "https://boffosocko.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2033,
+      "wm-property": "repost-of",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://martymcgui.re/notes-fixture-note-repost-of-2033",
+      "published": "2026-08-30T14:11:00Z",
+      "author": {
+        "name": "Marty McGuire",
+        "url": "https://martymcgui.re/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2034,
+      "wm-property": "repost-of",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://example.social/@sarah/notes-fixture-note-repost-of-2034",
+      "published": "2026-08-30T15:18:00Z",
+      "author": {
+        "name": "Sarah H\u00f6fler",
+        "url": "https://example.social/@sarah",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2035,
+      "wm-property": "in-reply-to",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://aaronparecki.com/notes-fixture-note-in-reply-to-2035",
+      "published": "2026-08-30T16:25:00Z",
+      "author": {
+        "name": "Aaron Parecki",
+        "url": "https://aaronparecki.com/",
+        "photo": ""
+      },
+      "content": {
+        "text": "The spec really is that small. One endpoint, one POST. The hard part is moderation, not delivery."
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2036,
+      "wm-property": "in-reply-to",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://jacky.wtf/notes-fixture-note-in-reply-to-2036",
+      "published": "2026-08-30T17:32:00Z",
+      "author": {
+        "name": "Jacky Alcine",
+        "url": "https://jacky.wtf/",
+        "photo": ""
+      },
+      "content": {
+        "text": "Agreed \u2014 and the fact you can implement the receiving half in an afternoon is why it spread."
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2037,
+      "wm-property": "in-reply-to",
+      "wm-target": "http://localhost:8080/notes/fixture-note/",
+      "url": "https://martymcgui.re/notes-fixture-note-in-reply-to-2037",
+      "published": "2026-08-30T18:39:00Z",
+      "author": {
+        "name": "Marty McGuire",
+        "url": "https://martymcgui.re/",
+        "photo": ""
+      },
+      "content": {
+        "text": "Every time I reread it I'm surprised there isn't more of it in the wild."
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2038,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/photos/fixture-gallery/",
+      "url": "https://tantek.com/photos-fixture-gallery-like-of-2038",
+      "published": "2026-08-30T19:46:00Z",
+      "author": {
+        "name": "Tantek \u00c7elik",
+        "url": "https://tantek.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2039,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/photos/fixture-gallery/",
+      "url": "https://aaronparecki.com/photos-fixture-gallery-like-of-2039",
+      "published": "2026-08-30T20:53:00Z",
+      "author": {
+        "name": "Aaron Parecki",
+        "url": "https://aaronparecki.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2040,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/photos/fixture-gallery/",
+      "url": "https://jacky.wtf/photos-fixture-gallery-like-of-2040",
+      "published": "2026-08-30T09:00:00Z",
+      "author": {
+        "name": "Jacky Alcine",
+        "url": "https://jacky.wtf/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2041,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/photos/fixture-gallery/",
+      "url": "https://martymcgui.re/photos-fixture-gallery-like-of-2041",
+      "published": "2026-08-30T10:07:00Z",
+      "author": {
+        "name": "Marty McGuire",
+        "url": "https://martymcgui.re/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2042,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/photos/fixture-gallery/",
+      "url": "https://example.social/@sarah/photos-fixture-gallery-like-of-2042",
+      "published": "2026-08-30T11:14:00Z",
+      "author": {
+        "name": "Sarah H\u00f6fler",
+        "url": "https://example.social/@sarah",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2043,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/photos/fixture-gallery/",
+      "url": "https://ohhelloana.blog/photos-fixture-gallery-like-of-2043",
+      "published": "2026-08-30T12:21:00Z",
+      "author": {
+        "name": "Ana Rodrigues",
+        "url": "https://ohhelloana.blog/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2044,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/photos/fixture-gallery/",
+      "url": "https://boffosocko.com/photos-fixture-gallery-like-of-2044",
+      "published": "2026-08-30T13:28:00Z",
+      "author": {
+        "name": "Chris Aldrich",
+        "url": "https://boffosocko.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2045,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/photos/fixture-gallery/",
+      "url": "https://www.jvt.me/photos-fixture-gallery-like-of-2045",
+      "published": "2026-08-30T14:35:00Z",
+      "author": {
+        "name": "Jamie Tanna",
+        "url": "https://www.jvt.me/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2046,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/photos/fixture-gallery/",
+      "url": "https://kitt.hodsden.org/photos-fixture-gallery-like-of-2046",
+      "published": "2026-08-30T15:42:00Z",
+      "author": {
+        "name": "Kitt Hodsden",
+        "url": "https://kitt.hodsden.org/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2047,
+      "wm-property": "repost-of",
+      "wm-target": "http://localhost:8080/photos/fixture-gallery/",
+      "url": "https://martymcgui.re/photos-fixture-gallery-repost-of-2047",
+      "published": "2026-08-30T16:49:00Z",
+      "author": {
+        "name": "Marty McGuire",
+        "url": "https://martymcgui.re/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2048,
+      "wm-property": "repost-of",
+      "wm-target": "http://localhost:8080/photos/fixture-gallery/",
+      "url": "https://example.social/@sarah/photos-fixture-gallery-repost-of-2048",
+      "published": "2026-08-30T17:56:00Z",
+      "author": {
+        "name": "Sarah H\u00f6fler",
+        "url": "https://example.social/@sarah",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2049,
+      "wm-property": "repost-of",
+      "wm-target": "http://localhost:8080/photos/fixture-gallery/",
+      "url": "https://ohhelloana.blog/photos-fixture-gallery-repost-of-2049",
+      "published": "2026-08-30T18:03:00Z",
+      "author": {
+        "name": "Ana Rodrigues",
+        "url": "https://ohhelloana.blog/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2050,
+      "wm-property": "in-reply-to",
+      "wm-target": "http://localhost:8080/photos/fixture-gallery/",
+      "url": "https://aaronparecki.com/photos-fixture-gallery-in-reply-to-2050",
+      "published": "2026-08-30T19:10:00Z",
+      "author": {
+        "name": "Aaron Parecki",
+        "url": "https://aaronparecki.com/",
+        "photo": ""
+      },
+      "content": {
+        "text": "That second frame is the one. The banding is gorgeous."
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2051,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/photos/fixture-photo/",
+      "url": "https://tantek.com/photos-fixture-photo-like-of-2051",
+      "published": "2026-08-30T20:17:00Z",
+      "author": {
+        "name": "Tantek \u00c7elik",
+        "url": "https://tantek.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2052,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/photos/fixture-photo/",
+      "url": "https://aaronparecki.com/photos-fixture-photo-like-of-2052",
+      "published": "2026-08-30T09:24:00Z",
+      "author": {
+        "name": "Aaron Parecki",
+        "url": "https://aaronparecki.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2053,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/photos/fixture-photo/",
+      "url": "https://jacky.wtf/photos-fixture-photo-like-of-2053",
+      "published": "2026-08-30T10:31:00Z",
+      "author": {
+        "name": "Jacky Alcine",
+        "url": "https://jacky.wtf/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2054,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/photos/fixture-photo/",
+      "url": "https://martymcgui.re/photos-fixture-photo-like-of-2054",
+      "published": "2026-08-30T11:38:00Z",
+      "author": {
+        "name": "Marty McGuire",
+        "url": "https://martymcgui.re/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2055,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/replies/fixture-reply/",
+      "url": "https://tantek.com/replies-fixture-reply-like-of-2055",
+      "published": "2026-08-30T12:45:00Z",
+      "author": {
+        "name": "Tantek \u00c7elik",
+        "url": "https://tantek.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2056,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/replies/fixture-reply/",
+      "url": "https://aaronparecki.com/replies-fixture-reply-like-of-2056",
+      "published": "2026-08-30T13:52:00Z",
+      "author": {
+        "name": "Aaron Parecki",
+        "url": "https://aaronparecki.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2057,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/replies/fixture-reply/",
+      "url": "https://jacky.wtf/replies-fixture-reply-like-of-2057",
+      "published": "2026-08-30T14:59:00Z",
+      "author": {
+        "name": "Jacky Alcine",
+        "url": "https://jacky.wtf/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2058,
+      "wm-property": "repost-of",
+      "wm-target": "http://localhost:8080/replies/fixture-reply/",
+      "url": "https://martymcgui.re/replies-fixture-reply-repost-of-2058",
+      "published": "2026-08-30T15:06:00Z",
+      "author": {
+        "name": "Marty McGuire",
+        "url": "https://martymcgui.re/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2059,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/likes/fixture-like/",
+      "url": "https://tantek.com/likes-fixture-like-like-of-2059",
+      "published": "2026-08-30T16:13:00Z",
+      "author": {
+        "name": "Tantek \u00c7elik",
+        "url": "https://tantek.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2060,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/bookmarks/fixture-bookmark/",
+      "url": "https://tantek.com/bookmarks-fixture-bookmark-like-of-2060",
+      "published": "2026-08-30T17:20:00Z",
+      "author": {
+        "name": "Tantek \u00c7elik",
+        "url": "https://tantek.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2061,
+      "wm-property": "like-of",
+      "wm-target": "http://localhost:8080/bookmarks/fixture-bookmark/",
+      "url": "https://aaronparecki.com/bookmarks-fixture-bookmark-like-of-2061",
+      "published": "2026-08-30T18:27:00Z",
+      "author": {
+        "name": "Aaron Parecki",
+        "url": "https://aaronparecki.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2062,
+      "wm-property": "bookmark-of",
+      "wm-target": "http://localhost:8080/bookmarks/fixture-bookmark/",
+      "url": "https://boffosocko.com/bookmarks-fixture-bookmark-bookmark-of-2062",
+      "published": "2026-08-30T19:34:00Z",
+      "author": {
+        "name": "Chris Aldrich",
+        "url": "https://boffosocko.com/",
+        "photo": ""
+      }
+    },
+    {
+      "type": "entry",
+      "wm-id": 2063,
+      "wm-property": "mention-of",
+      "wm-target": "http://localhost:8080/bookmarks/fixture-bookmark/",
+      "url": "https://snarfed.org/bookmarks-fixture-bookmark-mention-of-2063",
+      "published": "2026-08-30T20:41:00Z",
+      "author": {
+        "name": "Ryan Barrett",
+        "url": "https://snarfed.org/",
+        "photo": ""
+      },
+      "content": {
+        "text": "Saw this via your bookmark, thanks for surfacing it."
+      }
+    }
+  ]
+}
