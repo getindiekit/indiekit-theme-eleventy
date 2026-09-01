@@ -256,6 +256,21 @@ export default function (eleventyConfig) {
     [resolveModule("@zachleat/heading-anchors")]: "heading-anchors.js",
   });
 
+  // The last two pinned-but-unreferenced dependencies, wired to the Indiekit
+  // cases they actually fit rather than the source's:
+  //
+  // carouscroll — the source uses it for conference slide decks (its `slides`
+  // shortcode paginates numbered slide images). No Indiekit equivalent, but a
+  // photo post's `photo` is an ARRAY, so a multi-photo post is the carousel
+  // case here.
+  //
+  // browser-window — the source wraps external link previews in browser
+  // chrome. Bookmarks and replies point at external URLs; same affordance.
+  eleventyConfig.addPassthroughCopy({
+    [resolveModule("@zachleat/carouscroll")]: "carouscroll.js",
+    [resolveModule("@zachleat/browser-window")]: "browser-window.js",
+  });
+
   // Task 19 (§9.2): @zachleat/pagefind-search is the other pinned dependency
   // that nothing referenced until now. Same resolveModule() passthrough
   // idiom as heading-anchors above, same root-not-"static/" output path for

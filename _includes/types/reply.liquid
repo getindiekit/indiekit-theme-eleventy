@@ -1,7 +1,7 @@
 {%- if lcp -%}
 <a class="u-url sr-only" href="{{ page.url }}">{{ title }}</a>{% comment %} Visual fix: sr-only so the permalink's own title isn't printed twice (h1 above already carries p-name) — see types/article.liquid's comment. {% endcomment %}
 {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
-{%- if inReplyTo %}<p>In reply to <a class="u-in-reply-to" href="{{ inReplyTo }}">{{ inReplyTo }}</a></p>{% endif %}
+{%- if inReplyTo %}<p>In reply to</p>{% include "partials/link-preview.liquid", linkUrl: inReplyTo, linkClass: "u-in-reply-to" %}{% endif %}
 {%- comment %} Task 18 (§7.4): see types/article.liquid for why h2,h3. {% endcomment -%}
 <div class="content-grid e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
 {%- else -%}

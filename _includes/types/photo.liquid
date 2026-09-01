@@ -11,6 +11,18 @@ the same already-ported width clamp every other in-content image gets — no
 new CSS, just putting the image where the existing grid can reach it.
 {% endcomment -%}
 <div class="content-grid e-content">
+{%- comment %} A photo post's `photo` is an array, so a post with more than one
+   image is the carousel case. Wrapped the way the source wraps its own carousel
+   (eleventy.config.js's `slides` shortcode): <is-land> defers the component
+   until idle/visible, and <template data-island> means the module is only
+   fetched if the island activates. Without JS the images are plain <img>
+   elements in document order — <carou-scroll> is an unknown element and
+   renders its children as-is. A single-photo post gets no carousel.
+   {% endcomment -%}
+{%- assign isCarousel = photo.size > 1 -%}
+{%- if isCarousel %}<is-land on:idle on:visible>
+{%- if JS_ENABLED %}<template data-island><script type="module" src="/carouscroll.js"></script></template>{% endif %}
+<carou-scroll tabindex="0" class="carouscroll">{% endif %}
 {%- for image in photo %}
 {%- comment %} Task 18 (§7.4): the port source marks exactly one LCP image
    per page loading="eager" fetchpriority="high" (its own site avatar,
@@ -27,6 +39,7 @@ new CSS, just putting the image where the existing grid can reach it.
 <img class="u-photo" src="{{ image.url }}" alt="{{ image.alt | default: '' }}" loading="lazy" decoding="async" eleventy:optional="keep">
 {%- endif %}
 {%- endfor %}
+{%- if isCarousel %}</carou-scroll></is-land>{% endif %}
 {%- comment %} Task 18 (§7.4): see types/article.liquid for why h2,h3. {% endcomment -%}
 <heading-anchors selector="h2,h3">{{ content }}</heading-anchors>
 </div>

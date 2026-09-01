@@ -1159,11 +1159,11 @@ check("the archive is an h-feed listing every post", () => {
 check("archive h-feed entries carry h-entry, not bare links", () => {
   // The check above would also pass if the listing were a plain <a> list
   // with no microformats at all — assert each entry is itself a valid
-  // h-entry, one per post-tagged fixture (7: see the feed entry-count
-  // check above for why it's 7, not 6).
+  // h-entry, one per post-tagged fixture (8: see the feed entry-count
+  // check above for why it's 8, not 6).
   const html = readFileSync("_site/archive/index.html", "utf8");
   const entryCount = (html.match(/class="h-entry"/g) || []).length;
-  assert.equal(entryCount, 7, `expected 7 h-entry listing entries, found ${entryCount}`);
+  assert.equal(entryCount, 8, `expected 8 h-entry listing entries, found ${entryCount}`);
 });
 
 check("archive h-feed lists posts newest first", () => {
@@ -1180,7 +1180,7 @@ check("archive h-feed lists posts newest first", () => {
   // *one* real permalink link always carries instead.
   const hrefs = [...feedSection.matchAll(/<a\s+class="[^"]*\bu-url\b[^"]*"\s+href="(\/(?:articles|notes|bookmarks|likes|replies|photos)\/[^"]+\/)"/g)]
     .map((m) => m[1]);
-  assert.equal(hrefs.length, 7, `expected 7 entry links inside the h-feed, found ${hrefs.length}`);
+  assert.equal(hrefs.length, 8, `expected 8 entry links inside the h-feed, found ${hrefs.length}`);
 
   const fixtures = [
     ["articles", "fixture-article"],
@@ -1190,6 +1190,7 @@ check("archive h-feed lists posts newest first", () => {
     ["likes", "fixture-like"],
     ["replies", "fixture-reply"],
     ["photos", "fixture-photo"],
+    ["photos", "fixture-gallery"],
   ];
   const byHref = new Map(
     fixtures.map(([type, slug]) => [
@@ -1223,6 +1224,7 @@ check("archive h-feed entry dates match the same instant as the post's own page"
     ["likes", "fixture-like"],
     ["replies", "fixture-reply"],
     ["photos", "fixture-photo"],
+    ["photos", "fixture-gallery"],
   ];
   for (const [type, slug] of fixtures) {
     const pageHtml = readFileSync(`_site/${type}/${slug}/index.html`, "utf8");
@@ -1295,7 +1297,7 @@ function extractHEntryBlocks(html, tagName = "article") {
 check("every h-entry in the archive listing carries its own u-url", () => {
   // The bug this guards against: the permalink <a class="u-url"> rendered
   // as a sibling *before* each <article class="h-entry">, not inside it. A
-  // real mf2 parser confirmed the consequence — all 7 permalinks collapsed
+  // real mf2 parser confirmed the consequence — all 8 permalinks collapsed
   // onto the h-feed root's `url` property and every h-entry child had none.
   // Flat regex/string checks (the four `h-feed ...` checks above) cannot
   // see this: they all matched a `u-url` and an `h-entry` existing
@@ -1307,9 +1309,9 @@ check("every h-entry in the archive listing carries its own u-url", () => {
   // pattern: if the extractor's boundary logic were broken and found zero
   // blocks, `blocks.every(...)` below would vacuously pass on an empty
   // array. Pin the count to the known fixture total (see "h-feed entries
-  // carry h-entry" above for why it's 7) so a broken extractor fails loudly
+  // carry h-entry" above for why it's 8) so a broken extractor fails loudly
   // instead of silently checking nothing.
-  assert.equal(blocks.length, 7, `expected 7 h-entry blocks, found ${blocks.length}`);
+  assert.equal(blocks.length, 8, `expected 8 h-entry blocks, found ${blocks.length}`);
 
   const missing = blocks
     .map((block, i) => ({ i, hasUrl: /\bu-url\b/.test(block) }))
@@ -1388,7 +1390,7 @@ check("every h-entry — permalink and feed listing alike — still carries a p-
   // type partials directly, not through entry.liquid) — an h-entry with no
   // name at all is a real mf2 regression, not just a missing heading.
   const homeBlocks = extractHEntryBlocks(readFileSync("_site/archive/index.html", "utf8"), "li");
-  assert.equal(homeBlocks.length, 7, `expected 7 h-entry blocks in the feed, found ${homeBlocks.length}`);
+  assert.equal(homeBlocks.length, 8, `expected 8 h-entry blocks in the feed, found ${homeBlocks.length}`);
   const feedMissing = homeBlocks
     .map((block, i) => ({ i, hasName: /\bp-name\b/.test(block) }))
     .filter((b) => !b.hasName);
@@ -1442,7 +1444,7 @@ check("the archive listing never embeds a full post body — no content-grid/e-c
   // e-content wrapper).
   const html = readFileSync("_site/archive/index.html", "utf8");
   const blocks = extractHEntryBlocks(html, "li");
-  assert.equal(blocks.length, 7, `expected 7 h-entry <li> blocks, found ${blocks.length}`);
+  assert.equal(blocks.length, 8, `expected 8 h-entry <li> blocks, found ${blocks.length}`);
   const withBody = blocks
     .map((block, i) => ({ i, hasBody: /\bcontent-grid\b/.test(block) || /\be-content\b/.test(block) }))
     .filter((b) => b.hasBody);
@@ -1700,12 +1702,12 @@ check("feed contains every post-tagged fixture, not just any entry", () => {
   // made it into the feed, or if the collection name were wrong and picked up
   // some unrelated single page. Confirm all 6 post-type fixtures are present,
   // proving the `post` collection tag from Task 6's cascades actually feeds
-  // this plugin's `collection.name: "post"` option. 7, not 6: Task 11 added a
+  // this plugin's `collection.name: "post"` option. 8, not 6: Task 11 added a
   // second bookmark fixture (fixture-untitled-bookmark.md) to exercise the
   // titleless-bookmark fallback.
   const xml = readFileSync("_site/feed.xml", "utf8");
   const entryCount = (xml.match(/<entry>/g) || []).length;
-  assert.equal(entryCount, 7, `expected 7 feed entries (one per post-type fixture, plus the untitled-bookmark fixture), got ${entryCount}`);
+  assert.equal(entryCount, 8, `expected 8 feed entries (one per post-type fixture, plus the untitled-bookmark fixture), got ${entryCount}`);
   for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos"]) {
     assert.ok(
       xml.includes(`http://localhost:8080/${type}/`),
@@ -1748,14 +1750,14 @@ check("every feed entry has a non-empty title", () => {
   // and the plugin renders `post.data.title` verbatim — an unhandled
   // fallback ships as literal <title></title>, which most feed readers
   // render as a blank row. This is the majority case: 4 of the 6 post
-  // types produce no title of their own. 7, not 6: see the entry-count
+  // types produce no title of their own. 8, not 6: see the entry-count
   // check above.
   const xml = readFileSync("_site/feed.xml", "utf8");
   const titles = [...xml.matchAll(/<title>([\s\S]*?)<\/title>/g)]
     .map((m) => m[1].trim())
     // the feed's own <title> (site name) is not an entry title
     .slice(1);
-  assert.equal(titles.length, 7, `expected 7 entry titles, found ${titles.length}`);
+  assert.equal(titles.length, 8, `expected 8 entry titles, found ${titles.length}`);
   for (const title of titles) {
     assert.ok(title.length > 0, "a feed entry has an empty <title>");
   }
@@ -1804,6 +1806,7 @@ check("feed and page timestamps round-trip to the exact source instant, not just
     ["likes", "fixture-like"],
     ["replies", "fixture-reply"],
     ["photos", "fixture-photo"],
+    ["photos", "fixture-gallery"],
   ];
 
   const xml = readFileSync("_site/feed.xml", "utf8");

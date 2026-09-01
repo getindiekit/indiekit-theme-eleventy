@@ -69,3 +69,22 @@ table-saw :is(th, td) {
 		padding-left: 0;
 	}
 }
+
+/* Carousel — port source static/sass/_carousel.scss:33-45,72-74. The audit
+   classed that partial as correctly dropped ("no carousel markup"), which was
+   true until a multi-photo post became the carousel case here. Only the rules
+   for markup this theme actually emits are taken: .carouscroll-meta styles his
+   slide-navigation buttons, and the [data-eleventy-runmode="serve"] and
+   `alt*="Slide "` rules are specific to his slide decks. */
+.carouscroll {
+	display: flex;
+	overflow-x: scroll;
+	overflow-y: hidden;
+}
+.carouscroll > * {
+	display: block;
+	min-width: 100%;
+}
+.carouscroll img {
+	vertical-align: middle;
+}
