@@ -1,5 +1,16 @@
 {
   "name": "indiekit-theme-eleventy-reference",
+  "version": "0.1.0",
+  "description": "A neutral, redistributable Eleventy theme for Indiekit, ported from zachleat.com.",
+  "license": "MIT",
+  "keywords": [
+    "eleventy",
+    "eleventy-theme",
+    "indiekit",
+    "indieweb",
+    "microformats",
+    "webmention"
+  ],
   "private": true,
   "type": "module",
   "engines": {

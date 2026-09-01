@@ -18,6 +18,17 @@ upstream credit in that file is preserved — do not remove or reword it.
 theme: his content, analytics, fundraising, Kickstarter, ShopTalk, talk/
 transcript pages, and his `eleventy-*.html` prose partials.
 
+## Credit
+
+This theme is a port, not original work. The design, the Sass, the layout
+system, the webmention templates and most of the implementation are
+[Zach Leatherman](https://zachleat.com/)'s, MIT licensed — as is Eleventy
+itself, and 18 of the 24 dependencies this theme installs. It exists to serve
+[Indiekit](https://getindiekit.com/) by Paul Robert Lloyd.
+
+See [CREDITS.md](CREDITS.md) for full attribution and the upstream licence
+notice, and [LICENSE](LICENSE) for this port's own terms.
+
 ## Who this is for
 
 Anyone running Indiekit who wants an Eleventy front end with IndieWeb
