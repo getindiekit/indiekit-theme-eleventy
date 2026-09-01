@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { DateTime } from "luxon";
 import { resolveDate } from "./_11ty/dateResolver.js";
 import pluginSass from "./_11ty/sassPlugin.js";
 import pluginSyntaxHighlight from "./_11ty/syntaxHighlightPlugin.js";
@@ -170,6 +171,10 @@ export default function (eleventyConfig) {
   eleventyConfig.addPlugin(pluginImage);
   eleventyConfig.addPlugin(pluginImageAvatar);
   eleventyConfig.addPlugin(pluginWebmentions);
+  // Registered for its BUNDLER, not for components: base.liquid's
+  // `{% getBundle 'css' %}` is this plugin's. _components/ was deleted
+  // (finding 13), so the glob matches nothing today; it stays so a future
+  // component is picked up without re-deriving the wiring.
   eleventyConfig.addPlugin(pluginWebc, { components: "_components/**/*.webc" });
   eleventyConfig.addPlugin(IdAttributePlugin);
 
@@ -215,18 +220,66 @@ export default function (eleventyConfig) {
       title: siteData.name,
       subtitle: siteData.description,
       base: feedBase,
-      author: siteData.author,
+      // RFC 4287 §4.2.1 requires a non-empty atom:name, and atom:feed needs an
+      // author unless every entry carries its own. This theme ships neutral
+      // (site.json author.name is ""), and the plugin deep-merges metadata
+      // over its own defaults, so BOTH obvious options are wrong:
+      //   - passing author as-is  -> "" overrides the default -> <name></name>,
+      //     invalid, on every clean checkout
+      //   - omitting the key      -> the plugin's own default wins ->
+      //     <name>Your Name</name>, valid but a lie
+      // Fall back to the site's own name instead: valid, and truthful for an
+      // unconfigured theme (the site is what published the entry). The atom
+      // template reads only .name and .email (virtualTemplate.js:46-51) — there
+      // is no author URI to supply here.
+      author: {
+        name: (siteData.author && siteData.author.name) || siteData.name,
+        email: (siteData.author && siteData.author.email) || "",
+      },
     },
+  });
+
+  // Micropub `category` -> tag pages (finding 6). Categories are arbitrary
+  // strings written by whatever client published the post, so unlike the
+  // source — which hardcodes a five-tag whitelist linking to a query-string
+  // filter (post.liquid:75-81) — this derives the whole tag set from content.
+  //
+  // ONE slug implementation, used by both the collection (to build the
+  // permalink) and the `slug` filter (to build the href). Two would drift and
+  // produce links pointing at pages that were never built — exactly what the
+  // internal-link guard in test/build.mjs exists to catch.
+  const slug = (value) =>
+    String(value)
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+  eleventyConfig.addFilter("slug", slug);
+
+  eleventyConfig.addCollection("tagList", (collectionApi) => {
+    const tags = new Map();
+    for (const item of collectionApi.getFilteredByTag("post")) {
+      for (const category of item.data.category || []) {
+        const key = slug(category);
+        if (!key) continue;
+        if (!tags.has(key)) tags.set(key, { name: category, slug: key, posts: [] });
+        tags.get(key).posts.push(item);
+      }
+    }
+    // Newest-first within a tag, matching the archive's own ordering.
+    for (const tag of tags.values()) tags.get(tag.slug).posts.reverse();
+    return [...tags.values()].sort((a, b) => a.name.localeCompare(b.name));
   });
 
   // webmention-avatar.liquid's fallback <img> references this path. Source
   // ships the same file at the same path via the same passthrough pattern.
   eleventyConfig.addPassthroughCopy("web/img");
 
-  // Speedlify 2: the score widget footer.liquid links (static/js/*) and the
-  // health-score badge component (_components/*) — source merges both into
-  // its "static/" output tree via the same passthrough pattern; do the same
-  // so health-score.js is actually reachable, not just copied into the repo.
+  // Speedlify 2: the score widget footer.liquid links (static/js/*).
+  // This ships the real, USED speedlify2-score.js — do not confuse it with the
+  // health-score badge component, which was deleted (see below).
   eleventyConfig.addPassthroughCopy({ static: "/" });
 
   // Fixture media. In production Indiekit's media store writes uploads to
@@ -235,13 +288,14 @@ export default function (eleventyConfig) {
   // Without this the photo post's <img> 404s: the src was correct and the
   // file was simply never copied into the build.
   eleventyConfig.addPassthroughCopy({ "content/_fixtures": "/media" });
-  // Extension-limited (not the whole _components dir): publishing the raw
-  // .webc source templates into _site would ship build inputs as if they
-  // were output. This theme maps {static: "/"} to root (not the source's
-  // "static/" subtree — base.liquid already loads /js/*, and a second
-  // /static/ convention would exist for one unused component), so
-  // toggle-button.webc's own asset links point at "/toggle-button.*" below.
-  eleventyConfig.addPassthroughCopy({ "_components/*.{css,js}": "/" });
+  // Finding 13: _components/ (toggle-button.webc + its .css/.js, and
+  // health-score.js) and the passthrough that published them to the site root
+  // were deleted. Nothing referenced them: the component's only consumer was
+  // the source's footer "turn CSS off / turn web fonts off" buttons, which
+  // _includes/footer.html deliberately drops as source-specific, and the
+  // mobile nav is a plain .navigation-toggle button with an inline script
+  // (layouts/default.liquid). The footer's Speedlify widget uses
+  // static/js/speedlify2-score.js, a different file, still shipped above.
 
   // Task 18 (§7.4): @zachleat/heading-anchors is a pinned dependency
   // (package.json) that nothing referenced until now. Source
@@ -344,6 +398,31 @@ export default function (eleventyConfig) {
   eleventyConfig.addLiquidFilter("humanDate", function (dateValue) {
     const parsed = resolveDate(dateValue, this.page?.inputPath, TIME_ZONE);
     return parsed ? parsed.setZone(TIME_ZONE).toFormat("d MMMM yyyy") : "";
+  });
+
+  // Listing rows get a SHORT date, because it sits in a fixed non-wrapping
+  // column beside the dotted leader (sass/_theme-posts.scss). humanDate's
+  // "30 August 2026" is 14 characters and wrapped to two and three lines there,
+  // landing at a different x on every row.
+  //
+  // The year is emitted only when it is not the current one: the homepage lists
+  // recent posts where the year is noise, but /archive/ and the tag pages span
+  // years, where a bare "14 Mar" is ambiguous. The full date is always in the
+  // adjacent <time datetime> attribute regardless, so nothing is lost to
+  // machines or to a reader hovering the element.
+  //
+  // "Current" is evaluated in the SITE's timezone, not the build machine's —
+  // otherwise a build running in a different zone flips the format a day early
+  // or late around New Year, which is exactly the class of bug resolveDate()
+  // and isoInstant were written to eliminate.
+  eleventyConfig.addLiquidFilter("listingDate", function (dateValue) {
+    const parsed = resolveDate(dateValue, this.page?.inputPath, TIME_ZONE);
+    if (!parsed) {
+      return "";
+    }
+    const inZone = parsed.setZone(TIME_ZONE);
+    const currentYear = DateTime.now().setZone(TIME_ZONE).year;
+    return inZone.toFormat(inZone.year === currentYear ? "d MMM" : "d MMM yyyy");
   });
 
   return {

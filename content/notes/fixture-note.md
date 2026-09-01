@@ -1,5 +1,7 @@
 ---
 date: 2026-08-30T10:00:00.000Z
+category:
+  - webmention
 ---
 
 Spent the morning reading through the webmention spec again. The thing that

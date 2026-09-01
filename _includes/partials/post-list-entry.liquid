@@ -78,7 +78,9 @@ page renders itself.
 {%- assign inReplyTo = post.data.inReplyTo -%}
 {%- assign photo = post.data.photo -%}
 {%- assign postType = post.data.postType -%}
+{%- assign category = post.data.category -%}
 <li class="h-entry">
+	{% include "partials/author-card.liquid" %}
 	{% case postType %}
 		{% when "article" %}{% include "types/article.liquid" %}
 		{% when "bookmark" %}{% include "types/bookmark.liquid" %}

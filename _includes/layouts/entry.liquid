@@ -58,7 +58,21 @@ task-visual-fix-report.md for the full evidence trail. {%- endcomment -%}
    <h1> when `removeTitle` is set. Apply it to the synthetic case, so the
    heading stays in the document for microformats and screen readers and stops
    dominating the page. {% endcomment -%}
-    <h1 class="p-name primary-title{% unless hugeTitle %} primary-title-smalltitle{% endunless %}{% unless title_isReal %} sr-only{% endunless %}">{{ title }}</h1>
+    {%- comment %} p-name is conditional, not decorative. In mf2 a note is
+   DEFINED by the absence of an explicit p-name: parsers imply the name from
+   the content, and consumers compare name against content to decide whether
+   to render a post as a titled article or as a note. eleventyComputed.js
+   synthesises a "<Type> · <date>" label for the four titleless types so the
+   Atom feed's atom:title is never empty — but marking that synthetic label
+   up as p-name made every note, like, reply and photo parse as a titled
+   article named after its own timestamp. The Atom requirement and the mf2
+   requirement are satisfied in different places: `title` still carries the
+   label into the feed, this class does not carry it into the markup.
+   title_isReal is stamped from RAW front matter by the "real-title"
+   preprocessor (eleventy.config.js), before the synthesis runs. {% endcomment -%}
+    <h1 class="{% if title_isReal %}p-name {% endif %}primary-title{% unless hugeTitle %} primary-title-smalltitle{% endunless %}{% unless title_isReal %} sr-only{% endunless %}">{{ title }}</h1>
+  {% include "partials/author-card.liquid" %}
+  {% include "partials/syndication-links.liquid" %}
   {% case postType %}
     {% when "article" %}{% include "types/article.liquid" %}
     {% when "bookmark" %}{% include "types/bookmark.liquid" %}
@@ -67,7 +81,47 @@ task-visual-fix-report.md for the full evidence trail. {%- endcomment -%}
     {% when "reply" %}{% include "types/reply.liquid" %}
     {% else %}{% include "types/note.liquid" %}
   {% endcase %}
+  {%- comment %} Categories on the PERMALINK, not just the listing row. The
+     .tags slot each type partial reserves lives in its feed-listing branch
+     only, so without this a post's p-category existed on the homepage and
+     vanished on the page a consumer actually fetches. .tags:empty
+     (_theme-chrome.scss:45) hides it for posts with no categories. {% endcomment -%}
+  {% include "partials/post-tags.liquid" %}
 </article>
+
+{%- comment %} Finding 11: this port shipped the source's whole dl.nextprev
+   design (_lists.scss:33-108, 18 rules on every page) without ever building the
+   feature — readers could not move between posts and paid for the dead bytes.
+
+   Adapted, not copied, in two ways:
+
+   1. ORDER. The source reads collections.activePosts, which it keeps
+      newest-first, so ITS "next" is the older post. collections.post here is
+      Eleventy's default ascending order (content/archive.liquid reverses it to
+      display newest-first), so getNextCollectionItem returns the NEWER post.
+      Copying the source's labels verbatim would have pointed both arrows the
+      wrong way. Bound to meaning here — olderPost/newerPost — and then placed
+      into whichever class carries the correct column, since .nextprev-next is
+      grid-column 1 (left) and .nextprev-prev is grid-column 2 (right).
+   2. NO THUMBNAILS. The source's cells are OG-image screenshots via its
+      {% ogImageSource %} shortcode. Four of six Indiekit post types are
+      titleless, and generating a per-neighbour image on every permalink is
+      build cost for a nav affordance — the post's title (real, or
+      eleventyComputed.js's "<Type> · <date>" label, which reads correctly AS a
+      nav label) is the link text instead. dl.nextprev dd:empty already styles
+      the empty cell for the first and last post. {% endcomment -%}
+{%- assign olderPost = collections.post | getPreviousCollectionItem: page -%}
+{%- assign newerPost = collections.post | getNextCollectionItem: page -%}
+{%- if olderPost or newerPost %}
+<nav class="content-grid-sibling" data-pagefind-ignore aria-label="More posts">
+	<dl class="nextprev nextprev-text">
+		<dt class="nextprev-next">{% if olderPost %}<span>&lt; Older</span>{% endif %}</dt>
+		<dd class="nextprev-next">{% if olderPost %}<a href="{{ olderPost.url }}">{{ olderPost.data.title }}</a>{% endif %}</dd>
+		<dt class="nextprev-prev">{% if newerPost %}<span>Newer &gt;</span>{% endif %}</dt>
+		<dd class="nextprev-prev">{% if newerPost %}<a href="{{ newerPost.url }}">{{ newerPost.data.title }}</a>{% endif %}</dd>
+	</dl>
+</nav>
+{%- endif %}
 
 {%- capture absoluteUrl %}{{ site.url }}{{ page.url }}{% endcapture -%}
 {% include "webmentionlist.liquid" %}

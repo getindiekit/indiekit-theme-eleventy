@@ -118,11 +118,13 @@ await elev.write();
 
 const webmentions = await import("./_data/webmentions.js");
 const npmDownloads = await import("./_data/npmDownloads.js");
+const speedlify = await import("./_data/speedlify.js");
 const imagePlugin = await import("./_11ty/imagePlugin.js");
 
 process.stdout.write("\\nPROBE_RESULT:" + JSON.stringify({
   webmentions: webmentions.default.CACHE_DURATION,
   npmDownloads: npmDownloads.default.CACHE_DURATION,
+  speedlify: speedlify.default.CACHE_DURATION,
   image: imagePlugin.IMAGE_CACHE_DURATION,
 }) + "\\n");
 `;
@@ -170,6 +172,22 @@ process.stdout.write("\\nPROBE_RESULT:" + JSON.stringify({
         build.webmentions,
         serve.webmentions,
         "webmentions cache duration did not vary by run mode — it's a constant, not a switch",
+      );
+
+      assert.equal(
+        build.speedlify,
+        "1d",
+        `build-mode speedlify cache duration: expected "1d", got ${JSON.stringify(build.speedlify)}`,
+      );
+      assert.equal(
+        serve.speedlify,
+        "30d",
+        `serve-mode speedlify cache duration: expected "30d", got ${JSON.stringify(serve.speedlify)}`,
+      );
+      assert.notEqual(
+        build.speedlify,
+        serve.speedlify,
+        "speedlify cache duration did not vary by run mode — it's a constant, not a switch",
       );
 
       assert.equal(
@@ -445,6 +463,10 @@ check("every class the markup emits has a rule in the compiled CSS", () => {
     "h-entry", "h-feed", "h-card", "e-content", "p-name", "p-author",
     "u-url", "u-photo", "u-like-of", "u-in-reply-to", "u-bookmark-of",
     "dt-published", "u-syndication",
+    // p-category carries a post's Micropub `category` values. Semantic, like
+    // the rest of this list — the visible styling comes from the source's own
+    // `.tags .tag` rule (_theme-chrome.scss:49), which sits alongside it.
+    "p-category",
     // Emitted by the webmention templates when fixture data is loaded:
     // h-cite is the mf2 vocabulary for a cited/quoted post, u-comment and
     // p-content are its properties. Semantic, like the rest of this list.
@@ -478,8 +500,20 @@ check("every class the markup emits has a rule in the compiled CSS", () => {
   assert.ok(css.length > 0, "no compiled CSS found — this check is vacuous");
   const defined = new Set([...css.matchAll(/\.([A-Za-z][\w-]*)/g)].map((m) => m[1]));
 
+  // Font Awesome stamps its own hooks on the sprite <symbol> it generates
+  // (`class="svg-inline--fa fa-reply-all"`, plugin output — not our markup).
+  // Those are styled by FA's own stylesheet, which this theme does not ship and
+  // does not need: the visible <svg> is sized by the ported `.z-icon` rule via
+  // the shortcode's defaultAttributes. Matched by PREFIX so adding a second
+  // icon later cannot re-break this check for a reason that is not a defect.
+  const isFontAwesomeInternal = (c) => c === "svg-inline--fa" || c.startsWith("fa-");
+
   const unstyled = [...used].filter(
-    (c) => !defined.has(c) && !mf2.has(c) && !unstyledInSource.has(c),
+    (c) =>
+      !defined.has(c) &&
+      !mf2.has(c) &&
+      !unstyledInSource.has(c) &&
+      !isFontAwesomeInternal(c),
   );
   assert.deepEqual(
     unstyled.sort(),
@@ -869,8 +903,7 @@ await checkAsync(
     // CoreMinimal.js, and with no --watch/--serve it's a single write() and
     // exit (cmd.cjs:136-157) — no server, no port, no watcher.
     //
-    // Three throwaway fixtures at content root, same pattern as the
-    // toggle-button WebC check above: a tagged "member" page, a listing
+    // Three throwaway fixtures at content root: a tagged "member" page, a listing
     // that declares eleventyImport for that tag, and an identical listing
     // that doesn't. Full build, modify the member, rebuild incrementally,
     // and check which listing's *output file* actually changed.
@@ -1088,6 +1121,18 @@ check("navigation has an accessible mobile toggle", () => {
   assert.ok(html.includes('aria-expanded="false"'), "toggle missing aria-expanded");
   assert.ok(html.includes('aria-controls="site-nav"'), "toggle not wired to the nav list");
   assert.ok(html.includes('id="site-nav"'), "nav list has no id to control");
+  // The toggle is an ICON button. Its visible label was replaced by three CSS
+  // bars, so the accessible name now depends entirely on the sr-only span —
+  // drop that and the control becomes an unlabelled button to a screen reader.
+  assert.ok(
+    html.includes('class="navigation-toggle-icon"'),
+    "nav toggle has no hamburger icon element",
+  );
+  assert.match(
+    html,
+    /<button[^>]*class="navigation-toggle"[\s\S]*?<span class="sr-only">\s*Menu\s*<\/span>[\s\S]*?<\/button>/,
+    "nav toggle has no accessible name — an icon-only button with no sr-only label",
+  );
 });
 
 check("navigation styling ships, with no animation", () => {
@@ -1107,6 +1152,20 @@ check("navigation styling ships, with no animation", () => {
   assert.ok(
     !/\banimation\s*:/.test(css.replace(/prefers-reduced-motion[^}]*}/g, "")),
     "an animation property was introduced — the source's motion was rejected",
+  );
+  // The toggle used to render as a stray left-aligned button UNDER the site
+  // name, because it lives in <aside> while the title lives in <header>. The
+  // single-column layout puts those two on one row and pushes the toggle right;
+  // without this rule it silently falls back to stacking.
+  const sticky = /\.rail-sticky\s*\{([^}]*)\}/g;
+  const stickyRules = [...css.matchAll(sticky)].map((m) => m[1]);
+  assert.ok(
+    stickyRules.some((r) => /display:\s*flex/.test(r) && /justify-content:\s*space-between/.test(r)),
+    "no .rail-sticky flex row — the mobile toggle will stack under the title instead of aligning right with it",
+  );
+  assert.ok(
+    /\.navigation-toggle-icon\s*\{/.test(css),
+    "the hamburger icon has no CSS — the button renders empty",
   );
 });
 
@@ -1231,9 +1290,15 @@ check("archive h-feed entry dates match the same instant as the post's own page"
     const pageMatch = pageHtml.match(/dt-published" datetime="([^"]*)"/);
     assert.ok(pageMatch, `${type}/${slug}: page has no dt-published datetime attribute`);
 
-    const entry = html.split(`href="/${type}/${slug}/"`)[0].split(/<li/).pop() +
-      `href="/${type}/${slug}/"` +
-      html.split(`href="/${type}/${slug}/"`)[1].split(/<\/li>/)[0];
+    // Extract the row with the nesting-aware helper rather than by splitting
+    // on the permalink href. A photo row contains that href TWICE — once on
+    // the .posts-link anchor and once on the .posts-thumb anchor — so the old
+    // split window was whatever happened to sit between the two, and it
+    // silently stopped containing <time> the moment the thumbnail moved ahead
+    // of the date. That is a property of the extraction, not of the markup.
+    const rows = extractHEntryBlocks(html, "li");
+    const entry = rows.find((row) => row.includes(`href="/${type}/${slug}/"`));
+    assert.ok(entry, `${type}/${slug}: no h-entry row found in the archive listing`);
     const listingMatch = entry.match(/dt-published" datetime="([^"]*)"/);
     assert.ok(listingMatch, `${type}/${slug}: no dt-published datetime attribute in its h-feed entry`);
     assert.equal(
@@ -1383,31 +1448,62 @@ check("every post's content wrapper carries both content-grid and e-content", ()
   assert.ok(checkedPages > 0, "found no pages to check — scan is vacuous");
 });
 
-check("every h-entry — permalink and feed listing alike — still carries a p-name", () => {
-  // Task S3: moving <h1 class="p-name"> out of types/article.liquid into
-  // entry.liquid must not silently drop p-name from the feed listing, where
-  // entry.liquid's <h1> never renders (post-list-entry.liquid calls the
-  // type partials directly, not through entry.liquid) — an h-entry with no
-  // name at all is a real mf2 regression, not just a missing heading.
-  const homeBlocks = extractHEntryBlocks(readFileSync("_site/archive/index.html", "utf8"), "li");
-  assert.equal(homeBlocks.length, 8, `expected 8 h-entry blocks in the feed, found ${homeBlocks.length}`);
-  const feedMissing = homeBlocks
-    .map((block, i) => ({ i, hasName: /\bp-name\b/.test(block) }))
-    .filter((b) => !b.hasName);
-  assert.equal(
-    feedMissing.length,
-    0,
-    `${feedMissing.length} feed h-entry blocks have no p-name (indices: ${feedMissing.map((m) => m.i).join(", ")})`,
-  );
+check("p-name marks titled post types only — titleless types must not carry one", () => {
+  // Was: "every h-entry still carries a p-name". That invariant was wrong.
+  // In mf2 a note is DEFINED by having no explicit p-name — parsers imply the
+  // name from content, and consumers compare name vs. content to choose
+  // note-vs-article rendering. eleventyComputed.js synthesises a
+  // "<Type> · <date>" label purely so the Atom feed's atom:title is non-empty;
+  // marking that label up as p-name made all four titleless types parse as
+  // titled articles named after their own timestamp, and (via the `truncate`
+  // filter, _11ty/webmentionsPlugin.js:56) folded a literal
+  // "<span class=tag-inline>Truncated</span>" UI badge INTO the post's name.
+  // A photo's p-name was its image's alt text, contradicting the same post's
+  // own permalink heading. So the correct invariant is type-dependent:
+  //   articles, bookmarks -> real title, MUST carry p-name
+  //   notes, likes, replies, photos -> titleless, MUST NOT carry p-name
+  // Every h-entry, both kinds, must still carry u-url — that is what makes the
+  // entry addressable, and it is the guard the old check was really providing.
+  const TITLED = new Set(["articles", "bookmarks"]);
 
-  const types = ["articles", "notes", "bookmarks", "likes", "replies", "photos"];
-  for (const type of types) {
+  const rows = extractHEntryBlocks(readFileSync("_site/archive/index.html", "utf8"), "li");
+  assert.equal(rows.length, 8, `expected 8 h-entry blocks in the feed, found ${rows.length}`);
+  for (const row of rows) {
+    const href = /href="\/([a-z]+)\//.exec(row);
+    assert.ok(href, `listing row has no typed permalink href: ${row.slice(0, 120)}`);
+    assert.ok(/\bu-url\b/.test(row), `listing row for /${href[1]}/ has no u-url`);
+    const hasName = /\bp-name\b/.test(row);
+    if (TITLED.has(href[1])) {
+      assert.ok(hasName, `listing row for /${href[1]}/ is a titled type but has no p-name`);
+    } else {
+      assert.ok(!hasName, `listing row for /${href[1]}/ is titleless but carries p-name`);
+    }
+  }
+
+  // The badge the truncate filter appends must never land inside a p-name.
+  for (const row of rows) {
+    const named = [...row.matchAll(/<a[^>]*\bp-name\b[^>]*>([\s\S]*?)<\/a>/g)];
+    for (const m of named) {
+      assert.ok(
+        !/tag-inline/.test(m[1]),
+        `a p-name anchor contains the "Truncated" UI badge: ${m[1].slice(0, 80)}`,
+      );
+    }
+  }
+
+  for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos"]) {
     const files = globSync(`_site/${type}/**/index.html`);
+    assert.ok(files.length > 0, `no built page under _site/${type}/`);
     for (const file of files) {
-      const html = readFileSync(file, "utf8");
-      const blocks = extractHEntryBlocks(html);
+      const blocks = extractHEntryBlocks(readFileSync(file, "utf8"));
       assert.equal(blocks.length, 1, `${file}: expected exactly one h-entry, found ${blocks.length}`);
-      assert.ok(/\bp-name\b/.test(blocks[0]), `${file}: its h-entry has no p-name`);
+      assert.ok(/\bu-url\b/.test(blocks[0]), `${file}: its h-entry has no u-url`);
+      const hasName = /\bp-name\b/.test(blocks[0]);
+      if (TITLED.has(type)) {
+        assert.ok(hasName, `${file}: titled type with no p-name`);
+      } else {
+        assert.ok(!hasName, `${file}: titleless type must not carry p-name`);
+      }
     }
   }
 });
@@ -1640,14 +1736,22 @@ check("speedlify is absent when disabled", () => {
   assert.ok(!html.includes("speedlify2-score"), "element rendered while disabled");
 });
 
-check("speedlify renders with the configured url on every page when enabled", () => {
+check("the speedlify badge renders only on pages the configured instance actually measures", () => {
   // The disabled-state check above only proves the widget can be hidden — it
-  // would still pass if the whole integration were deleted. Build a second,
-  // throwaway output with speedlify turned on and assert the widget actually
-  // renders, carrying the real configured url, everywhere the layout puts it.
+  // would still pass if the whole integration were deleted. Build a throwaway
+  // output with speedlify enabled and assert the badge's real contract.
+  //
+  // That contract is NOT "renders everywhere". The badge fetches its score
+  // client-side, so on a page the instance does not measure it paints an empty
+  // box; _data/speedlify.js exists to gate it on the instance's own
+  // /api/urls.json index. www.speedlify.dev measures 40 URLs, only 11 of them
+  // its owner's own pages — the badge is absent from the other ~500 by design.
+  // SPEEDLIFY_FIXTURE supplies that index locally so this stays offline and
+  // deterministic; the fixture lists the homepage and the article, and nothing
+  // else, so both halves of the gate are exercised in one build.
   const sitePath = "_data/site.json";
   const outDir = "_site-speedlify-check";
-  const testUrl = "https://speedlify.example/api";
+  const testUrl = "https://speedlify.example/";
   const original = readFileSync(sitePath);
 
   try {
@@ -1659,26 +1763,52 @@ check("speedlify renders with the configured url on every page when enabled", ()
     execFileSync(
       process.execPath,
       ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
-      { stdio: "pipe" },
+      {
+        stdio: "pipe",
+        env: { ...process.env, SPEEDLIFY_FIXTURE: "test/fixtures/speedlify-urls.json" },
+      },
     );
 
-    // Task 20: excludes ${outDir}/opengraph/** — this is a plain CLI build
-    // (no --serve), so ELEVENTY_RUN_MODE is "build" and the OG card set
-    // (content/opengraph-images.liquid) gets built here too. Those pages
-    // render through _includes/layouts/opengraph.liquid, not base.liquid,
-    // so they never carry the speedlify widget by design — see that
-    // layout's own comment.
-    const files = globSync(`${outDir}/**/*.html`).filter((f) => !f.includes(`${outDir}/opengraph/`));
-    assert.ok(files.length > 0, "no HTML produced for the speedlify-enabled build");
-    for (const file of files) {
+    const tracked = JSON.parse(readFileSync("test/fixtures/speedlify-urls.json", "utf8"));
+    const site = JSON.parse(original.toString("utf8"));
+    // Map each fixture key back to the built file it corresponds to.
+    const pathOf = (absoluteUrl) => absoluteUrl.slice(site.url.length);
+
+    // MEASURED pages: exactly one badge, carrying the configured instance url.
+    for (const absoluteUrl of Object.keys(tracked)) {
+      const file = `${outDir}${pathOf(absoluteUrl)}index.html`;
+      assert.ok(existsSync(file), `fixture lists ${absoluteUrl} but ${file} was not built`);
       const html = readFileSync(file, "utf8");
       assert.ok(
-        html.includes(`<speedlify2-score theme="light" speedlify-url="${testUrl}"`),
-        `speedlify widget missing or url does not match configured value in ${file}`,
+        html.includes(`<speedlify2-score theme="light" speedlify-url="${testUrl}" url="${absoluteUrl}"`),
+        `measured page ${absoluteUrl} has no badge, or its url/instance attributes are wrong`,
+      );
+      // Exactly one. The previous version of this check asserted with
+      // includes(), which passes just as happily with two — and there were
+      // two: base.liquid carried a copy of the footer's widget, so every page
+      // rendered the element twice and fetched the 22KB module twice.
+      const widgets = (html.match(/<speedlify2-score\b/g) || []).length;
+      assert.equal(widgets, 1, `${file} renders ${widgets} badges, expected exactly 1`);
+      const scripts = (html.match(/src="\/js\/speedlify2-score\.js"/g) || []).length;
+      assert.equal(scripts, 1, `${file} loads the speedlify module ${scripts} times, expected exactly 1`);
+    }
+
+    // UNMEASURED pages: no badge and no module fetch at all. Without this half
+    // the gate could be deleted and the check above would still pass.
+    const trackedFiles = new Set(
+      Object.keys(tracked).map((u) => `${outDir}${pathOf(u)}index.html`),
+    );
+    const others = globSync(`${outDir}/**/*.html`).filter((f) => !trackedFiles.has(f));
+    assert.ok(others.length > 0, "no unmeasured pages to check — the gate is not being exercised");
+    for (const file of others) {
+      const html = readFileSync(file, "utf8");
+      assert.ok(
+        !/<speedlify2-score\b/.test(html),
+        `${file} is not in the instance's url index but still renders a badge — it would paint an empty box`,
       );
       assert.ok(
-        html.includes('<script type="module" src="/js/speedlify2-score.js"></script>'),
-        `speedlify script tag missing in ${file}`,
+        !/src="\/js\/speedlify2-score\.js"/.test(html),
+        `${file} loads the speedlify module despite having no badge`,
       );
     }
   } finally {
@@ -2212,70 +2342,6 @@ MARKER_titleless_bookmark
   }
 });
 
-check("no .webc source template is published into _site", () => {
-  // addPassthroughCopy({ _components: "/" }) previously copied the whole
-  // _components dir verbatim, shipping .webc build-input templates (e.g.
-  // toggle-button.webc) into the output tree alongside real assets.
-  const files = globSync("_site/**/*.webc");
-  assert.equal(files.length, 0, `.webc file(s) published into _site: ${files.join(", ")}`);
-});
-
-check("toggle-button's own CSS/JS assets are reachable at the paths it links", () => {
-  // toggle-button.webc links /toggle-button.css and /toggle-button.js. The
-  // old passthrough shipped _components/* under /static/ paths that don't
-  // match what the component actually references — both 404'd.
-  const webc = readFileSync("_components/toggle-button.webc", "utf8");
-  const hrefs = [...webc.matchAll(/(?:href|src)="([^"]+)"/g)].map((m) => m[1]);
-  assert.ok(hrefs.length > 0, "toggle-button.webc links no assets to check");
-  for (const href of hrefs) {
-    assert.ok(existsSync(`_site${href}`), `toggle-button.webc links ${href}, which does not exist in _site`);
-  }
-});
-
-await checkAsync("toggle-button WebC component resolves through the build", async () => {
-  // pluginWebc's `components` glob only expands custom-element tags inside
-  // .webc templates (useTransform defaults to false, and this theme doesn't
-  // set it) — no .liquid/.md page in this theme invokes <toggle-button>, so
-  // there is nothing in the real _site build that would fail if the plugin
-  // were unregistered or pointed at the wrong glob. Build one throwaway .webc
-  // page that uses the component and confirm it actually expands, following
-  // the same patch-and-restore-in-finally pattern as the speedlify check
-  // above.
-  const fixturePath = "content/_webc-check.webc";
-  const outDir = "_site-webc-check";
-  const marker = "WEBC_CHECK_MARKER";
-  // No explicit permalink: WebC front matter treats a literal permalink
-  // string as a dynamic expression here and eleventy rejects the resulting
-  // object, so rely on the default input-path-derived output location.
-  const fixture = `---
-eleventyExcludeFromCollections: true
----
-<toggle-button label="${marker}"></toggle-button>
-`;
-
-  writeFileSync(fixturePath, fixture);
-  try {
-    rmSync(outDir, { recursive: true, force: true });
-    execFileSync(
-      process.execPath,
-      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
-      { stdio: "pipe" },
-    );
-
-    const outFile = `${outDir}/_webc-check/index.html`;
-    assert.ok(existsSync(outFile), `${outFile} was not built — .webc is not a recognised template format`);
-    const html = readFileSync(outFile, "utf8");
-    assert.ok(
-      html.includes("toggle-island"),
-      "<toggle-button> did not expand into its component markup — _components/**/*.webc is not resolving",
-    );
-    assert.ok(html.includes(marker), "toggle-button's label attribute did not render");
-  } finally {
-    rmSync(fixturePath, { force: true });
-    rmSync(outDir, { recursive: true, force: true });
-  }
-});
-
 await checkAsync(
   "addDateParsing's fallback branch reads a literal `published:` field, not file birthtime",
   async () => {
@@ -2348,6 +2414,32 @@ const skip = (name, reason) => {
 // _data/webmentions.js correctly returns no mentions (no token, no network
 // call) — skip rather than fail, so a fresh clone still reports a clean run.
 if (process.env.WEBMENTIONS_FIXTURE) {
+  check("listing rows show webmention-driven social counts", () => {
+    // The like/boost/reply counts are the portable half of the source's
+    // post-popularity-social-tags.html; its view counts and popularity ranking
+    // read from analytics this theme deliberately carries none of. The fixture
+    // supplies three in-reply-to mentions for one post and none for the others,
+    // so this exercises both the rendered and the absent case in one build.
+    const rows = extractHEntryBlocks(readFileSync("_site/archive/index.html", "utf8"), "li");
+    const noteRow = rows.find((r) => r.includes('href="/notes/fixture-note/"'));
+    assert.ok(noteRow, "no listing row for the webmentioned fixture note");
+    assert.match(
+      noteRow,
+      /<span class="tag-social--reply" title="3 replies">/,
+      "the webmentioned post's row shows no reply count",
+    );
+    // A count only renders when non-zero — a fresh site with no webmentions
+    // must not show a row of zeros.
+    const quiet = rows.filter((r) => !r.includes('href="/notes/fixture-note/"'));
+    assert.ok(quiet.length > 0, "no un-webmentioned rows to check");
+    for (const row of quiet) {
+      assert.ok(
+        !/tag-social/.test(row),
+        "a post with no webmentions still renders a social-counts pill",
+      );
+    }
+  });
+
   check("webmentions render from fixture data", () => {
     const files = globSync("_site/notes/*/index.html");
     const html = readFileSync(files[0], "utf8");
@@ -2628,7 +2720,8 @@ process.stdout.write("\\nPROBE_RESULT:" + JSON.stringify({ hits, misses, elapsed
 // close both the specific bug (heading-anchors is now wired to real
 // headings) and the general class of defect it belongs to — this is the
 // third time a reference to a path this theme never builds has slipped
-// through (/static/defer.css, the toggle-button asset paths, now this); the
+// through (/static/defer.css, the since-deleted toggle-button asset paths,
+// now this); the
 // last check asserts every same-origin <script src> / <link
 // rel="stylesheet" href> on every built page resolves to a real file.
 check("heading-anchors wraps the real e-content body in every post type that has one", () => {
@@ -3430,6 +3523,381 @@ check("og:description is the page's own text, never the old \"A post by \" place
     `like's og:description (empty body, no explicit description) should fall back to site.description, got: "${like}"`,
   );
 });
+
+
+check("the Atom feed always names an author, and never an empty or placeholder one", () => {
+  // RFC 4287 §4.2.1: atom:name must be non-empty, and atom:feed requires an
+  // author unless every entry carries its own. This theme ships neutral
+  // (site.json's author.name is ""), and eleventy-plugin-rss deep-merges
+  // metadata over its own defaults, so both naive options ship broken feeds:
+  // passing the empty author through yields <name></name> (invalid on every
+  // clean checkout), and omitting the key yields the plugin's own
+  // <name>Your Name</name> placeholder (valid, but a lie). The config falls
+  // back to the site's own name; this guards both failure modes at once.
+  const feed = readFileSync("_site/feed.xml", "utf8");
+  const author = /<author>\s*<name>([\s\S]*?)<\/name>/.exec(feed);
+  assert.ok(author, "feed has no <author><name> at all");
+  assert.notEqual(author[1].trim(), "", "feed ships <name></name> — invalid per RFC 4287 §4.2.1");
+  assert.notEqual(
+    author[1].trim(),
+    "Your Name",
+    "feed ships eleventy-plugin-rss's placeholder author name, not the site's own",
+  );
+  const site = JSON.parse(readFileSync("_data/site.json", "utf8"));
+  assert.equal(
+    author[1].trim(),
+    (site.author && site.author.name) || site.name,
+    "feed author name is neither the configured author nor the site-name fallback",
+  );
+});
+
+check("a post's Micropub categories become p-category on listing and permalink alike, and every tag page they link to is built", () => {
+  // `category` is a first-class Micropub property. Before this, all six type
+  // partials hardcoded an empty <span class="tags"></span> and nothing emitted
+  // p-category anywhere, so every tag a user applied in their client vanished
+  // at publish. Two separate render paths have to carry it — the feed listing
+  // (post-list-entry.liquid, which passes an explicit local scope) and the
+  // permalink (entry.liquid) — and an earlier pass had it on the listing only,
+  // which is the render a consumer never fetches.
+  const catOf = (html) =>
+    [...html.matchAll(/<a class="tag p-category" href="([^"]+)">([^<]+)<\/a>/g)]
+      .map((m) => ({ href: m[1], name: m[2] }));
+
+  const permalinkCats = catOf(readFileSync("_site/articles/fixture-article/index.html", "utf8"));
+  assert.ok(permalinkCats.length > 0, "the article permalink emits no p-category");
+
+  // Listing rows deliberately carry NO categories. The row is a flex line whose
+  // right-hand cluster is nowrap by construction (the dotted leader is
+  // .tags::before), and a category is an unbounded user-authored string — one
+  // long tag would blow out the reserved date column. They live on the
+  // permalink and stay reachable through /tags/. Asserted, not just omitted, so
+  // a future change cannot quietly put them back and re-break the row.
+  const listingCats = catOf(readFileSync("_site/archive/index.html", "utf8"));
+  assert.equal(
+    listingCats.length,
+    0,
+    `listing rows emit p-category (${listingCats.map((c) => c.name).join(", ")}) — they belong on the permalink only`,
+  );
+
+  // Every category link must resolve — a tag page that was never built is the
+  // exact failure the internal-link guard exists to catch, asserted here too
+  // so this check fails for its own reason rather than a distant one.
+  for (const cat of [...permalinkCats, ...listingCats]) {
+    assert.ok(
+      existsSync(`_site${cat.href}index.html`),
+      `category link ${cat.href} points at a tag page that was never built`,
+    );
+  }
+
+  // And a tag page must actually list its posts, not render an empty feed.
+  for (const cat of permalinkCats) {
+    const page = readFileSync(`_site${cat.href}index.html`, "utf8");
+    const entries = (page.match(/class="h-entry"/g) || []).length;
+    assert.ok(entries > 0, `tag page ${cat.href} lists no posts`);
+  }
+});
+
+check("a syndicated post links its copies with u-syndication", () => {
+  // Syndicating to Mastodon/Bluesky/LinkedIn is a core Indiekit feature, and
+  // u-syndication is the only way a consumer can tie a copy back to the
+  // original — without it Bridgy backfeed cannot associate a reply on the
+  // silo with the post that produced it, so syndicated conversation never
+  // comes home. The port source has no equivalent (it hardcodes tweet/toot
+  // front matter with no mf2 class), so nothing would have caught this.
+  const html = readFileSync("_site/articles/fixture-article/index.html", "utf8");
+  const links = [...html.matchAll(/<a class="u-syndication" href="([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(links.length > 0, "the syndicated fixture post emits no u-syndication link");
+  const fm = readFileSync("content/articles/fixture-article.md", "utf8");
+  for (const url of links) {
+    assert.ok(fm.includes(url), `u-syndication url ${url} is not in the post's own front matter`);
+  }
+  // A post with no syndication must emit none — not an empty list.
+  const note = readFileSync("_site/notes/fixture-note/index.html", "utf8");
+  assert.ok(
+    !/u-syndication/.test(note),
+    "a post with no syndication front matter still emits u-syndication markup",
+  );
+});
+
+check("a configured author is published in every form mf2 and the fediverse actually read", () => {
+  // The neutral default emits no author markup at all (by design — an empty
+  // h-card or <meta name=author content=""> is worse than none), so every
+  // check against the default build would pass with the whole integration
+  // deleted. Build a throwaway output with an author configured and assert
+  // each mechanism independently: mf2 author discovery has exactly three
+  // inputs (p-author on the h-entry, p-author on the parent h-feed, or
+  // rel=author -> h-card) and this theme supplies the first and third;
+  // RelMeAuth needs MULTIPLE rel=me links, not one; Mastodon reads
+  // fediverse:creator for link-preview attribution.
+  const sitePath = "_data/site.json";
+  const outDir = "_site-author-check";
+  const original = readFileSync(sitePath);
+  const author = {
+    name: "Test Author",
+    url: "https://example.com/",
+    avatar: "",
+    fediverse: "@test@example.social",
+    me: ["https://github.com/test", "https://example.social/@test"],
+  };
+
+  try {
+    const config = JSON.parse(original.toString("utf8"));
+    config.author = author;
+    writeFileSync(sitePath, JSON.stringify(config, null, 2) + "\n");
+
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(
+      process.execPath,
+      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe" },
+    );
+
+    const home = readFileSync(`${outDir}/index.html`, "utf8");
+    assert.ok(
+      home.includes(`<meta name="author" content="${author.name}">`),
+      "configured author is missing from <meta name=author>",
+    );
+    assert.ok(
+      home.includes(`<meta name="fediverse:creator" content="${author.fediverse}">`),
+      "fediverse:creator is missing — Mastodon link previews lose author attribution",
+    );
+    const relMe = [...home.matchAll(/<link href="([^"]+)" rel="me">/g)].map((m) => m[1]);
+    for (const url of [author.url, ...author.me]) {
+      assert.ok(relMe.includes(url), `rel=me is missing ${url} — RelMeAuth needs every identity`);
+    }
+    assert.ok(
+      relMe.length >= 3,
+      `only ${relMe.length} rel=me link(s); a single scalar cannot express RelMeAuth cross-linking`,
+    );
+    assert.ok(
+      home.includes(`<a rel="author" href="${author.url}">`),
+      "rel=author is missing — the only author-discovery input that works on pages with no h-entry",
+    );
+
+    // p-author must sit INSIDE each h-entry to be that entry's author.
+    for (const [label, file] of [
+      ["listing", `${outDir}/archive/index.html`],
+      ["permalink", `${outDir}/notes/fixture-note/index.html`],
+    ]) {
+      const blocks = extractHEntryBlocks(
+        readFileSync(file, "utf8"),
+        label === "listing" ? "li" : "article",
+      );
+      assert.ok(blocks.length > 0, `${label}: no h-entry blocks found`);
+      for (const block of blocks) {
+        assert.ok(
+          /\bp-author\b/.test(block) && /\bh-card\b/.test(block),
+          `${label}: an h-entry has no nested p-author h-card — the post is authorless to mf2 consumers`,
+        );
+      }
+    }
+
+    const feed = readFileSync(`${outDir}/feed.xml`, "utf8");
+    assert.ok(
+      feed.includes(`<name>${author.name}</name>`),
+      "the configured author does not reach the Atom feed",
+    );
+  } finally {
+    writeFileSync(sitePath, original);
+    rmSync(outDir, { recursive: true, force: true });
+    assert.ok(
+      readFileSync(sitePath).equals(original),
+      "_data/site.json was not restored to its original bytes",
+    );
+  }
+});
+
+
+
+check("prev/next navigation points at the real neighbouring posts, in the right direction", () => {
+  // This port shipped the source's entire dl.nextprev design (18 rules in
+  // _lists.scss) with no markup to match: readers could not move between posts
+  // and every page paid for the dead bytes. Direction is the subtle part — the
+  // source keeps its collection newest-first, so ITS getNextCollectionItem
+  // returns the OLDER post; collections.post here is ascending, so it returns
+  // the NEWER one. Copying the source's labels verbatim would point both arrows
+  // backwards while still rendering perfectly. Verify against the archive's own
+  // newest-first ordering rather than re-deriving dates.
+  const archive = readFileSync("_site/archive/index.html", "utf8");
+  const order = [...archive.matchAll(/<a class="posts-link[^"]*" href="(\/[a-z]+\/[^"]+\/)"/g)]
+    .map((m) => m[1]);
+  assert.ok(order.length >= 3, `archive lists ${order.length} posts — too few to check neighbours`);
+
+  const navOf = (html) => {
+    const dl = /<dl class="nextprev[^"]*">([\s\S]*?)<\/dl>/.exec(html);
+    assert.ok(dl, "post page has no dl.nextprev");
+    const older = /<dd class="nextprev-next">(?:\s*<a href="([^"]+)")?/.exec(dl[1]);
+    const newer = /<dd class="nextprev-prev">(?:\s*<a href="([^"]+)")?/.exec(dl[1]);
+    return { older: older && older[1], newer: newer && newer[1] };
+  };
+
+  for (const [i, url] of order.entries()) {
+    const nav = navOf(readFileSync(`_site${url}index.html`, "utf8"));
+    // order is newest-first: the NEXT index is older, the PREVIOUS is newer.
+    const expectOlder = i + 1 < order.length ? order[i + 1] : undefined;
+    const expectNewer = i > 0 ? order[i - 1] : undefined;
+    assert.equal(
+      nav.older || undefined, expectOlder,
+      `${url}: "Older" points at ${nav.older}, expected ${expectOlder} — direction is reversed or wrong`,
+    );
+    assert.equal(
+      nav.newer || undefined, expectNewer,
+      `${url}: "Newer" points at ${nav.newer}, expected ${expectNewer} — direction is reversed or wrong`,
+    );
+  }
+
+  // The endpoints must render EMPTY cells, not a link to themselves and not a
+  // missing <dd> (dl.nextprev dd:empty is the rule that styles them).
+  // The source's dt badge sits deliberately ON TOP of an og-image thumbnail
+  // (dt and dd share grid-row 1, dt has z-index 1 + pointer-events: none).
+  // These cells carry TEXT, so inheriting that overlap paints the badge over
+  // the link title — confirmed unreadable in a browser. The .nextprev-text
+  // variant stacks them; if that rule is lost the markup still renders and
+  // only a human looking at it would notice, which is why this is asserted.
+  const css = globSync("_site/_css/{initial,defer}.css")
+    .map((f) => readFileSync(f, "utf8")).join("");
+  const dtRule = /dl\.nextprev-text dt\s*\{([^}]*)\}/.exec(css);
+  const ddRule = /dl\.nextprev-text dd\s*\{([^}]*)\}/.exec(css);
+  assert.ok(dtRule && ddRule, "the .nextprev-text stacking rules are missing from the compiled CSS");
+  const row = (rule) => /grid-row:\s*([^;]+)/.exec(rule)?.[1].trim();
+  assert.ok(
+    row(dtRule[1]) && row(ddRule[1]) && row(dtRule[1]) !== row(ddRule[1]),
+    `.nextprev-text dt and dd share grid-row ${row(dtRule[1])} — the badge will overlap the link text`,
+  );
+
+  // `1fr` is minmax(auto, 1fr) and that auto minimum is MIN-CONTENT, so one
+  // unbreakable string stops the column shrinking and pushes the grid past the
+  // viewport. Real, not theoretical: a titleless bookmark's title falls back to
+  // its own URL, so a neighbour's link text is routinely an unbreakable URL —
+  // measured at 11px of horizontal overflow on the article permalink at 360px.
+  const cols = /dl\.nextprev-text\s*\{([^}]*)\}/.exec(css);
+  assert.ok(cols, "no dl.nextprev-text rule in the compiled CSS");
+  assert.ok(
+    /grid-template-columns:\s*minmax\(\s*0/.test(cols[1]),
+    "dl.nextprev-text columns are not minmax(0, ...) — a long unbreakable neighbour title will overflow the viewport on narrow screens",
+  );
+
+  const newest = navOf(readFileSync(`_site${order[0]}index.html`, "utf8"));
+  assert.ok(!newest.newer, `the newest post links to a newer post (${newest.newer})`);
+  const oldest = navOf(readFileSync(`_site${order[order.length - 1]}index.html`, "utf8"));
+  assert.ok(!oldest.older, `the oldest post links to an older post (${oldest.older})`);
+});
+
+check("a 404 page is built, and is kept out of the search index and the feed", () => {
+  // Source ships 404.html; this port built none, so any host serving the theme
+  // fell back to its own default error page. It must not leak into Pagefind
+  // results or the Atom feed — a 404 turning up as a search hit is worse than
+  // no 404 page at all.
+  assert.ok(existsSync("_site/404.html"), "_site/404.html was not built");
+  const html = readFileSync("_site/404.html", "utf8");
+  assert.ok(
+    !/data-pagefind-body/.test(html),
+    "the 404 page is marked data-pagefind-body — it will show up as a search result",
+  );
+  assert.ok(
+    /class="[^"]*h-entry/.test(html),
+    "the 404 page lists no posts — the onward path for a lost reader is the point of it",
+  );
+  assert.ok(
+    html.includes('href="/archive/"'),
+    "the 404 page does not link onward to the archive",
+  );
+  assert.ok(
+    !readFileSync("_site/feed.xml", "utf8").includes("404"),
+    "the 404 page leaked into the Atom feed",
+  );
+});
+
+
+
+check("every SVG <use> reference resolves to a <symbol> defined on the same page", () => {
+  // The exact bug this exists for: @11ty/font-awesome files each icon's sprite
+  // symbol against `this.page.url` (plugin.js:51). The listing partials are
+  // included with a `page: post` override — deliberately, so date filters read
+  // each post's own front matter — so every {% icon %} rendered inside that
+  // override filed its symbol under the POST's url, while the listing page
+  // emitted <use href="#fas-fa-reply-all"> for a symbol that was never in its
+  // own bundle. The markup looked perfect and the icon painted NOTHING.
+  // A second, independent way to break this: {% getBundle "fontawesome" %} was
+  // commented out behind a stale TODO, so no page emitted a sprite at all.
+  // Both are invisible to every other check in this file.
+  const files = globSync("_site/**/*.html");
+  assert.ok(files.length > 0, "no HTML produced — this check scanned nothing");
+  const broken = [];
+  let refs = 0;
+  for (const file of files) {
+    const html = readFileSync(file, "utf8");
+    const symbols = new Set([...html.matchAll(/<symbol[^>]*\sid="([^"]+)"/g)].map((m) => m[1]));
+    for (const m of html.matchAll(/<use[^>]*?(?:xlink:)?href="#([^"]+)"/g)) {
+      refs++;
+      if (!symbols.has(m[1])) broken.push(`${file}: #${m[1]}`);
+    }
+  }
+  assert.equal(
+    broken.length,
+    0,
+    `SVG <use> references with no matching <symbol> on the page (the icon renders blank): ${[...new Set(broken)].join("; ")}`,
+  );
+  // Not vacuous only when icons actually ship; note it rather than assert, so a
+  // build with no webmentions (every fresh install) still reports honestly.
+  if (refs === 0) {
+    console.log("    (note: no <use> references in this build — nothing to resolve)");
+  }
+});
+
+check("listing rows use the short date format; permalinks keep the long one", () => {
+  // "30 August 2026" is 14 characters and wrapped to two and three lines in the
+  // row's reserved column, landing at a different x on every row — the reported
+  // bug. listingDate (eleventy.config.js) emits "30 Aug", adding the year only
+  // when it is not the current one so /archive/ and the tag pages stay
+  // unambiguous. The two formats must not collapse into one.
+  const listing = readFileSync("_site/archive/index.html", "utf8");
+  const dates = [...listing.matchAll(/<time class="date dt-published"[^>]*>([^<]+)<\/time>/g)]
+    .map((m) => m[1].trim());
+  assert.ok(dates.length > 0, "the archive listing renders no dates");
+  const currentYear = new Date().getFullYear();
+  for (const d of dates) {
+    assert.match(
+      d,
+      /^\d{1,2} [A-Z][a-z]{2}( \d{4})?$/,
+      `listing date "${d}" is not the short "d MMM [yyyy]" form`,
+    );
+  }
+  // The fixtures are all from the current year, so none may carry one.
+  const withYear = dates.filter((d) => new RegExp(`${currentYear}$`).test(d));
+  assert.equal(
+    withYear.length,
+    0,
+    `current-year listing dates redundantly carry the year: ${withYear.join(", ")}`,
+  );
+  // And the permalink must still show the full, unabbreviated date.
+  const page = readFileSync("_site/articles/fixture-article/index.html", "utf8");
+  assert.match(
+    page,
+    /<time class="dt-published"[^>]*>\s*\d{1,2} [A-Z][a-z]{3,}\s+\d{4}\s*<\/time>/,
+    "the permalink lost its long-form date — listingDate leaked onto the post page",
+  );
+});
+
+check("listing excerpts carry no Truncated badge and no categories", () => {
+  // Both used to sit inside the row: the badge came from the `truncate` filter
+  // (a webmention affordance, meaningless in a listing) and, before p-name was
+  // corrected, landed INSIDE the post's machine-readable name. Categories are
+  // unbounded user strings that would blow out the nowrap meta column. Both
+  // belong on the permalink, not the row.
+  const rows = extractHEntryBlocks(readFileSync("_site/archive/index.html", "utf8"), "li");
+  assert.ok(rows.length > 0, "no listing rows found — this check scanned nothing");
+  for (const row of rows) {
+    assert.ok(!/tag-inline/.test(row), `a listing row still renders the "Truncated" badge`);
+    assert.ok(!/p-category/.test(row), `a listing row still renders a category`);
+  }
+  // The excerpt must still be truncated — just without the badge.
+  assert.ok(
+    rows.some((r) => /…/.test(r)),
+    "no listing excerpt is truncated at all — the ellipsis went missing with the badge",
+  );
+});
+
 
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;

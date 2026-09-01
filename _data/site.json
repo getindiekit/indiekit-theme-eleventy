@@ -2,7 +2,13 @@
   "name": "Indiekit reference theme",
   "url": "http://localhost:8080",
   "description": "A reference Eleventy theme for Indiekit.",
-  "author": { "name": "", "url": "" },
+  "author": {
+    "name": "",
+    "url": "",
+    "avatar": "",
+    "fediverse": "",
+    "me": []
+  },
   "speedlify": { "url": "", "enabled": false },
   "timezone": "Europe/Brussels",
   "opengraph": {

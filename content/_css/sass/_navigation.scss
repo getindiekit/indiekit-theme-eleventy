@@ -42,11 +42,39 @@
    toggle button (its preceding sibling) reports aria-expanded="true" — CSS
    reads state from that one attribute, nothing is duplicated in a class. */
 @media (max-width: config.$oneColLayoutMaxWidth) {
+	/* Title and toggle share one row, toggle hard right, both vertically
+	   centred on the title. Previously the toggle sat in <aside> BELOW
+	   <header>, so it rendered as a stray left-aligned button under the site
+	   name. .rail-sticky only gets layout above this breakpoint (its position:
+	   sticky rule is min-width + min-height gated), so it is free here. */
+	.rail-sticky {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+	.rail-sticky > header {
+		min-width: 0; /* let a long site name shrink rather than shove the toggle off */
+	}
+	.rail-sticky > aside {
+		flex: none;
+	}
+
+	/* Anchor for the dropdown panel below. */
+	.navigation {
+		position: relative;
+	}
+
 	.navigation-toggle {
-		display: inline-block;
-		padding: 0.5em 1em;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		/* 44px: the minimum comfortable touch target. */
+		width: 2.75rem;
+		height: 2.75rem;
+		padding: 0;
 		border: 1px solid config.$borderColor;
-		border-radius: 0.25em;
+		border-radius: 0.35em;
 		background-color: #fff;
 		color: config.$textColor;
 		font: inherit;
@@ -57,10 +85,65 @@
 		border-color: config.$primaryColor;
 	}
 
+	/* Three bars from one element: the span is the middle bar, its two
+	   pseudo-elements are the outer ones. No extra markup, no icon font, no
+	   inline SVG to keep in sync. */
+	.navigation-toggle-icon {
+		display: block;
+		position: relative;
+		width: 1.375rem;
+		height: 2px;
+		background-color: currentColor;
+	}
+	.navigation-toggle-icon::before,
+	.navigation-toggle-icon::after {
+		content: "";
+		position: absolute;
+		left: 0;
+		width: 100%;
+		height: 2px;
+		background-color: currentColor;
+	}
+	.navigation-toggle-icon::before {
+		top: -0.375rem;
+	}
+	.navigation-toggle-icon::after {
+		top: 0.375rem;
+	}
+
+	/* Open state becomes an X. State change is instant, not animated: the
+	   suite forbids the `animation` property outright (the source's motion was
+	   deliberately rejected), and this needs no motion to read clearly. */
+	.navigation-toggle[aria-expanded="true"] .navigation-toggle-icon {
+		background-color: transparent;
+	}
+	.navigation-toggle[aria-expanded="true"] .navigation-toggle-icon::before {
+		top: 0;
+		transform: rotate(45deg);
+	}
+	.navigation-toggle[aria-expanded="true"] .navigation-toggle-icon::after {
+		top: 0;
+		transform: rotate(-45deg);
+	}
+
+	/* The open menu is a panel anchored under the toggle rather than a block
+	   that shoves the page down — the toggle now lives in a flex row beside
+	   the title, so in-flow expansion would stretch that row. */
 	#site-nav {
 		display: none;
 	}
 	.navigation-toggle[aria-expanded="true"] + #site-nav {
 		display: block;
+		position: absolute;
+		right: 0;
+		top: calc(100% + 0.5rem);
+		z-index: 10;
+		min-width: 10rem;
+		margin: 0;
+		padding: 0.35rem 0.75rem;
+		border: 1px solid config.$borderColor;
+		border-radius: 0.35em;
+		background-color: #fff;
+		box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
 	}
 }

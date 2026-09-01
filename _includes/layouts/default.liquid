@@ -26,7 +26,7 @@ modules:
 		<aside>
 			<nav role="navigation">
 				<div class="navigation">
-					<button type="button" class="navigation-toggle" aria-expanded="false" aria-controls="site-nav">Menu</button>
+					<button type="button" class="navigation-toggle" aria-expanded="false" aria-controls="site-nav"><span class="navigation-toggle-icon" aria-hidden="true"></span><span class="sr-only">Menu</span></button>
 					<ul class="list-flush tags-rail-links" id="site-nav">
 						{% comment %} Only destinations this theme actually builds. The source's
 						page list (/uses/, /domains/, /projects/, /web/speaking/) was hardcoded
@@ -56,11 +56,14 @@ modules:
 	{% include "footer.html" %}
 </main><!-- /.content -->
 
-{% comment %} TODO(Task 10): WebC bundle registration lands in Task 10. The
-source loaded its font-awesome icon sprite here, alongside the css/js bundles
-preserved in base.liquid.
+{% comment %} The Font Awesome sprite, in the same place the source puts it
+(layouts/default.liquid:75): after <main>, so every {% raw %}{% icon %}{% endraw %} rendered
+anywhere above has already registered its symbol in the bundle by the time this
+outputs. This call was commented out behind a "TODO(Task 10)" until the listing
+rows started using icons — the shortcode was registered and the sprite was never
+emitted, so an {% raw %}{% icon %}{% endraw %} rendered a <use href="#..."> pointing at a symbol
+that did not exist and painted nothing at all. {% endcomment %}
 {% getBundle "fontawesome" %}
-{% endcomment %}
 
 {%- comment %} The port source has an <infinity-burger> easter egg here — a
    decorative animated hamburger. It is removed rather than ported: the

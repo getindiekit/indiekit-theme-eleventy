@@ -1,0 +1,43 @@
+{%- comment -%}
+Webmention-driven social counts for a listing row.
+
+Ported from the source's _includes/post-popularity-social-tags.html, which
+mixes two data sources that this theme must treat differently:
+
+  - like / boost / reply counts come from WEBMENTIONS. Portable: this theme
+    already fetches them (_data/webmentions.js) and already exposes the exact
+    same filter with the same five wm-property names
+    (_11ty/webmentionsPlugin.js:70-76). Ported.
+  - view counts and popularity ranking come from ANALYTICS
+    (`analytics[post.url].pageViews` / `.rankPerDaysPosted`). This theme
+    deliberately carries no analytics, so `.tag-social--view` and the ranking
+    tags are dropped — along with their CSS, rather than shipping rules for
+    markup that can never exist.
+
+The source also has an `alwaysShowStats` override used on permalinks to force
+zeros into view; a listing has no such need, so a count renders only when it is
+non-zero and the whole pill disappears when all three are. On a site with no
+webmentions yet — which is every fresh install — the row is simply the link,
+the dotted leader and the date.
+
+`.tags` is emitted unconditionally, even empty: the dotted leader IS its
+::before pseudo-element (sass/_theme-posts.scss), so dropping the span would
+drop the leader with it. `.tags:empty { display: inherit }` in that same block
+is what keeps the empty case rendering.
+
+Expects a local `post` (one collections.post item), passed by
+partials/post-list-entry.liquid.
+{%- endcomment -%}
+{%- capture socialUrl %}{{ site.url }}{{ post.url }}{% endcapture -%}
+{%- assign boostCount = webmentions | webmentionsForUrl: socialUrl, "mention-of,repost-of" | size -%}
+{%- assign likeCount = webmentions | webmentionsForUrl: socialUrl, "like-of" | size -%}
+{%- assign replyCount = webmentions | webmentionsForUrl: socialUrl, "in-reply-to,bookmark-of" | size -%}
+<span class="tags">
+{%- if boostCount > 0 or likeCount > 0 or replyCount > 0 -%}
+<span class="tag tag-social">
+{%- if boostCount > 0 %}<span class="tag-social--boost" title="{{ boostCount }} boost{% unless boostCount == 1 %}s{% endunless %}">{% icon "fa:retweet" %}{{ boostCount }}</span>{% endif -%}
+{%- if likeCount > 0 %}<span class="tag-social--like" title="{{ likeCount }} like{% unless likeCount == 1 %}s{% endunless %}">{% icon "far:heart" %}{{ likeCount }}</span>{% endif -%}
+{%- if replyCount > 0 %}<span class="tag-social--reply" title="{{ replyCount }} {% if replyCount == 1 %}reply{% else %}replies{% endif %}">{% icon "fas:reply-all" %}{{ replyCount }}</span>{% endif -%}
+</span>
+{%- endif -%}
+</span>

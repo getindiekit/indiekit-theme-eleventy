@@ -1,0 +1,22 @@
+{%- comment -%}
+Micropub `category` -> mf2 p-category, rendered into the .tags slot every
+type partial already reserves (and that _theme-chrome.scss:45 styles for the
+empty case, so a post with no categories is unchanged).
+
+`category` is a first-class Micropub property: whatever a user tags a post
+with in their client arrives here as an array. Before this, all six type
+partials hardcoded an empty <span class="tags"></span> and nothing ever
+emitted p-category, so every tag a user applied vanished at publish.
+
+Not ported from the source, which hardcodes a five-entry whitelist of its own
+topic tags linking to a query-string filter on its archive
+(post.liquid:75-81). That list is its content, not a mechanism — Indiekit
+categories are arbitrary, so this builds a real page per tag instead
+(content/tags.liquid) and links every category to it.
+{%- endcomment -%}
+<span class="tags">
+{%- comment %} The leading space inside the loop is load-bearing: without it
+   adjacent tag boxes abut at 0px and only their own 6px padding separates
+   the words, so two tags read as one. {% endcomment -%}
+{%- for tag in category %} <a class="tag p-category" href="/tags/{{ tag | slug }}/">{{ tag }}</a>{% endfor -%}
+</span>

@@ -8,13 +8,26 @@ built-with-eleventy badge, and the CSS/web-font toggle buttons — all of which
 depend on his data or his repository. {% endcomment %}
 <footer class="content-grid-sibling">
 	<div class="footer">
+{%- comment %} rel=author is the third of mf2's three author-discovery
+	   inputs, and the one that works for pages carrying no h-entry at all
+	   (the archive, the search page). Points at the author's own profile;
+	   partials/author-card.liquid supplies the in-entry h-card. {% endcomment -%}
+{%- if site.author.name and site.author.url %}
+		<a rel="author" href="{{ site.author.url }}">{{ site.author.name }}</a> ·
+{%- endif %}
 		Built with <a href="https://www.11ty.dev/">Eleventy v{{ eleventy.version }}</a>
 		· Published with <a href="https://getindiekit.com/">Indiekit</a>
 		{%- if site.url %}
 		· <a href="/feed.xml">Feed</a>
 		{%- endif %}
 {%- capture urlWithOrigin %}{{ site.url }}{{ page.url }}{% endcapture -%}
-{%- if site.speedlify.enabled and site.speedlify.url %}
+{%- comment %} The third condition is the whole point of _data/speedlify.js:
+		the badge fetches its score client-side, so on a page the configured
+		instance does not measure it renders as an empty box. Gate on the
+		instance's own url index (source does the same — only 11 of its ~500
+		pages are tracked). A disabled site never fetches that index, so the
+		default build stays offline. {% endcomment -%}
+{%- if site.speedlify.enabled and site.speedlify.url and speedlify[urlWithOrigin] %}
 		<script type="module" src="/js/speedlify2-score.js"></script>
 		<speedlify2-score theme="light" speedlify-url="{{ site.speedlify.url }}" url="{{ urlWithOrigin }}"></speedlify2-score>
 {%- endif %}

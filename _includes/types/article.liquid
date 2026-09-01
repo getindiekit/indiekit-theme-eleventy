@@ -31,6 +31,6 @@ hides <time> in this port (see sass/theme-posts.scss) — <time> now sits
 after `.tags` so the dotted leader runs from the title to the date.
 {% endcomment -%}
 <a class="posts-link p-name u-url" href="{{ page.url }}">{{ title }}</a>
-<span class="tags"></span>
-{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+{{ socialHtml }}
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | listingDate }}</time>{% endif %}
 {%- endif -%}

@@ -1,0 +1,4 @@
+{
+  "http://localhost:8080/": { "hash": "fixture01" },
+  "http://localhost:8080/articles/fixture-article/": { "hash": "fixture02" }
+}

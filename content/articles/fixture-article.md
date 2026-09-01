@@ -1,6 +1,11 @@
 ---
 date: 2026-08-30T10:00:00.000Z
 title: Publishing to your own site first
+category:
+  - indieweb
+  - microformats
+syndication:
+  - https://example.social/@example/110000000000000001
 ---
 
 [[toc]]

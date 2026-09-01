@@ -1,0 +1,28 @@
+{%- comment -%}
+Machine-readable author for microformats2 consumers.
+
+The port source has no p-author anywhere, and for a single-author personal
+blog that is a defensible omission: its readers already know who wrote it.
+This theme is not that. It is a reference theme for a Micropub server, whose
+whole purpose is publishing posts that other people's software consumes —
+and mf2's author-discovery algorithm has exactly three inputs: p-author on
+the h-entry, p-author on the parent h-feed, or rel=author pointing at an
+h-card. With none of them, every post this theme publishes is authorless to
+Aperture, Monocle, Bridgy and any webmention receiver: no name, no avatar,
+no profile link. So this is a deliberate divergence from the source, not a
+parity gap in either direction.
+
+Rendered .sr-only rather than as a visible byline: mf2 parsers read the DOM,
+not the paint, so the data is fully available to them while the source's
+visual design (which has no byline) is preserved exactly.
+
+Emits nothing at all when site.json's author.name is unset, so the neutral
+default ships no empty h-card — same conditional discipline as the Atom
+feed's author block (eleventy.config.js) and base.liquid's meta author.
+
+eleventy:ignore on the avatar: the eleventy-img transform processes literal
+<img> elements, and an author avatar is typically a remote URL (a Gravatar,
+an IndieAuth profile photo) that the transform would try to fetch at build
+time and fail on. The theme's own content images are unaffected.
+{%- endcomment -%}
+{%- if site.author.name -%}<span class="p-author h-card sr-only">{% if site.author.avatar %}<img class="u-photo" src="{{ site.author.avatar }}" alt="" width="48" height="48" eleventy:ignore>{% endif %}{% if site.author.url %}<a class="p-name u-url" href="{{ site.author.url }}">{{ site.author.name }}</a>{% else %}<span class="p-name">{{ site.author.name }}</span>{% endif %}</span>{%- endif -%}

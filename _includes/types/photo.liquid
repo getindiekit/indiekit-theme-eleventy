@@ -57,10 +57,10 @@ an image's width *inside* `.posts` — reused here so the thumbnail reads as a
 small preview next to the title instead of a near-full-width image blowing
 out the row. {%- endcomment -%}
 {%- assign firstPhoto = photo | first -%}
-<a class="posts-link p-name u-url" href="{{ page.url }}">{{ firstPhoto.alt | default: "Photo" }}</a>
-<span class="tags"></span>
-{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+<a class="posts-link u-url" href="{{ page.url }}">{{ firstPhoto.alt | default: "Photo" }}</a>
 {%- if firstPhoto %}
-<a href="{{ page.url }}"><img class="u-photo spark-img" src="{{ firstPhoto.url }}" alt="{{ firstPhoto.alt | default: '' }}" loading="lazy" decoding="async" eleventy:optional="keep"></a>
+<a class="posts-thumb" href="{{ page.url }}"><img class="u-photo" src="{{ firstPhoto.url }}" alt="{{ firstPhoto.alt | default: '' }}" loading="lazy" decoding="async" eleventy:optional="keep"></a>
 {%- endif %}
+{{ socialHtml }}
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | listingDate }}</time>{% endif %}
 {%- endif -%}

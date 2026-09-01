@@ -14,8 +14,8 @@ reply can be contentless (just a share of the target, nothing of its own to
 say), so fall back to the reply target's own text — matching bookmark's
 `{{ title | default: bookmarkOf }}` convention, plain text rather than a
 second nested `<a>` (invalid inside the outer anchor). {%- endcomment -%}
-{%- assign replyWords = content | strip_html | truncate: 70 -%}
-<a class="posts-link p-name u-url" href="{{ page.url }}">{{ replyWords | default: inReplyTo }}</a>
-<span class="tags"></span>
-{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+{%- assign replyWords = content | strip_html | truncate: 70, false -%}
+<a class="posts-link u-url" href="{{ page.url }}">{{ replyWords | default: inReplyTo }}</a>
+{{ socialHtml }}
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | listingDate }}</time>{% endif %}
 {%- endif -%}

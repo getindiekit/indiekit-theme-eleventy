@@ -48,13 +48,27 @@ so `selfEntry` is simply undefined there and the chain falls straight
 through to site.description below — not an error case. {% endcomment -%}
 {%- assign selfEntry = collections.post | where: "url", page.url | first -%}
 {%- assign ogDesc = description | default: selfEntry.templateContent | ogPlain | ogTruncate: 200 | default: site.description -%}
+{%- comment %} Finding 12: the site name was appended unconditionally, so any
+   page whose own title IS the site name (the homepage, content/index.liquid)
+   rendered "Indiekit reference theme—Indiekit reference theme" — and the same
+   doubling reached og:title and twitter:title, i.e. every link preview.
+   Composed once here rather than repeating the conditional in three tags.
+   Two variables, not one, because <title> honours titleOverride and the
+   OG/Twitter tags deliberately do not — preserved as-is. {% endcomment -%}
+{%- assign docTitleText = titleOverride | default: title -%}
+{%- if docTitleText and docTitleText != site.name -%}
+{%- capture docTitle %}{{ docTitleText }}—{{ site.name }}{% endcapture -%}
+{%- else -%}{%- assign docTitle = site.name -%}{%- endif -%}
+{%- if title and title != site.name -%}
+{%- capture ogTitle %}{{ title }}—{{ site.name }}{% endcapture -%}
+{%- else -%}{%- assign ogTitle = site.name -%}{%- endif -%}
 <!doctype html>
 <html lang="en"{% if tmpl or templateclass or classes.html %} class="{% if tmpl %}tmpl-{{ tmpl }}{% endif %}{% if templateclass %} {{ templateclass }}{% endif %}{%- if classes.html %} {{ classes.html }}{% endif -%}"{% endif %}{% if eleventy.env.runMode == "serve" %} data-eleventy-runmode="{{ eleventy.env.runMode }}"{% endif %}>
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-		<title>{% if title %}{% if titleOverride %}{{ titleOverride }}{% else %}{{ title }}{% endif %}—{{ site.name }}{% else %}{{ site.name }}{% endif %}</title>
+		<title>{{ docTitle }}</title>
 
 		{%- comment %} Webmention discovery. Without these a sender cannot find
 		   where to deliver, so the site can receive nothing — the receiving half
@@ -69,7 +83,15 @@ through to site.description below — not an error case. {% endcomment -%}
 		<link rel="preload" href="/fonts/lato/2.0/latolatin-regular-subset.woff2" as="font" type="font/woff2" crossorigin>
 		<link rel="preload" href="/fonts/hex-franklin/HEX_Franklin_v0.2_Tyght_Variable-subset.woff2" as="font" type="font/woff2" crossorigin>
 
+{%- if site.author.name %}
 		<meta name="author" content="{{ site.author.name }}">
+{%- endif %}
+{%- comment %} Mastodon and other fediverse servers read this to attribute
+	   a link preview to its author. Source emits it (base.liquid:34); this
+	   port dropped it. Sourced from site.json rather than hardcoded. {% endcomment -%}
+{%- if site.author.fediverse %}
+		<meta name="fediverse:creator" content="{{ site.author.fediverse }}">
+{%- endif %}
 		<meta name="description" content="{{ ogDesc | escape }}">
 		<meta name="generator" content="{{ eleventy.generator }}">
 
@@ -121,7 +143,7 @@ call can't be piped through `| escape` directly (`{% tag %} | filter` isn't
 valid Liquid), so it's captured into a variable first, same as `fullUrl`
 above. {% endcomment -%}
 {%- capture ogAlt %}{% ogImageAlt postType, photo, title %}{% endcapture -%}
-		<meta property="og:title" content="{% if title %}{{ title | escape }}—{{ site.name }}{% else %}{{ site.name }}{% endif %}">
+		<meta property="og:title" content="{{ ogTitle | escape }}">
 		<meta property="og:type" content="{% if postType %}article{% else %}website{% endif %}">
 		<meta property="og:site_name" content="{{ site.name }}">
 		<meta property="og:description" content="{{ ogDesc | escape }}">
@@ -137,7 +159,7 @@ above. {% endcomment -%}
 		<!-- X / Twitter: og:* covers most of it; these five change the card
 		size and are cheap to add (spec §G.11 — source has none at all). -->
 		<meta name="twitter:card" content="summary_large_image">
-		<meta name="twitter:title" content="{% if title %}{{ title | escape }}—{{ site.name }}{% else %}{{ site.name }}{% endif %}">
+		<meta name="twitter:title" content="{{ ogTitle | escape }}">
 		<meta name="twitter:description" content="{{ ogDesc | escape }}">
 		<meta name="twitter:image" content="{% ogImageSource page.url, postType, photo %}">
 		<meta name="twitter:image:alt" content="{{ ogAlt | escape }}">
@@ -193,13 +215,12 @@ ported. {% endcomment %}
 		{% comment %} Known gap, not a pending task: same as the CSS bundle above —
 		the WebC plugin registers the "js" bundle (eleventy.config.js's
 		pluginWebc call triggers eleventyConfig.addBundle("js", ...)), so this
-		shortcode would resolve, not error. Left commented out anyway (task-13
-		audit, 2026-08-30): the only .webc component in this theme
-		(toggle-button.webc) links its script via a plain <script src>, not
-		`webc:bundle="js"` — nothing feeds this bundle today, so wiring it now
-		would render an empty <script type="module"></script> with no
-		observable effect. Wire it together with whichever future component
-		first uses webc:bundle="js".
+		shortcode would resolve, not error. Left commented out anyway: this theme
+		now has no .webc components at all — the only one (toggle-button.webc)
+		was deleted with finding 13 — so nothing feeds this bundle and wiring it
+		would render an empty <script type="module"></script> with no observable
+		effect. Wire it together with whichever future component first uses
+		`webc:bundle="js"`.
 		<script type="module">{% getBundle 'js' %}</script><!-- WebC -->
 		{% endcomment %}
 		<script src="/static/defer.js" type="module"></script>
@@ -208,19 +229,30 @@ ported. {% endcomment %}
 		<meta property="eleventy:path" content="{{ page.inputPath }}">
 
 		<!-- IndieAuth -->
-{% if site.author.url %}
+{%- comment %} RelMeAuth — one of the two IndieAuth mechanisms Indiekit
+	   implements — works by cross-linking MULTIPLE identities: the site links
+	   to its profiles, each profile links back, and the provider verifies the
+	   pair. A single scalar URL cannot express that, so author.me is an array
+	   (source emits six rel=me links, base.liquid:83-88). author.url stays as
+	   the canonical profile and is emitted first when set. {% endcomment -%}
+{%- if site.author.url %}
 		<link href="{{ site.author.url }}" rel="me">
-{% endif %}
-		{% comment %} TODO(Task 7): webmention/pingback discovery links restored when the webmention endpoint is ported. {% endcomment %}
+{%- endif %}
+{%- for meUrl in site.author.me %}
+		<link href="{{ meUrl }}" rel="me">
+{%- endfor %}
 	</head>
 	<body class="{%- if classes and classes.body %} {{ classes.body }}{% endif -%}"
 		{% unless excludeFromSearch %} data-pagefind-body{% endunless %}>
 		{{ content }}
-{%- if site.speedlify.enabled %}
-{%- capture urlWithOrigin %}{{ site.url }}{{ page.url }}{% endcapture -%}
-		<script type="module" src="/js/speedlify2-score.js"></script>
-		<speedlify2-score theme="light" speedlify-url="{{ site.speedlify.url }}" url="{{ urlWithOrigin }}"></speedlify2-score>
-{%- endif %}
+{%- comment %} The speedlify widget lives in _includes/footer.html ONLY. A
+		second copy used to sit here, so enabling it rendered TWO
+		<speedlify2-score> elements and loaded the 22KB module twice on every
+		page. layouts/default.liquid is the only template that uses this layout
+		and it always includes footer.html, so this copy could never reach a page
+		the footer did not — it was pure duplication. Its gate was also weaker
+		(it checked .enabled but not .url, so an enabled-but-unconfigured site
+		emitted speedlify-url=""). {% endcomment -%}
 {%- if JS_ENABLED %}
 {%- for url in scripts -%}
 		<script src="{{ url }}" defer></script>

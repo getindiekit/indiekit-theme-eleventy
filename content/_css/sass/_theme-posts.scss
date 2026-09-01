@@ -147,6 +147,111 @@ a[href]:is(:focus, :hover) .project_img {
 // documented, deliberate deviation, not an oversight.
 .posts .date {
 	@include mixins.undo-a11y-only;
+	/* The reserved column, and the fix for the reported bug. This <time> is a
+	   flex child of the row alongside .tags — which the source keeps nowrap by
+	   construction — and, on photo rows, a thumbnail. With no nowrap of its own
+	   "30 August 2026" wrapped to two and three lines and every row's date
+	   landed at a different x. The short `listingDate` format
+	   (eleventy.config.js) keeps this column narrow enough to sit beside the
+	   leader. */
+	flex: 0 0 auto;
+	white-space: nowrap;
+	text-align: right;
+}
+
+@media (max-width: 44.9375em) { /* 719px */
+	/* Below config.$oneColLayoutDottedList the dotted-list flex layout is off
+	   entirely (source behaviour) and the row is a plain block, so <time> flows
+	   inline right after the excerpt and lands wherever that text happens to
+	   end — measured at right edges of 72, 140, 148 and 356px on one listing.
+	   The source never meets this because its date is a11y-only at every width;
+	   ours is visible by design, so it needs its own defined fallback. Give it
+	   its own line, consistently left-aligned under the excerpt. */
+	.posts .date {
+		display: block;
+		text-align: left;
+		font-size: 0.8125rem; /* 13px /16 */
+		color: #666;
+	}
+}
+
+/* Photo rows keep a small preview. DELIBERATE DIVERGENCE: the source never
+   mixes an image into a dotted row — it switches the whole list to
+   `.posts-withimg` cards instead (_theme.scss:1015-1023), and its dotted rules
+   exclude that class explicitly via `.posts:not(.posts-withimg)`. Four of six
+   Indiekit post types are titleless, so without this a photo row is
+   indistinguishable from a note's. Fixed size and `flex: 0 0 auto` so it can
+   never take width from the date column — an unconstrained thumbnail was part
+   of what squeezed the date in the first place. */
+.posts .posts-thumb {
+	flex: 0 0 auto;
+	display: block;
+	line-height: 0;
+}
+.posts .posts-thumb img {
+	width: 3rem;
+	height: 3rem;
+	object-fit: cover;
+	border-radius: 0.2em;
+}
+
+/* Social proof pill — ported from _theme.scss:1295-1350. The source's
+   `.tag-social--view` (page views) and its popularity-ranking tags are NOT
+   ported: they read from analytics this theme deliberately does not carry, and
+   shipping their CSS would be rules for markup that can never exist. */
+.tags .tag-social {
+	padding: 0;
+
+	&:empty {
+		display: none;
+	}
+}
+@media (max-width: 44.9375em) { /* 719px */
+	/* Ported verbatim. Below this width the dotted-list layout itself is off
+	   (config.$oneColLayoutDottedList is 45em), so the row is a plain stacked
+	   block and the counts would crowd the excerpt. */
+	.posts .tags .tag-social {
+		display: none !important;
+	}
+}
+.tags .tag-social:has(svg) {
+	border-width: 0;
+}
+.tags .tag-social > * {
+	display: inline-flex;
+	height: 1.5625rem; /* 25px /16 */
+	justify-content: center;
+	align-items: center;
+	gap: 0;
+	padding: 0.25em 0.5em;
+	border: 1px solid;
+	border-radius: 0;
+}
+.tags .tag-social > :first-child {
+	border-top-left-radius: 0.5em;
+	border-bottom-left-radius: 0.5em;
+}
+.tags .tag-social > :last-child {
+	border-top-right-radius: 0.5em;
+	border-bottom-right-radius: 0.5em;
+}
+.tags .tag-social > :not(:first-child) {
+	border-inline-start: none;
+}
+.tags .tag-social > :not(:last-child) {
+	border-inline-end: none;
+}
+.tag-social--boost {
+	color: #006000;
+	background-color: #e4f7e4;
+}
+.tag-social--like {
+	color: #880808;
+	background-color: #ffeded;
+}
+.tag-social--reply {
+	color: #535100;
+	background-color: #edf1e4;
 }
 .posts .deprecated,
 .posts .deprecated :link,

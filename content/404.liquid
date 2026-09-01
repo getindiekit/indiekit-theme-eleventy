@@ -1,0 +1,47 @@
+---
+title: Not Found
+layout: layouts/pagealign.liquid
+permalink: 404.html
+excludeFromSearch: true
+eleventyExcludeFromCollections: true
+eleventyImport:
+  collections: ["post"]
+---
+{%- comment %} Ported from the port source's own 404.html. Without this, any
+   host serving the theme falls back to its own default error page.
+
+   Kept: the structure (heading, apology, a short list of recent posts, a link
+   onward to the archive) and `excludeFromSearch: true`, so the 404 never turns
+   up as a Pagefind result.
+
+   Dropped as source-specific: its "Popular" section, which ranks by analytics
+   this theme deliberately does not carry (collections.popularPostsRanked), and
+   its about-block include, which is personal content. The recent-posts list
+   replaces both — it is the part that needs no data the theme does not have.
+{% endcomment -%}
+<h1 class="primary-title primary-title-smalltitle">{{ title }}</h1>
+
+<article>
+	<p>We couldn’t find that page — sorry.</p>
+</article>
+
+<article>
+	<h2>Recent posts</h2>
+	<ol class="posts h-feed">
+	{%- assign recentPosts = collections.post | reverse -%}
+	{%- for post in recentPosts limit: 5 %}
+		{%- comment %} The social counts are captured HERE, before the `page: post`
+     override below, on purpose. @11ty/font-awesome registers each icon's
+     sprite symbol against `this.page.url` (plugin.js:51). Rendered inside the
+     override, every {{ "{% icon %}" }} filed its symbol under the POST's url while the
+     listing page emitted a <use href="#..."> for a symbol that was never in
+     its own bundle — the icon painted nothing. Capturing outside the override
+     files the symbol against this listing page, where {{ "{% getBundle %}" }} outputs it.
+     The override itself stays: date filters must read each post's own front
+     matter (see post-list-entry.liquid). {% endcomment -%}
+  {%- capture socialHtml %}{% include "partials/post-social-counts.liquid", post: post %}{% endcapture -%}
+  {%- include "partials/post-list-entry.liquid", post: post, page: post, socialHtml: socialHtml -%}
+	{%- endfor %}
+		<li><em><a href="/archive/" class="posts-link posts-link-more">…see the full archive.</a></em></li>
+	</ol>
+</article>

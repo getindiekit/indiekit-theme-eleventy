@@ -52,8 +52,18 @@ export default function(eleventyConfig) {
 	// Without registering it at all, `| truncate` in webmention.liquid silently
 	// resolves to LiquidJS's own built-in `truncate` (default length 50), which
 	// clips comment bodies mid-word with no visual indicator.
-	eleventyConfig.addLiquidFilter('truncate', (str, len = 280) => { // tweet sized default
-		let suffix = str.length > len ? `… <span class="tag-inline">Truncated</span>` : "";
+	// `showBadge` opts out of the "Truncated" pill. The badge is a WEBMENTION
+	// affordance — it tells a reader a visitor's comment was clipped, in a
+	// context where the full text lives elsewhere. A post listing reuses this
+	// filter to build its excerpts, and there the badge reads as noise: every
+	// note longer than 70 characters grew a "Truncated" label mid-row, and
+	// (before p-name was corrected) that label was literally inside the post's
+	// machine-readable name. Listings pass false; comments keep the default.
+	eleventyConfig.addLiquidFilter('truncate', (str, len = 280, showBadge = true) => { // tweet sized default
+		if (str.length <= len) {
+			return str;
+		}
+		const suffix = showBadge ? `… <span class="tag-inline">Truncated</span>` : "…";
 		return str.substr(0, len) + suffix;
 	});
 

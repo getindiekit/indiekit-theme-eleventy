@@ -1,0 +1,24 @@
+{%- comment -%}
+mf2 u-syndication — the machine-readable link from a post to its copies
+elsewhere.
+
+Syndicating to Mastodon, Bluesky and LinkedIn is a core Indiekit feature
+(each @rmdes/indiekit-syndicator-* plugin writes the resulting URL back into
+the post), and u-syndication is the only way a consumer can tie a copy back
+to its original. Without it Bridgy backfeed cannot associate a reply on
+Mastodon with the post that produced it, so syndicated conversation never
+comes home.
+
+The source has no equivalent — it hardcodes single `tweet`/`toot` front
+matter fields (post.liquid:16-20) rendered as visible prose links with no
+mf2 class at all. This is the general form of that, so it is a deliberate
+divergence rather than a port.
+
+Rendered .sr-only: the data is fully available to parsers while the source's
+visual design, which carries no syndication row, is preserved.
+{%- endcomment -%}
+{%- if syndication -%}
+<ul class="sr-only">
+{%- for syndicationUrl in syndication %}<li><a class="u-syndication" href="{{ syndicationUrl }}">{{ syndicationUrl }}</a></li>{% endfor -%}
+</ul>
+{%- endif -%}

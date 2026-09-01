@@ -18,7 +18,7 @@ uses) becomes the visible link text instead of the synthetic label,
 matching `.posts-link` the same way article/bookmark's real titles already
 do. `.posts .date` (sass/theme-posts.scss) no longer hides <time> in this
 port — see that rule's own comment for why. {% endcomment -%}
-<a class="posts-link p-name u-url" href="{{ page.url }}">{{ content | strip_html | truncate: 70 }}</a>
-<span class="tags"></span>
-{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+<a class="posts-link u-url" href="{{ page.url }}">{{ content | strip_html | truncate: 70, false }}</a>
+{{ socialHtml }}
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | listingDate }}</time>{% endif %}
 {%- endif -%}

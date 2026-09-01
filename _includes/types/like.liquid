@@ -10,7 +10,7 @@ its substance is the thing being liked, shown as the visible `.posts-link`
 text (plain "Liked <url>", not a nested `<a>` — invalid inside the outer
 anchor; u-like-of is still carried on the permalink page's own lcp branch
 above). {% endcomment -%}
-<a class="posts-link p-name u-url" href="{{ page.url }}">{% if likeOf %}Liked {{ likeOf }}{% endif %}</a>
-<span class="tags"></span>
-{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+<a class="posts-link u-url" href="{{ page.url }}">{% if likeOf %}Liked {{ likeOf }}{% endif %}</a>
+{{ socialHtml }}
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | listingDate }}</time>{% endif %}
 {%- endif -%}

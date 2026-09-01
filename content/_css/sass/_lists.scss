@@ -103,6 +103,43 @@ dt.nextprev-next,
 dd.nextprev-next {
 	grid-column: 1;
 }
+/* Indiekit adaptation. The source's dt badge is positioned deliberately OVER
+   an og-image thumbnail in the dd: both share grid-row 1 above, and the dt
+   carries z-index 1 + pointer-events: none so the label floats on the picture.
+   This theme's cells carry the neighbouring post's TITLE instead of a
+   thumbnail (four of six Indiekit post types are titleless, and generating a
+   per-neighbour image on every permalink is build cost for a nav affordance),
+   and that same overlap renders the badge on top of the link text — verified
+   unreadable in a browser, not just in theory. Stack the two rows for the text
+   variant; everything else about the design is untouched. */
+dl.nextprev-text dt {
+	grid-row: 1;
+}
+dl.nextprev-text dd {
+	grid-row: 2;
+	align-self: start;
+	min-width: 0;
+}
+/* `1fr` is minmax(auto, 1fr), and that `auto` minimum is MIN-CONTENT — so a
+   single unbreakable string in a cell makes the column refuse to shrink and
+   pushes the whole grid past the viewport. That is not hypothetical here: a
+   titleless bookmark's title falls back to its own URL
+   (_data/eleventyComputed.js), so a neighbouring post's link text is routinely
+   a long URL with no break opportunity. Measured: 11px of horizontal overflow
+   on the article permalink at 360px wide. The source never hit this because
+   every one of its posts has a prose title.
+   minmax(0, 1fr) lets the column shrink; overflow-wrap lets the URL itself
+   break rather than just being clipped. */
+dl.nextprev-text {
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+dl.nextprev-text dd a {
+	overflow-wrap: anywhere;
+}
+dl.nextprev-text dt span {
+	margin: 0 0 .25em;
+}
+
 dl.nextprev dd:empty {
 	background-color: #eee;
 	border-radius: .5em;
