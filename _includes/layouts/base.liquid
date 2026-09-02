@@ -170,6 +170,10 @@ above. {% endcomment -%}
 		<link rel="alternate" href="{{ rssFeedUrl }}" title="{{ rssFeedTitle }}" type="application/atom+xml">
 {% else %}
 		<link rel="alternate" href="/feed.xml" title="{{ site.name }} Posts Feed" type="application/atom+xml">
+		{%- comment %} application/feed+json is the registered type for JSON Feed;
+		   the spec notes many feeds still use the generic application/json and asks
+		   readers to accept it, but recommends publishing the specific one. {% endcomment %}
+		<link rel="alternate" href="/feed.json" title="{{ site.name }} Posts Feed" type="application/feed+json">
 		{%- comment %} The source advertises a second feed at /follow/ (an activity
 		   feed aggregating its own posts plus external sources). This theme builds no
 		   such page, so the link pointed at a 404 on every page. The Atom feed at

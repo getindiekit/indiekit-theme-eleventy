@@ -4301,6 +4301,71 @@ check("after-hook artifacts are written to the build's real output directory", (
 });
 
 
+
+check("the JSON Feed is valid 1.1, omits titles on titleless posts, and carries resolvable URLs", () => {
+  // JSON Feed 1.1: `version` and `title` are the only required top-level
+  // fields, `id` the only required item field. `title` is OPTIONAL on an item
+  // and the spec says "Microblog items in particular may omit titles" — which
+  // is why this feed does NOT reuse eleventyComputed's synthetic
+  // "<Type> · <date>" label the way Atom must (atom:title is required).
+  const feed = JSON.parse(readFileSync("_site/feed.json", "utf8"));
+  const site = JSON.parse(readFileSync("_data/site.json", "utf8"));
+  const base = site.url.replace(/\/$/, "");
+
+  assert.equal(feed.version, "https://jsonfeed.org/version/1.1", "wrong or missing JSON Feed version");
+  assert.ok(feed.title, "JSON Feed has no title (required)");
+  assert.ok(Array.isArray(feed.items) && feed.items.length > 0, "JSON Feed has no items");
+  assert.ok(!("author" in feed), "JSON Feed uses the deprecated singular `author`; 1.1 wants `authors`");
+
+  const titled = new Set(["articles", "bookmarks"]);
+  for (const item of feed.items) {
+    assert.ok(item.id, "an item has no id (the only required item field)");
+    assert.match(item.id, /^https?:\/\//, `item id is not an absolute URL: ${item.id}`);
+
+    const type = item.id.replace(base, "").split("/").filter(Boolean)[0];
+    if (titled.has(type)) {
+      assert.ok(item.title, `${item.id}: a titled post type carries no title`);
+    } else {
+      assert.ok(
+        !("title" in item),
+        `${item.id}: a titleless post type carries a title (${item.title}) — the synthetic label leaked in`,
+      );
+    }
+
+    // A feed reader has no origin to resolve against, so nothing may stay
+    // relative. templateContent is the PRE-transform render and would leave the
+    // author's own markdown path here; renderTransforms is what prevents that.
+    const relative = [...String(item.content_html || "")
+      .matchAll(/(?:src|srcset|href)="((?:\.\.?\/|\/)[^"]*)"/g)].map((m) => m[1]);
+    assert.deepEqual(relative, [], `${item.id}: content_html has unresolvable relative URLs: ${relative.join(", ")}`);
+  }
+
+  // Same posts as Atom — two feeds disagreeing about what was published is
+  // worse than one feed.
+  const atomIds = [...readFileSync("_site/feed.xml", "utf8").matchAll(/<id>([^<]*)<\/id>/g)]
+    .map((m) => m[1]).filter((id) => id !== `${base}/`).sort();
+  assert.deepEqual(
+    feed.items.map((i) => i.id).sort(),
+    atomIds,
+    "the JSON Feed and the Atom feed list different posts",
+  );
+
+  // Neutral default publishes no authors rather than an empty one.
+  assert.ok(!feed.authors, "the neutral default emits an authors array with no configured author");
+
+  // Categories surface as tags where a post has them.
+  const tagged = feed.items.filter((i) => Array.isArray(i.tags) && i.tags.length > 0);
+  assert.ok(tagged.length > 0, "no item carries tags — the category wiring is not exercised");
+
+  // And the feed has to be discoverable, with the registered media type.
+  assert.match(
+    readFileSync("_site/index.html", "utf8"),
+    /<link rel="alternate" href="\/feed\.json"[^>]*type="application\/feed\+json">/,
+    "no JSON Feed auto-discovery link, or the wrong media type",
+  );
+});
+
+
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;
 const skipNote = skipped ? `, ${skipped} skipped` : "";
