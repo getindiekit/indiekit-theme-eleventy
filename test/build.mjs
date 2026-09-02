@@ -4085,6 +4085,32 @@ await checkAsync("a citation enriches with author and published when the client 
 });
 
 
+
+check("the demo builds to its own output directory, never the one the suite reads", () => {
+  // This is guarding a real incident, not a hypothetical. `npm run demo` and
+  // `demo:serve` once wrote into _site, which is what every check in this file
+  // reads. A demo build sitting there fails guards for the right reason and the
+  // wrong cause — the feed names the fixture's author instead of the neutral
+  // default — and demo:serve's watcher rewrites the directory mid-run, in serve
+  // mode, so drafts reappear and critical CSS stops being inlined. Thirteen
+  // checks failed at once and none of them were about the change under test.
+  const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts;
+  for (const name of ["demo", "demo:serve"]) {
+    const script = scripts[name];
+    assert.ok(script, `package.json has no "${name}" script`);
+    assert.match(
+      script,
+      /--output=_site-demo\b/,
+      `"${name}" does not build to _site-demo — it would overwrite the directory the suite reads`,
+    );
+    assert.ok(
+      script.includes("SITE_FIXTURE=") && script.includes("WEBMENTIONS_FIXTURE="),
+      `"${name}" is missing a demo fixture, so it would not show the populated state`,
+    );
+  }
+});
+
+
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;
 const skipNote = skipped ? `, ${skipped} skipped` : "";

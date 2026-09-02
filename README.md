@@ -131,6 +131,13 @@ targets are absolute, so changing the origin would silently zero every count.
 npm run demo:serve      # then open /articles/fixture-article/
 ```
 
+The demo builds to **`_site-demo/`**, not `_site/`. That separation is
+deliberate: the test suite reads whatever is in `_site`, so a demo build left
+there makes guards fail for the right reason but the wrong cause — the feed
+names the fixture's author rather than the neutral default, and `demo:serve`'s
+watcher keeps rewriting the directory mid-run. Two output directories means the
+populated preview and the suite can never collide.
+
 That page carries the fullest set: 6 reposts, 14 likes, 2 bookmarks and 3
 comments. Nothing is fetched at build time — the fixture is read from disk, so
 the demo works offline. Avatars are resolved client-side by

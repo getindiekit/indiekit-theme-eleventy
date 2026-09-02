@@ -1,10 +1,8 @@
 node_modules/
-_site/
-_site-speedlify-check/
-_site-webc-check/
-_site-serve-check/
-_site-image-transform-build-check/
-_site-image-transform-serve-check/
+# _site is the build output; _site-demo is `npm run demo`; the rest are
+# throwaway outputs the test suite builds and removes. One glob rather than a
+# list that has to be extended every time a check needs its own directory.
+_site*/
 .cache/
 .env
 package-lock.json
