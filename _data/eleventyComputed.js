@@ -33,6 +33,95 @@ export default {
     return siteData;
   },
 
+  // schema.org JSON-LD, per post type.
+  //
+  // Built here rather than in a template because eleventyComputed has the whole
+  // data cascade and, crucially, because the value is serialised with
+  // JSON.stringify by the `jsonLdScript` filter — hand-templating JSON in Liquid
+  // means hand-escaping quotes, backslashes and newlines inside post content,
+  // which produces a document that parses until someone writes a quotation mark.
+  //
+  // ONE TYPE PER POST TYPE, and no invented headlines. schema.org does not
+  // require `headline` (verified against schema.org/SocialMediaPosting), so the
+  // four titleless Indiekit types simply have none — reusing the synthetic
+  // "<Type> · <date>" label here would reintroduce, in a third representation,
+  // exactly the fabrication removed from p-name and from the JSON Feed.
+  //
+  //   article               -> Article            (real headline)
+  //   note                  -> SocialMediaPosting
+  //   reply/like/bookmark   -> SocialMediaPosting + sharedContent (the target)
+  //   photo                 -> ImageObject        (caption + contentUrl)
+  //
+  // SocialMediaPosting is Thing > CreativeWork > Article > SocialMediaPosting,
+  // so it inherits articleBody, datePublished, dateModified, author and
+  // keywords. sharedContent expects a CreativeWork, which is what a reply,
+  // like or bookmark target is.
+  jsonLdData(data) {
+    if (!data.postType) {
+      return null;
+    }
+
+    const base = String(siteData.url || "").replace(/\/+$/, "");
+    const url = `${base}${data.page.url}`;
+    const published = resolveDate(data.date, data.page.inputPath, TIME_ZONE);
+
+    const TYPES = {
+      article: "Article",
+      note: "SocialMediaPosting",
+      reply: "SocialMediaPosting",
+      like: "SocialMediaPosting",
+      bookmark: "SocialMediaPosting",
+      photo: "ImageObject",
+    };
+
+    const ld = {
+      "@context": "https://schema.org",
+      "@type": TYPES[data.postType] || "SocialMediaPosting",
+      "@id": url,
+      url,
+    };
+
+    if (published) {
+      ld.datePublished = published.setZone(TIME_ZONE).toISO();
+    }
+    if (data.updated) {
+      const updated = resolveDate(data.updated, data.page.inputPath, TIME_ZONE);
+      if (updated) ld.dateModified = updated.setZone(TIME_ZONE).toISO();
+    }
+    // Only a real one. title_isReal is stamped from RAW front matter before the
+    // synthetic label exists.
+    if (data.title_isReal && data.title) {
+      ld.headline = data.title;
+    }
+    if (data.summary) {
+      ld.description = data.summary;
+    }
+    if (Array.isArray(data.category) && data.category.length > 0) {
+      ld.keywords = data.category;
+    }
+    if (siteData.author && siteData.author.name) {
+      ld.author = { "@type": "Person", name: siteData.author.name };
+      if (siteData.author.url) ld.author.url = siteData.author.url;
+    }
+
+    // What this post is a response to.
+    const target = data.inReplyTo || data.likeOf || data.bookmarkOf;
+    if (target) {
+      const targetUrl = typeof target === "string" ? target : target.url;
+      if (targetUrl) {
+        ld.sharedContent = { "@type": "CreativeWork", url: targetUrl };
+      }
+    }
+
+    if (data.postType === "photo" && Array.isArray(data.photo) && data.photo[0]) {
+      const first = data.photo[0];
+      if (first.url) ld.contentUrl = first.url.startsWith("http") ? first.url : `${base}${first.url}`;
+      if (first.alt) ld.caption = first.alt;
+    }
+
+    return ld;
+  },
+
   title(data) {
     if (data.title || !data.postType) {
       return data.title;

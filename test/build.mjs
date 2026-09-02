@@ -4462,6 +4462,82 @@ check("the footer exposes the machine-readable exits", () => {
 });
 
 
+
+check("JSON-LD uses a type that fits each post, and invents no headlines", () => {
+  // schema.org does not require `headline` (checked against
+  // schema.org/SocialMediaPosting), so the four titleless Indiekit types carry
+  // none. Reusing eleventyComputed's synthetic "<Type> · <date>" label here
+  // would reintroduce, in a THIRD representation, the fabrication already
+  // removed from p-name and from the JSON Feed — which is the whole reason this
+  // is per-type rather than Article-for-everything.
+  const expected = {
+    // `body: false` for the like is not an omission — a like has no words of its
+    // own, only a target. Emitting an empty articleBody for it would be worse
+    // than emitting none.
+    "articles/fixture-article": { type: "Article", headline: true, shared: false, body: true },
+    "notes/fixture-note": { type: "SocialMediaPosting", headline: false, shared: false, body: true },
+    "replies/fixture-reply": { type: "SocialMediaPosting", headline: false, shared: true, body: true },
+    "likes/fixture-like": { type: "SocialMediaPosting", headline: false, shared: true, body: false },
+    "bookmarks/fixture-bookmark": { type: "SocialMediaPosting", headline: true, shared: true, body: true },
+    "photos/fixture-photo": { type: "ImageObject", headline: false, shared: false, body: false },
+  };
+
+  for (const [slug, want] of Object.entries(expected)) {
+    const html = readFileSync(`_site/${slug}/index.html`, "utf8");
+    const block = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html);
+    assert.ok(block, `${slug}: no JSON-LD`);
+
+    // An HTML parser ends a <script> at the first "</script>" anywhere in the
+    // text, including inside a JSON string, so no raw "<" may survive.
+    assert.ok(!block[1].includes("<"), `${slug}: raw "<" inside the JSON-LD can terminate the script early`);
+
+    const ld = JSON.parse(block[1]);
+    assert.equal(ld["@context"], "https://schema.org", `${slug}: wrong @context`);
+    assert.equal(ld["@type"], want.type, `${slug}: wrong @type`);
+    assert.ok(ld["@id"] && ld.url, `${slug}: JSON-LD has no @id/url`);
+    assert.match(ld.url, /^https?:\/\//, `${slug}: JSON-LD url is not absolute`);
+    assert.ok(ld.datePublished, `${slug}: no datePublished`);
+
+    assert.equal(
+      "headline" in ld,
+      want.headline,
+      `${slug}: headline presence is wrong — a titleless type must not carry one`,
+    );
+    if (want.headline) {
+      assert.notEqual(
+        ld.headline,
+        `${ld["@type"]}`,
+        `${slug}: headline looks synthesised`,
+      );
+      assert.ok(!/^\w+ · \d/.test(ld.headline), `${slug}: headline is the synthetic "<Type> · <date>" label`);
+    }
+    assert.equal("sharedContent" in ld, want.shared, `${slug}: sharedContent presence is wrong`);
+    if (want.shared) {
+      assert.equal(ld.sharedContent["@type"], "CreativeWork", `${slug}: sharedContent is not a CreativeWork`);
+      assert.ok(ld.sharedContent.url, `${slug}: sharedContent has no url`);
+    }
+
+    // articleBody belongs to Article-derived types only; ImageObject is not one.
+    if (want.type === "ImageObject") {
+      assert.ok(!("articleBody" in ld), `${slug}: ImageObject carries articleBody`);
+      assert.ok(ld.contentUrl, `${slug}: ImageObject has no contentUrl`);
+    } else if (!want.body) {
+      assert.ok(
+        !("articleBody" in ld),
+        `${slug}: a post with no words of its own emits an articleBody`,
+      );
+    } else {
+      assert.ok(ld.articleBody, `${slug}: Article-derived type has no articleBody`);
+      assert.ok(
+        !/Why the markup matters What Indiekit sends/.test(ld.articleBody),
+        `${slug}: the table of contents leaked into articleBody — navigation is not body text`,
+      );
+      assert.ok(!/<[a-z]/i.test(ld.articleBody), `${slug}: articleBody contains HTML; schema.org expects Text`);
+    }
+  }
+});
+
+
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;
 const skipNote = skipped ? `, ${skipped} skipped` : "";

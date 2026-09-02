@@ -89,6 +89,14 @@ task-visual-fix-report.md for the full evidence trail. {%- endcomment -%}
      (_theme-chrome.scss:45) hides it for posts with no categories. {% endcomment -%}
   {% include "partials/post-tags.liquid" %}
 </article>
+{%- comment %} schema.org JSON-LD, one type per post type. Sits outside the
+   h-entry: microformats2 is the canonical machine-readable layer here and
+   this is a second, independent representation for search engines — nesting
+   it inside the entry would imply a relationship that does not exist.
+{% endcomment -%}
+{%- if jsonLdData %}
+<script type="application/ld+json">{{ jsonLdData | jsonLdScript: content }}</script>
+{%- endif %}
 
 {%- comment %} Finding 11: this port shipped the source's whole dl.nextprev
    design (_lists.scss:33-108, 18 rules on every page) without ever building the

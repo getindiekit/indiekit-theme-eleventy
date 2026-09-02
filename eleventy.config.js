@@ -535,6 +535,34 @@ export default function (eleventyConfig) {
   // otherwise a build running in a different zone flips the format a day early
   // or late around New Year, which is exactly the class of bug resolveDate()
   // and isoInstant were written to eliminate.
+  // Serialise the computed JSON-LD object for a <script type="application/ld+json">.
+  //
+  // JSON.stringify does the escaping. The one thing it does NOT handle is that
+  // an HTML parser ends a <script> at the first "</script>" ANYWHERE in the
+  // text, including inside a JSON string — so "<" is escaped to \u003c, which
+  // is still valid JSON and parses back to the same value.
+  //
+  // articleBody is added only for the Article-derived types; ImageObject is not
+  // an Article and carries `caption` instead. The body is the rendered content
+  // with tags stripped, because schema.org's articleBody is Text, not HTML.
+  eleventyConfig.addFilter("jsonLdScript", (ld, content) => {
+    if (!ld) {
+      return "";
+    }
+    const isArticleLike = ld["@type"] === "Article" || ld["@type"] === "SocialMediaPosting";
+    const body = String(content || "")
+      // The generated table of contents is navigation, not body text — without
+      // this, articleBody opens with the article's own heading list read as
+      // prose. Its container holds only a <ul>, so a non-greedy match to the
+      // closing </div> cannot swallow anything else.
+      .replace(/<div class="table-of-contents">[\s\S]*?<\/div>/g, " ")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const full = isArticleLike && body ? { ...ld, articleBody: body } : ld;
+    return JSON.stringify(full).replace(/</g, "\\u003c");
+  });
+
   eleventyConfig.addLiquidFilter("listingDate", function (dateValue) {
     const parsed = resolveDate(dateValue, this.page?.inputPath, TIME_ZONE);
     if (!parsed) {
