@@ -35,7 +35,7 @@ details.static-comments-empty > summary::-webkit-details-marker {
 .static-comments-reply .static-comments-reply {
 	margin-top: 2em;
 	padding-left: 1.5em;
-	border-left: 4px solid #eee;
+	border-left: 4px solid var(--surface-100);
 }
 .static-comments-hed {
 	display: flex;
@@ -54,7 +54,7 @@ details.static-comments-empty > summary::-webkit-details-marker {
 }
 .static-comments-title-twitter {
 	font-size: 80%;
-	color: #666;
+	color: var(--c-fg-muted);
 }
 .static-comments-img {
 	vertical-align: top;
@@ -86,14 +86,14 @@ details.static-comments-empty > summary::-webkit-details-marker {
 	right: 0;
 	width: 100%;
 	height: 6em;
-	background-image: linear-gradient(to bottom,transparent,#fff);
+	background-image: linear-gradient(to bottom,transparent,var(--c-bg));
 }
 .static-comments-reply-salty > .static-comments-msg-long {
 	font-family: inherit;
 }
 
 .static-comments-webmentions .static-comments-reply {
-	border-bottom: 1px solid #eee;
+	border-bottom: 1px solid var(--c-border);
 	padding-bottom: 1em;
 }
 .static-comments-msg p:first-child {

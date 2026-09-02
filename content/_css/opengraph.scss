@@ -45,9 +45,9 @@ body {
   flex-direction: column;
   justify-content: flex-end;
   gap: 1rem;
-  color: #fff;
+  color: var(--surface-50);
   font-size: 32px;
-  background: linear-gradient(160deg, config.$primaryColor, #101820);
+  background: linear-gradient(160deg, config.$primaryColor, var(--accent-950));
 }
 
 .og-photo {

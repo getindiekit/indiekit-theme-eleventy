@@ -3,8 +3,8 @@
 
 /* Printed Pages */
 .printed-page {
-	border: 1px solid #999;
-	box-shadow: 4px 4px 0 #ddd;
+	border: 1px solid var(--c-border);
+	box-shadow: 4px 4px 0 var(--surface-200);
 	padding: 3em;
 	font-size: 14px
 }
@@ -14,7 +14,7 @@
 	margin: 0 auto 3em;
 }
 .printed-page .redacted {
-	background-color: #000;
+	background-color: var(--c-fg);
 }
 .printed-page blockquote {
 	font-family: config.$monospaceFont;
@@ -23,7 +23,7 @@
 	padding: 0;
 	border: none;
 	background-color: transparent;
-	color: #000;
+	color: var(--c-fg);
 	white-space: pre-wrap;
 	max-width: none;
 

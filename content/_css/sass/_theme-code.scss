@@ -17,10 +17,10 @@ code {
 	font-style: normal;
 	font-weight: 400;
 	line-height: 100%;
-	background-color: #e9e9e9;
+	background-color: var(--surface-100);
 	padding: .2em .2em .1em;
 	margin: 0 .25em 0 .1em;
-	color: #444;
+	color: var(--c-fg);
 	border-radius: .2em;
 
 	/* Disable ligatures */
@@ -52,6 +52,10 @@ pre {
 	font-family: config.$monospaceFont;
 	padding: var(--page-padding);
 	margin: 0;
+	/* Monokai. Deliberately NOT tokenised: a syntax palette encodes language
+	   grammar — keywords, strings, comments — and deriving it from a site's
+	   brand hue would render those distinctions in one colour. Same reasoning
+	   as the social-count pill, opposite conclusion about where it lives. */
 	background: #272822;
 	color: #f8f8f2;
 	white-space: pre;

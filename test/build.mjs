@@ -4680,6 +4680,73 @@ check("the committed default is the Indiekit brand purple", () => {
 });
 
 
+
+check("no brand colour is hardcoded outside the token layer", () => {
+  // The failure this prevents: a literal added to a component stylesheet looks
+  // completely normal, compiles, renders — and silently ignores the site's
+  // configured palette. It only surfaces when someone reconfigures the colours
+  // and one element stays stubbornly the old hue.
+  //
+  // Three categories are legitimately exempt:
+  //   _tokens.scss      — the definitions themselves; this is the source.
+  //   syntax palettes   — a code theme encodes language grammar, not brand;
+  //                       deriving it from one hue would flatten keywords,
+  //                       strings and comments into the same colour.
+  //   translucent black — a shadow or scrim is depth, not colour, and tinting
+  //                       it with the brand hue makes surfaces look coloured.
+  const SYNTAX = /_prism|_syntax-line-highlight|_theme-code/;
+  const files = globSync("content/_css/**/*.scss").filter(
+    (f) => !f.endsWith("_tokens.scss") && !SYNTAX.test(f),
+  );
+  assert.ok(files.length > 0, "no stylesheets scanned — this check is vacuous");
+
+  const offenders = [];
+  for (const file of files) {
+    readFileSync(file, "utf8").split("\n").forEach((line, i) => {
+      if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;          // comments
+      if (/linear-gradient\(238deg/.test(line)) return;      // the literal spectrum
+      const hex = line.match(/#[0-9a-fA-F]{3,8}\b/g) || [];
+      const rgba = (line.match(/rgba?\([^)]*\)/g) || []).filter(
+        (v) => !/^rgba?\(\s*(0\s*,\s*0\s*,\s*0|255\s*,\s*255\s*,\s*255)\b/.test(v),
+      );
+      for (const found of [...hex, ...rgba]) {
+        offenders.push(`${file}:${i + 1} ${found}`);
+      }
+    });
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `colour literals outside the token layer — these ignore the configured palette:\n  ${offenders.join("\n  ")}`,
+  );
+});
+
+check("every component colour resolves through a token at runtime", () => {
+  // Compiled-CSS counterpart to the source check above: proves the var()
+  // references actually resolve, rather than merely being present in the Sass.
+  const css = ["_site/_css/initial.css", "_site/_css/defer.css"]
+    .map((f) => readFileSync(f, "utf8")).join("\n");
+  const declared = new Set([...css.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
+  const referenced = [...css.matchAll(/var\((--[\w-]+)/g)].map((m) => m[1]);
+  assert.ok(referenced.length > 20, `only ${referenced.length} var() references — the theme is not token-driven`);
+
+  // Only a BARE var() is a dangling reference. `var(--x, 3)` supplies its own
+  // fallback and is valid whether or not --x is declared — several ported
+  // layout knobs (--ellipsis-lines, --poster-offset) are deliberately of that
+  // shape, set per-component or not at all.
+  const withFallback = new Set(
+    [...css.matchAll(/var\((--[\w-]+)\s*,/g)].map((m) => m[1]),
+  );
+  const dangling = [...new Set(referenced)].filter(
+    (name) =>
+      !declared.has(name) &&
+      !withFallback.has(name) &&
+      !name.startsWith("--pagefind"),
+  );
+  assert.deepEqual(dangling, [], `var() references with no declaration: ${dangling.join(", ")}`);
+});
+
+
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;
 const skipNote = skipped ? `, ${skipped} skipped` : "";

@@ -22,8 +22,8 @@ html {
 	}
 }
 html {
-	background-color: #fff;
-	color: #222;
+	background-color: var(--c-bg);
+	color: var(--c-fg);
 }
 body {
 	padding: 0;
@@ -38,7 +38,7 @@ img[width][height] {
 	height: auto;
 }
 hr {
-	border: 1px solid #e9e9e9;
+	border: 1px solid var(--c-border);
 	width: 90%;
 	margin: 2em auto;
 }
@@ -47,7 +47,7 @@ abbr {
 }
 del, s {
 	text-decoration-thickness: 0.25em;
-	text-decoration-color: rgba(255,0,0,.6);
+	text-decoration-color: color-mix(in srgb, var(--c-danger) 60%, transparent);
 	text-decoration-inset: -.2em;
 	opacity: .8;
 }
