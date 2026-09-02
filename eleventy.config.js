@@ -187,7 +187,9 @@ export default function (eleventyConfig) {
     root: ["_includes", "content", "node_modules/@11ty/is-land"],
   });
 
-  eleventyConfig.addPlugin(pluginSass);
+  // The Sass plugin needs the two configured colours to derive the token
+  // ramps; siteData already carries site.json merged with any env override.
+  eleventyConfig.addPlugin(pluginSass, { theme: siteData.theme });
   eleventyConfig.addPlugin(pluginSyntaxHighlight);
   eleventyConfig.addPlugin(pluginImage);
   eleventyConfig.addPlugin(pluginImageAvatar);

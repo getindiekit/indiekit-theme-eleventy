@@ -6,7 +6,29 @@ import path from "node:path";
 // gets per build, but not across separate build processes).
 let criticalCssResult;
 
-export default function(eleventyConfig) {
+export default function(eleventyConfig, pluginOptions = {}) {
+	// The two configured colours reach Sass through a VIRTUAL module rather than
+	// a generated file on disk. `@use` rules must come first in a stylesheet, so
+	// the values cannot simply be prepended to the source, and writing a
+	// _theme-config.scss into content/ would put a build artifact in the input
+	// tree. An importer keeps it in memory and applies to every compile below.
+	const theme = pluginOptions.theme || {};
+	const themeConfigSource = [
+		`$primary: ${theme.primary || "#9435f4"};`,
+		`$surface: ${theme.surface || "#ffffff"};`,
+	].join("\n");
+
+	const themeConfigImporter = {
+		canonicalize(url) {
+			return url === "theme-config" ? new URL("virtual:theme-config") : null;
+		},
+		load(canonicalUrl) {
+			return canonicalUrl.href === "virtual:theme-config"
+				? { contents: themeConfigSource, syntax: "scss" }
+				: null;
+		},
+	};
+
 	eleventyConfig.addTemplateFormats("scss");
 
 	eleventyConfig.addExtension("scss", {
@@ -26,7 +48,8 @@ export default function(eleventyConfig) {
 				loadPaths: [
 					parsed.dir || ".",
 					this.config.dir.includes
-				]
+				],
+				importers: [themeConfigImporter],
 			});
 
 			this.addDependencies(inputPath, result.loadedUrls);
@@ -57,6 +80,7 @@ export default function(eleventyConfig) {
 		if (!criticalCssResult) {
 			criticalCssResult = sass.compile("content/_css/initial.scss", {
 				loadPaths: ["content/_css", "_includes"],
+				importers: [themeConfigImporter],
 			});
 		}
 		return criticalCssResult.css;

@@ -17,6 +17,11 @@
 // ported from source _theme.scss:878-1064 + :1706-1734) — the homepage's
 // h-feed is above the fold on the one page that renders it, same critical
 // reasoning as theme-typography above.
+// Tokens first: everything below resolves colours through the custom
+// properties this emits, so the :root block has to exist before any rule
+// that references it. It is in the CRITICAL bundle deliberately — tokens
+// arriving in the deferred stylesheet would mean a flash of unstyled colour.
+@use "sass/tokens";
 @use "sass/reset";
 @use "sass/fonts";
 @use "sass/theme-typography";

@@ -4538,6 +4538,148 @@ check("JSON-LD uses a type that fits each post, and invents no headlines", () =>
 });
 
 
+
+// --- design tokens -------------------------------------------------------
+
+// Parse `rgb(12.3%, 4.5%, 67.8%)` / `#rrggbb` into 0..1 channels.
+function parseColor(value) {
+  const pct = [...String(value).matchAll(/([\d.]+)%/g)].map((m) => Number(m[1]) / 100);
+  if (pct.length === 3) return pct;
+  const hex = /^#([0-9a-f]{6})$/i.exec(String(value).trim());
+  if (hex) return [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16) / 255);
+  return null;
+}
+
+function wcagContrast(a, b) {
+  const lum = (c) => {
+    const f = c.map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2];
+  };
+  const [la, lb] = [lum(a), lum(b)];
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+// Read :root custom properties out of a compiled stylesheet, resolving one
+// level of var() indirection (--c-fg: var(--surface-900)).
+function readTokens(cssPath) {
+  const css = readFileSync(cssPath, "utf8");
+  const root = /:root\s*\{([\s\S]*?)\}/.exec(css);
+  assert.ok(root, `${cssPath}: no :root block — the token layer did not compile`);
+  const raw = {};
+  for (const m of root[1].matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) raw[m[1]] = m[2].trim();
+  const resolved = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const ref = /^var\((--[\w-]+)\)$/.exec(value);
+    resolved[key] = ref ? raw[ref[1]] : value;
+  }
+  return resolved;
+}
+
+check("the token layer emits both ramps and every semantic token", () => {
+  const t = readTokens("_site/_css/initial.css");
+  for (const step of [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]) {
+    assert.ok(t[`--accent-${step}`], `--accent-${step} missing from the accent ramp`);
+    assert.ok(t[`--surface-${step}`], `--surface-${step} missing from the surface ramp`);
+  }
+  for (const token of ["--c-bg", "--c-fg", "--c-fg-muted", "--c-heading", "--c-border",
+                       "--c-link", "--c-link-hover", "--c-focus",
+                       "--c-accent-fill", "--c-accent-fill-fg", "--c-danger"]) {
+    assert.ok(t[token], `${token} missing`);
+    assert.ok(parseColor(t[token]), `${token} is not a parseable colour: ${t[token]}`);
+  }
+  // A neutral surface input must produce a genuinely neutral ramp, not one
+  // drifting toward the primary's hue.
+  const mid = parseColor(t["--surface-500"]);
+  assert.ok(
+    Math.max(...mid) - Math.min(...mid) < 0.02,
+    `--surface-500 is not neutral for a neutral input: ${t["--surface-500"]}`,
+  );
+});
+
+check("every text token meets WCAG AA and every UI token meets 3:1, recomputed from the emitted CSS", () => {
+  // Recomputed from what actually shipped, not from the Sass source — an error
+  // in the derivation maths has to fail here rather than reach a reader.
+  const t = readTokens("_site/_css/initial.css");
+  const bg = parseColor(t["--c-bg"]);
+  assert.ok(bg, "--c-bg is not a colour");
+
+  for (const [token, min, kind] of [
+    ["--c-fg", 4.5, "body text"],
+    ["--c-fg-muted", 4.5, "muted text"],
+    ["--c-heading", 4.5, "headings"],
+    ["--c-link", 4.5, "links"],
+    ["--c-link-hover", 4.5, "link hover"],
+    ["--c-danger", 4.5, "error text"],
+    ["--c-focus", 3, "focus ring"],
+  ]) {
+    const ratio = wcagContrast(parseColor(t[token]), bg);
+    assert.ok(
+      ratio >= min,
+      `${token} (${kind}) is ${ratio.toFixed(2)}:1 against --c-bg, below the ${min}:1 floor`,
+    );
+  }
+
+  // Amber is a fill, never a foreground: it fails 3:1 on a light surface. What
+  // sits ON it is what must pass.
+  const fill = parseColor(t["--c-accent-fill"]);
+  const onFill = parseColor(t["--c-accent-fill-fg"]);
+  assert.ok(
+    wcagContrast(onFill, fill) >= 4.5,
+    `--c-accent-fill-fg is ${wcagContrast(onFill, fill).toFixed(2)}:1 on --c-accent-fill`,
+  );
+});
+
+check("a primary that fails contrast on its own is clamped to a step that passes", () => {
+  // The clamp is the reason a site cannot be configured unreadable. Amber is
+  // 2.16:1 on white and near-yellow is worse; both must still yield an AA link.
+  const outDir = "_site-contrast-check";
+  for (const primary of ["#f0a000", "#ffee00", "#f06f00"]) {
+    try {
+      rmSync(outDir, { recursive: true, force: true });
+      execFileSync(process.execPath,
+        ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe", env: { ...process.env, INDIEKIT_COLOR_PRIMARY: primary, NPM_DOWNLOADS_OFFLINE: "1" } });
+
+      const t = readTokens(`${outDir}/_css/initial.css`);
+      const bg = parseColor(t["--c-bg"]);
+      const link = wcagContrast(parseColor(t["--c-link"]), bg);
+      const focus = wcagContrast(parseColor(t["--c-focus"]), bg);
+      assert.ok(link >= 4.5, `primary ${primary}: --c-link is only ${link.toFixed(2)}:1`);
+      assert.ok(focus >= 3, `primary ${primary}: --c-focus is only ${focus.toFixed(2)}:1`);
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  }
+});
+
+check("INDIEKIT_COLOR_* overrides the committed defaults without editing site.json", () => {
+  const sitePath = "_data/site.json";
+  const outDir = "_site-colorenv-check";
+  const before = readFileSync(sitePath);
+  const baseline = readTokens("_site/_css/initial.css")["--accent-500"];
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(process.execPath,
+      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe", env: { ...process.env, INDIEKIT_COLOR_PRIMARY: "#0066cc", NPM_DOWNLOADS_OFFLINE: "1" } });
+
+    const overridden = readTokens(`${outDir}/_css/initial.css`)["--accent-500"];
+    assert.notEqual(overridden, baseline, "INDIEKIT_COLOR_PRIMARY did not change the accent ramp");
+    const [r, g, b] = parseColor(overridden);
+    assert.ok(b > r, `the overridden accent is not blue-dominant: ${overridden}`);
+    assert.ok(readFileSync(sitePath).equals(before), "_data/site.json was modified by an env-overridden build");
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+check("the committed default is the Indiekit brand purple", () => {
+  const theme = JSON.parse(readFileSync("_data/site.json", "utf8")).theme;
+  assert.equal(theme.primary.toLowerCase(), "#9435f4", "the default primary is no longer the Indiekit purple");
+  assert.ok(theme.surface, "no default surface configured");
+});
+
+
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;
 const skipNote = skipped ? `, ${skipped} skipped` : "";

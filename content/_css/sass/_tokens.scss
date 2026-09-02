@@ -1,0 +1,122 @@
+// Design tokens.
+//
+// Two configured inputs — site.theme.primary and site.theme.surface, reaching
+// Sass through the virtual "theme-config" module (see _11ty/sassPlugin.js) —
+// derive two 11-step OKLCH ramps, and the semantic tokens below point at steps
+// of those ramps. Components use ONLY the semantic tokens, never a ramp step
+// and never a literal.
+//
+// Everything is emitted as CSS custom properties, so a deployment can override
+// any token with its own stylesheet without rebuilding. That is the whole point
+// of the indirection: this theme targets indiekit-origin, where there is no
+// plugin generating a theme.css, so overriding has to be possible with nothing
+// but CSS.
+//
+// CONTRAST IS ENFORCED, not assumed. `pick-step` computes real WCAG relative
+// luminance (the sRGB transfer function via math.pow, verified to four decimal
+// places against an independent implementation) and returns the LIGHTEST ramp
+// step that meets the required ratio against the page background. So a site
+// configured with a pale primary gets a darker link colour automatically rather
+// than an unreadable one: amber (#f0a000, 2.16:1 on white) walks down to a step
+// that passes, while purple (5.15:1) is used essentially as given.
+@use "sass:color";
+@use "sass:map";
+@use "sass:math";
+@use "theme-config" as cfg;
+
+// --- WCAG contrast ------------------------------------------------------
+
+@function _linear($c, $channel) {
+	$v: math.div(color.channel($c, $channel, $space: rgb), 255);
+	@if $v <= 0.03928 {
+		@return math.div($v, 12.92);
+	}
+	@return math.pow(math.div($v + 0.055, 1.055), 2.4);
+}
+
+@function luminance($c) {
+	@return 0.2126 * _linear($c, "red")
+		+ 0.7152 * _linear($c, "green")
+		+ 0.0722 * _linear($c, "blue");
+}
+
+@function contrast($a, $b) {
+	$la: luminance($a);
+	$lb: luminance($b);
+	@return math.div(math.max($la, $lb) + 0.05, math.min($la, $lb) + 0.05);
+}
+
+// --- Ramps --------------------------------------------------------------
+
+// Lightness of each step, in OKLCH. 50 is lightest, 950 darkest.
+$_steps: (50: 97%, 100: 94%, 200: 86%, 300: 78%, 400: 65%, 500: 55%,
+          600: 45%, 700: 36%, 800: 27%, 900: 20%, 950: 13%);
+
+// Chroma tapers toward both ends of the ramp: at full chroma the lightest steps
+// look bleached and the darkest muddy. Never exceeds the input's own chroma, so
+// a neutral input (chroma 0, e.g. #ffffff) yields a genuinely neutral grey ramp
+// rather than one drifting toward some hue.
+@function ramp($base) {
+	$chroma: color.channel($base, "chroma", $space: oklch);
+	$out: ();
+	@each $key, $lightness in $_steps {
+		$l: math.div($lightness, 100%);
+		$taper: if($l < 0.5, $l * 1.8, (1 - $l) * 1.8);
+		$c: math.min($chroma * $taper, $chroma);
+		$step: color.change($base, $lightness: $lightness, $chroma: $c, $space: oklch);
+		// Mandatory: raw OKLCH is frequently outside sRGB and serialises as
+		// nonsense like hsl(277, 173%, 24%) without this.
+		$out: map.merge($out, ($key: color.to-gamut($step, $method: local-minde, $space: srgb)));
+	}
+	@return $out;
+}
+
+$accent: ramp(cfg.$primary);
+$surface: ramp(cfg.$surface);
+
+// The lightest step meeting $min against $bg — the clamp. Walks light to dark
+// so a colour that already passes is used as-is and only a failing one is
+// darkened.
+@function pick-step($ramp, $bg, $min) {
+	@each $key in (300, 400, 500, 600, 700, 800, 900, 950) {
+		$candidate: map.get($ramp, $key);
+		@if contrast($candidate, $bg) >= $min {
+			@return $candidate;
+		}
+	}
+	@return map.get($ramp, 950);
+}
+
+$_bg: map.get($surface, 50);
+
+// --- Tokens -------------------------------------------------------------
+
+:root {
+	@each $key, $value in $accent {
+		--accent-#{$key}: #{$value};
+	}
+	@each $key, $value in $surface {
+		--surface-#{$key}: #{$value};
+	}
+
+	// Surfaces and text. Named by ROLE, so a dark variant later swaps which step
+	// each points at without renaming anything.
+	--c-bg: var(--surface-50);
+	--c-fg: var(--surface-900);
+	--c-fg-muted: #{pick-step($surface, $_bg, 4.5)};
+	--c-heading: var(--surface-900);
+	--c-border: var(--surface-200);
+
+	// Interactive. 4.5:1 for text, 3:1 for non-text UI, per WCAG.
+	--c-link: #{pick-step($accent, $_bg, 4.5)};
+	--c-link-hover: var(--accent-700);
+	--c-focus: #{pick-step($accent, $_bg, 3)};
+
+	// Amber is a FILL only: at 2.16:1 on white it fails even the 3:1 non-text
+	// threshold, so it may never carry text or be a border. Anything placed on
+	// it uses --c-accent-fill-fg.
+	--c-accent-fill: #f0a000;
+	--c-accent-fill-fg: var(--surface-950);
+
+	--c-danger: #{pick-step(ramp(#ff2f0f), $_bg, 4.5)};
+}

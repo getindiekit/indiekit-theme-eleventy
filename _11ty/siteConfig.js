@@ -50,6 +50,22 @@ export function loadSiteConfig() {
 	cached = process.env.SITE_FIXTURE
 		? merge(base, JSON.parse(readFileSync(process.env.SITE_FIXTURE, "utf8")))
 		: base;
+
+	// Colour inputs may also come from the environment, which is how an Indiekit
+	// deployment sets them without editing a tracked file. Same precedence as
+	// everything else here: the JSON file is the source, the environment
+	// overlays it. Only these two are read — every other token is derived, so
+	// there is nothing else to override.
+	const envColors = {
+		primary: process.env.INDIEKIT_COLOR_PRIMARY,
+		surface: process.env.INDIEKIT_COLOR_SURFACE,
+	};
+	for (const [key, value] of Object.entries(envColors)) {
+		if (value) {
+			cached = merge(cached, { theme: { [key]: value } });
+		}
+	}
+
 	return cached;
 }
 
