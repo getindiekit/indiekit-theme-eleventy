@@ -49,6 +49,13 @@ modules:
 				}
 			</script>
 		</aside>
+{%- comment %} The site's representative h-card lives in the rail, not on the
+   homepage: it is site chrome, so rel=author (footer) resolves to an h-card
+   from EVERY page rather than only the front one. Renders nothing until
+   site.json names an author. On single-column widths .rail-sticky is a flex
+   row carrying the title and the menu toggle, so the card is given a
+   full-width basis there and wraps onto its own line. {% endcomment -%}
+		{% include "partials/h-card.liquid" %}
 	</div>
 </div>
 <main class="content-main" data-role="main" id="skiplink-content">

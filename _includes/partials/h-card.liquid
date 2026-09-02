@@ -1,0 +1,72 @@
+{%- comment -%}
+The site's representative h-card — mf2 identity for the whole site.
+
+Why it exists: mf2 author discovery has three inputs (p-author on the h-entry,
+p-author on the parent h-feed, rel=author pointing at an h-card). This theme
+already emits the first and third; this is the h-card that rel=author resolves
+to, and it is what indiewebify.me Level 1 and IndieAuth consumers look for.
+partials/author-card.liquid is the sr-only per-entry author; this is the
+visible, complete one.
+
+Field set follows the h-card spec (microformats.org/wiki/h-card). EVERY field is
+optional and renders nothing when unset, so the neutral default emits only what
+a site has actually configured — and emits the whole element not at all when
+there is no name.
+
+Two deliberate details:
+
+  - The hidden <data class="u-photo"> carries the photo for parsers, and the
+    visible <img> is left unmarked. Some mf2 parsers mishandle an img nested
+    inside an anchor, which is exactly where a visible avatar wants to sit.
+  - `pronoun` is rendered as a plain span with NO microformat class. There is no
+    p-pronoun in the h-card spec; claiming one would be inventing vocabulary.
+    The text still displays and still reads correctly to a person.
+
+u-uid is the canonical identifier for the person and sits alongside u-url on the
+same anchor, which is the spec's own idiom.
+{%- endcomment -%}
+{%- if site.author.name -%}
+{%- assign authorPhoto = site.author.photo | default: "/web/img/webmention-avatar-default.svg" -%}
+<div class="h-card">
+	<data class="u-photo" value="{{ authorPhoto }}"></data>
+	<img class="h-card-avatar" src="{{ authorPhoto }}" alt="" width="64" height="64" loading="lazy" decoding="async" eleventy:ignore>
+	<div class="h-card-body">
+		<p class="h-card-identity">
+			{%- if site.author.url -%}
+			<a class="p-name u-url u-uid" rel="me" href="{{ site.author.url }}">{{ site.author.name }}</a>
+			{%- else -%}
+			<span class="p-name">{{ site.author.name }}</span>
+			{%- endif -%}
+			{%- if site.author.pronoun %} <span class="h-card-pronoun">({{ site.author.pronoun }})</span>{% endif -%}
+		</p>
+		{%- if site.author.jobTitle %}
+		<p class="p-job-title h-card-meta">{{ site.author.jobTitle }}</p>
+		{%- endif %}
+		{%- if site.author.locality or site.author.country %}
+		<p class="h-card-meta">
+			{%- if site.author.locality %}<span class="p-locality">{{ site.author.locality }}</span>{% endif -%}
+			{%- if site.author.locality and site.author.country %}, {% endif -%}
+			{%- if site.author.country %}<span class="p-country-name">{{ site.author.country }}</span>{% endif -%}
+		</p>
+		{%- endif %}
+		{%- if site.author.note %}
+		<p class="p-note">{{ site.author.note }}</p>
+		{%- endif %}
+		{%- if site.author.org %}
+		<p class="h-card-meta"><span class="p-org">{{ site.author.org }}</span></p>
+		{%- endif %}
+		{%- if site.author.email or site.author.keyUrl %}
+		<p class="h-card-meta">
+			{%- if site.author.email %}<a class="u-email" href="mailto:{{ site.author.email }}">{{ site.author.email }}</a>{% endif -%}
+			{%- if site.author.email and site.author.keyUrl %} · {% endif -%}
+			{%- if site.author.keyUrl %}<a class="u-key" rel="pgpkey" href="{{ site.author.keyUrl }}">PGP key</a>{% endif -%}
+		</p>
+		{%- endif %}
+		{%- if site.author.me.size > 0 %}
+		<nav class="h-card-links" aria-label="Profiles">
+			{%- for meUrl in site.author.me %}<a class="u-url" rel="me" href="{{ meUrl }}">{{ meUrl | hostnameFromUrl }}</a>{% endfor -%}
+		</nav>
+		{%- endif %}
+	</div>
+</div>
+{%- endif -%}

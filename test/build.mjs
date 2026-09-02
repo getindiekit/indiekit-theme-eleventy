@@ -467,6 +467,11 @@ check("every class the markup emits has a rule in the compiled CSS", () => {
     // the rest of this list — the visible styling comes from the source's own
     // `.tags .tag` rule (_theme-chrome.scss:49), which sits alongside it.
     "p-category",
+    // h-card vocabulary (partials/h-card.liquid). Semantic like the rest of
+    // this list — the visible styling comes from the .h-card-* wrapper classes
+    // beside them, which do have rules.
+    "u-uid", "p-note", "p-job-title", "p-locality", "p-country-name",
+    "p-org", "u-email", "u-key",
     // Emitted by the webmention templates when fixture data is loaded:
     // h-cite is the mf2 vocabulary for a cited/quoted post, u-comment and
     // p-content are its properties. Semantic, like the rest of this list.

@@ -174,3 +174,60 @@ svg.z-icon {
 		margin-right: auto;
 	}
 }
+
+/* Representative h-card (partials/h-card.liquid), shown in the homepage's
+   .about-description block. The mf2 classes on it carry meaning, not styling —
+   these rules are for the layout wrapper only, same division as everywhere else
+   in this theme. Deliberately plain: it sits directly under the site
+   description and should read as part of that block, not as a widget. */
+.h-card {
+	/* Stacked by default because its home is the rail, which is 224px wide —
+	   a horizontal avatar-beside-text row leaves ~144px for the text and wraps
+	   the bio to five or six lines. Measured, not guessed. The single-column
+	   layout below restores the row, where the card spans the full width. */
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	align-items: flex-start;
+	margin-block: 1.5em 0;
+}
+@media (max-width: config.$oneColLayoutMaxWidth) {
+	.h-card {
+		flex-direction: row;
+		gap: 1rem;
+	}
+}
+.h-card-avatar {
+	flex: 0 0 auto;
+	width: 4rem;
+	height: 4rem;
+	border-radius: 50%;
+	object-fit: cover;
+}
+.h-card-body {
+	min-width: 0;
+}
+.h-card-identity {
+	margin: 0;
+	font-weight: 700;
+}
+.h-card-pronoun {
+	font-weight: 400;
+	font-size: 0.8125rem; /* 13px /16 */
+	color: #666;
+}
+.h-card-meta {
+	margin: 0.15em 0 0;
+	font-size: 0.875rem; /* 14px /16 */
+	color: #666;
+}
+.h-card .p-note {
+	margin: 0.4em 0 0;
+}
+.h-card-links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75em;
+	margin-top: 0.5em;
+	font-size: 0.875rem;
+}

@@ -5,11 +5,22 @@
   "author": {
     "name": "",
     "url": "",
-    "avatar": "",
+    "photo": "",
+    "note": "",
+    "pronoun": "",
+    "jobTitle": "",
+    "locality": "",
+    "country": "",
+    "org": "",
+    "email": "",
+    "keyUrl": "",
     "fediverse": "",
     "me": []
   },
-  "speedlify": { "url": "", "enabled": false },
+  "speedlify": {
+    "url": "",
+    "enabled": false
+  },
   "timezone": "Europe/Brussels",
   "opengraph": {
     "defaultImage": "/img/og-default.png",

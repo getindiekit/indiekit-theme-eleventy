@@ -49,9 +49,16 @@
 	   sticky rule is min-width + min-height gated), so it is free here. */
 	.rail-sticky {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
+	}
+	/* The h-card is a third child of that flex row. Give it a full-width basis
+	   so it wraps onto its own line beneath the title and the toggle, instead
+	   of being squeezed into the row with them. */
+	.rail-sticky > .h-card {
+		flex: 1 0 100%;
 	}
 	.rail-sticky > header {
 		min-width: 0; /* let a long site name shrink rather than shove the toggle off */
