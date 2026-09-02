@@ -10,6 +10,11 @@
 // .scss file in this theme is (_11ty/sassPlugin.js's "scss" extension), so
 // it lands at /_css/opengraph.css — a real, independently-linkable file,
 // same idiom as /_css/initial.css and /_css/defer.css.
+// The OG card is a standalone document — it never loads initial.css, so it
+// needs its own copy of the :root token block or every var() below would be
+// undefined. Cheap: ~25 declarations in a stylesheet nothing but a social
+// scraper ever downloads.
+@use "sass/tokens";
 @use "sass/config";
 
 * {

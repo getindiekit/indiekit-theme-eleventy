@@ -3,11 +3,21 @@ $monospaceFont: Consolas, Monaco, monospace;
 $fallbackSystemFont: system-ui, sans-serif;
 
 // Colors
-$borderColor: #7f917f;
-$lightBorderColor:rgb(210, 222, 210);
-$primaryColor: #3c603c;
-$textColor: #525252;
-$linkActiveColor: #4caf50;
+//
+// These are no longer values, they are references into the token layer
+// (sass/_tokens.scss). Sass treats `var(--x)` as an opaque string and simply
+// emits it, which is what makes this work — and is also why nothing may apply a
+// Sass colour function to them (checked: nothing does).
+//
+// Keeping the names means the eleven existing call sites did not have to be
+// rewritten to be themeable, and any file that already had `@use "config"`
+// picks up the tokens with no further import.
+//
+// $lightBorderColor is gone: it was defined here and referenced nowhere.
+$borderColor: var(--c-border);
+$primaryColor: var(--c-link);
+$textColor: var(--c-fg);
+$linkActiveColor: var(--c-link-hover);
 
 // Breakpoints
 $oneColLayoutDottedList: 45em; /* 720px /16 */

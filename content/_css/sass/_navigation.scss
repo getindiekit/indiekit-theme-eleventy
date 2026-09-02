@@ -82,7 +82,7 @@
 		padding: 0;
 		border: 1px solid config.$borderColor;
 		border-radius: 0.35em;
-		background-color: #fff;
+		background-color: var(--c-bg);
 		color: config.$textColor;
 		font: inherit;
 		cursor: pointer;
@@ -150,7 +150,9 @@
 		padding: 0.35rem 0.75rem;
 		border: 1px solid config.$borderColor;
 		border-radius: 0.35em;
-		background-color: #fff;
+		background-color: var(--c-bg);
+		/* Shadow, not colour: a translucent black is depth in every palette.
+		   Tinting it with the brand hue would make the menu look coloured. */
 		box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
 	}
 }

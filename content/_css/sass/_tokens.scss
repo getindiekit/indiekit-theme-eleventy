@@ -112,6 +112,12 @@ $_bg: map.get($surface, 50);
 	--c-link-hover: var(--accent-700);
 	--c-focus: #{pick-step($accent, $_bg, 3)};
 
+	// Text placed ON the accent (the active nav pill). Guaranteed readable for
+	// free: --c-link is clamped to >=4.5:1 against --c-bg, and contrast is
+	// symmetric, so the background colour reversed out against surface-50 passes
+	// by the same margin.
+	--c-on-accent: var(--surface-50);
+
 	// Amber is a FILL only: at 2.16:1 on white it fails even the 3:1 non-text
 	// threshold, so it may never carry text or be a border. Anything placed on
 	// it uses --c-accent-fill-fg.

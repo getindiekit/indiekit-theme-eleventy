@@ -51,7 +51,7 @@
 	font-size: 0.6315789473684em; /* 12px /19 */
 	height: 1.5625rem; /* 25px /16 */
 	font-style: normal;
-	color: #666;
+	color: var(--c-fg-muted);
 	padding: .25em .5em;
 	text-decoration: none;
 	border-radius: var(--z-border-radius-2);
@@ -64,7 +64,7 @@
 html:root {
 	--pagefind-ui-font: inherit;
 	--pagefind-ui-scale: 1;
-	--pagefind-ui-background: #efefef;
+	--pagefind-ui-background: var(--surface-100);
 }
 .content-main .pagefind-ui ol {
 	padding-left: 0;
@@ -134,7 +134,7 @@ svg.z-icon {
 	vertical-align: bottom;
 	font-weight: 900;
 	line-height: 1;
-	color: #4c713e;
+	color: var(--c-link);
 	text-transform: uppercase;
 }
 
@@ -142,8 +142,8 @@ svg.z-icon {
    emits `.active` on the current link (default.liquid) and it had no styling,
    so "you are here" was invisible. */
 .tags-rail-links :any-link.active {
-	--icon-color-override: #f4f4f4;
-	color: #f4f4f4;
+	--icon-color-override: var(--c-on-accent);
+	color: var(--c-on-accent);
 	background-color: config.$primaryColor;
 }
 
@@ -214,12 +214,12 @@ svg.z-icon {
 .rail .h-card-pronoun {
 	font-weight: 400;
 	font-size: 0.8125rem; /* 13px /16 */
-	color: #666;
+	color: var(--c-fg-muted);
 }
 .rail .h-card-meta {
 	margin: 0.15em 0 0;
 	font-size: 0.875rem; /* 14px /16 */
-	color: #666;
+	color: var(--c-fg-muted);
 }
 .rail .h-card .p-note {
 	margin: 0.4em 0 0;
@@ -239,7 +239,7 @@ svg.z-icon {
 .cite-meta {
 	margin: 0.35em 0 0;
 	font-size: 0.875rem; /* 14px /16 */
-	color: #666;
+	color: var(--c-fg-muted);
 }
 
 /* The /collections/ hub: one row per post type with its count. Deliberately a
@@ -255,12 +255,12 @@ svg.z-icon {
 	align-items: baseline;
 	gap: 0.5em;
 	padding: 0.4em 0;
-	border-bottom: 1px dotted #d0d0d0;
+	border-bottom: 1px dotted var(--c-border);
 }
 .collection-count {
 	margin-left: auto;
 	font-size: 0.875rem; /* 14px /16 */
-	color: #666;
+	color: var(--c-fg-muted);
 	font-variant-numeric: tabular-nums;
 }
 
@@ -269,5 +269,5 @@ svg.z-icon {
 .entry-updated {
 	margin: 0.2em 0 0;
 	font-size: 0.875rem; /* 14px /16 */
-	color: #666;
+	color: var(--c-fg-muted);
 }
