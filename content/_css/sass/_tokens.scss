@@ -110,6 +110,11 @@ $_bg: map.get($surface, 50);
 	// Interactive. 4.5:1 for text, 3:1 for non-text UI, per WCAG.
 	--c-link: #{pick-step($accent, $_bg, 4.5)};
 	--c-link-hover: var(--accent-700);
+	// Visited is a real distinction in the port source (:link and :visited were
+	// different greens), so it keeps its own token rather than collapsing into
+	// --c-link and losing the signal. Darker, so it reads as "already been
+	// there" and still passes AA.
+	--c-link-visited: var(--accent-800);
 	--c-focus: #{pick-step($accent, $_bg, 3)};
 
 	// Text placed ON the accent (the active nav pill). Guaranteed readable for
@@ -123,6 +128,19 @@ $_bg: map.get($surface, 50);
 	// it uses --c-accent-fill-fg.
 	--c-accent-fill: #f0a000;
 	--c-accent-fill-fg: var(--surface-950);
+
+	// The social-count pill encodes three DIFFERENT things — boosts, likes,
+	// replies — so its colours carry information rather than brand. Deriving them
+	// from one primary would render all three the same hue and destroy the
+	// distinction at a glance, the same reason the syntax-highlighting palette is
+	// out of scope. They are tokens rather than literals so a site can still
+	// restyle them, and so a dark variant has somewhere to go.
+	--c-social-boost: #006000;
+	--c-social-boost-bg: #e4f7e4;
+	--c-social-like: #880808;
+	--c-social-like-bg: #ffeded;
+	--c-social-reply: #535100;
+	--c-social-reply-bg: #edf1e4;
 
 	--c-danger: #{pick-step(ramp(#ff2f0f), $_bg, 4.5)};
 }

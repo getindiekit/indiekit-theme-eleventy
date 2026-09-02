@@ -42,7 +42,7 @@ dl.nextprev {
 	margin: 5em 0 0;
 	padding: 1em;
 	border-radius: .35em .35em 0 0;
-	background-color: #ccc;
+	background-color: var(--surface-200);
 }
 @media (min-width: 31.25em) { /* 500px */
 	dl.nextprev {
@@ -66,8 +66,8 @@ dl.nextprev dt {
 dl.nextprev dt span {
 	text-transform: uppercase;
 	padding: .25em .5em;
-	background-color: rgba(255,255,255,1);
-	color: #000;
+	background-color: var(--c-bg);
+	color: var(--c-fg);
 	font-weight: 700;
 	font-size: 0.75em; /* 12px /16 */
 	border-radius: .25em;
@@ -78,7 +78,7 @@ dl.nextprev dd {
 	margin: 0;
 }
 dl.nextprev .project_img {
-	border: 1px solid #ccc;
+	border: 1px solid var(--c-border);
 	box-shadow: 0 2px 12px 0px rgba(0, 0, 0, 0.2);
 }
 dl.nextprev a[href]:not(:active, :focus) .project_img:not(:hover) {
@@ -141,7 +141,7 @@ dl.nextprev-text dt span {
 }
 
 dl.nextprev dd:empty {
-	background-color: #eee;
+	background-color: var(--surface-100);
 	border-radius: .5em;
 	cursor: not-allowed;
 }

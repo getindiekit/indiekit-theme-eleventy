@@ -55,7 +55,7 @@
 	font-size: 2.315789473684em; /* 44px /19 */
 }
 .subhed-count {
-	color: #555;
+	color: var(--c-fg-muted);
 }
 .posts .subhed:first-child {
 	margin-top: 0;
@@ -73,16 +73,17 @@
 }
 .posts .description {
 	margin-top: .210526316em; /* 4px /19 */
-	color: #333;
+	color: var(--c-fg);
 	font-style: italic;
 }
 .project_img,
 .project_video {
 	width: 100%;
 	max-width: 28.125rem;
-	border: 1px solid #ddd;
+	border: 1px solid var(--c-border);
 	border-radius: .2em;
 	transition: .25s box-shadow, .25s border-color;
+	/* Shadow, not colour — translucent black is depth in any palette. */
 	box-shadow: 0 6px 12px 0px rgba(0, 0, 0, .1);
 }
 .project_img {
@@ -90,8 +91,8 @@
 }
 a[href]:is(:focus, :hover) .project_img {
 	transform: scale(1.04);
-	border-color: #fff;
-	box-shadow: 0 0 0 6px rgba(0, 106, 35, 0.8), 0 6px 40px 4px rgba(0, 0, 0, .25);
+	border-color: var(--c-bg);
+	box-shadow: 0 0 0 6px var(--c-focus), 0 6px 40px 4px rgba(0, 0, 0, .25);
 }
 .posts .project_img,
 .posts .project_video {
@@ -115,7 +116,7 @@ a[href]:is(:focus, :hover) .project_img {
   linear-gradient(
     to bottom,
     config.$primaryColor,
-    #374b39,
+    var(--accent-800),
   );
 }
 .layout-list p + ol.posts {
@@ -171,7 +172,7 @@ a[href]:is(:focus, :hover) .project_img {
 		display: block;
 		text-align: left;
 		font-size: 0.8125rem; /* 13px /16 */
-		color: #666;
+		color: var(--c-fg-muted);
 	}
 }
 
@@ -242,21 +243,21 @@ a[href]:is(:focus, :hover) .project_img {
 	border-inline-end: none;
 }
 .tag-social--boost {
-	color: #006000;
-	background-color: #e4f7e4;
+	color: var(--c-social-boost);
+	background-color: var(--c-social-boost-bg);
 }
 .tag-social--like {
-	color: #880808;
-	background-color: #ffeded;
+	color: var(--c-social-like);
+	background-color: var(--c-social-like-bg);
 }
 .tag-social--reply {
-	color: #535100;
-	background-color: #edf1e4;
+	color: var(--c-social-reply);
+	background-color: var(--c-social-reply-bg);
 }
 .posts .deprecated,
 .posts .deprecated :link,
 .posts .deprecated :visited {
-	color: #666;
+	color: var(--c-fg-muted);
 }
 .posts .deprecated,
 .posts .deprecated :link {
@@ -292,7 +293,7 @@ a[href]:is(:focus, :hover) .project_img {
 				content: "";
 				min-width: .75em;
 				flex-grow: 999;
-				border-bottom: 1px dotted #d0d0d0;
+				border-bottom: 1px dotted var(--c-border);
 			}
 			&:not(:empty):before {
 				margin-right: .5em;

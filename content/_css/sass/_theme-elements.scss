@@ -12,11 +12,11 @@ table {
 }
 tr {
 	margin: 0 !important;
-	border-bottom: 1px solid #ddd;
+	border-bottom: 1px solid var(--c-border);
 }
 caption {
 	margin-top: 1.5em;
-	border-bottom: 3px double #999;
+	border-bottom: 3px double var(--c-border);
 	padding-bottom: .6em;
 }
 td,
