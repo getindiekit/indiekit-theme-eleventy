@@ -1,0 +1,21 @@
+{
+  "author": {
+    "name": "Ada Lovelace",
+    "url": "http://localhost:8080/",
+    "photo": "",
+    "note": "Writing about analytical engines, notation, and why publishing on your own site first still matters.",
+    "pronoun": "she/her",
+    "jobTitle": "Mathematician",
+    "locality": "London",
+    "country": "England",
+    "org": "Analytical Society",
+    "email": "ada@example.com",
+    "keyUrl": "https://example.com/pgp.txt",
+    "fediverse": "@ada@example.social",
+    "me": [
+      "https://github.com/example",
+      "https://example.social/@ada",
+      "https://bsky.app/profile/example.com"
+    ]
+  }
+}

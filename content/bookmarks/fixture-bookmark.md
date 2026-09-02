@@ -1,5 +1,8 @@
 ---
 date: 2026-08-30T10:00:00.000Z
+category:
+  - indieweb
+  - reading
 bookmarkOf: https://example.com/x
 title: A field guide to static site generators
 ---

@@ -3904,6 +3904,65 @@ check("listing excerpts carry no Truncated badge and no categories", () => {
 });
 
 
+
+check("SITE_FIXTURE overlays site config for templates AND config consumers, without touching site.json", () => {
+  // The overlay reaches markup and the build config by two independent routes:
+  // templates get it from _data/eleventyComputed.js's computed `site` (the only
+  // tier that outranks a _data/* global), while eleventy.config.js, the feed
+  // metadata and the data files read _11ty/siteConfig.js directly. Either route
+  // can break alone, producing a build that renders an h-card for one identity
+  // and a feed author for another — which looks fine on the page.
+  const sitePath = "_data/site.json";
+  const outDir = "_site-sitefixture-check";
+  const original = readFileSync(sitePath);
+
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(
+      process.execPath,
+      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe", env: { ...process.env, SITE_FIXTURE: "test/fixtures/site-demo.json" } },
+    );
+
+    const fixture = JSON.parse(readFileSync("test/fixtures/site-demo.json", "utf8"));
+    const name = fixture.author.name;
+
+    // Route 1: templates.
+    const home = readFileSync(`${outDir}/index.html`, "utf8");
+    assert.ok(home.includes('class="h-card"'), "the overlay did not reach templates — no h-card rendered");
+    assert.ok(home.includes(name), `the h-card does not carry the fixture's author name (${name})`);
+    for (const meUrl of fixture.author.me) {
+      assert.ok(home.includes(meUrl), `rel=me is missing the fixture's ${meUrl}`);
+    }
+
+    // Route 2: build config (the feed reads siteData at config time, not per page).
+    const feed = readFileSync(`${outDir}/feed.xml`, "utf8");
+    assert.ok(
+      feed.includes(`<name>${name}</name>`),
+      "the overlay did not reach eleventy.config.js — the feed still names the un-overlaid author",
+    );
+
+    // The base file must not be mutated: the whole point is previewing a
+    // populated site without editing tracked configuration.
+    assert.ok(
+      readFileSync(sitePath).equals(original),
+      "_data/site.json was modified by an overlaid build",
+    );
+    const base = JSON.parse(original.toString("utf8"));
+    assert.equal(base.author.name, "", "the committed default is no longer neutral");
+
+    // And the fixture must not change site.url, or the webmention demo fixture's
+    // targets stop matching and every social count silently reads zero.
+    assert.ok(
+      !fixture.url,
+      "site-demo.json overrides site.url — webmention fixture targets would no longer match",
+    );
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;
 const skipNote = skipped ? `, ${skipped} skipped` : "";

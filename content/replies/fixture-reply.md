@@ -1,5 +1,9 @@
 ---
 date: 2026-08-30T10:00:00.000Z
+category:
+  - caching
+syndication:
+  - https://example.social/@ada/110000000000000011
 inReplyTo: https://example.com/z
 ---
 

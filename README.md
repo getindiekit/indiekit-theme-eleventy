@@ -106,10 +106,26 @@ rows, the reposts/likes/bookmarks facepiles and the comment list on a
 permalink — all render as nothing. That is correct, and it also makes them
 impossible to look at, review, or restyle.
 
-`npm run demo` builds the site against `test/fixtures/webmentions-demo.json`:
-63 sample webmentions of all five types (`like-of`, `repost-of`, `in-reply-to`,
-`mention-of`, `bookmark-of`) spread unevenly across the fixture posts, so both
-the populated and the empty case appear in the same build.
+`npm run demo` builds the site against two fixtures, so everything that depends
+on a site having been used renders at once:
+
+- `test/fixtures/webmentions-demo.json` — 63 sample webmentions of all five
+  types (`like-of`, `repost-of`, `in-reply-to`, `mention-of`, `bookmark-of`),
+  spread unevenly across the fixture posts so both the populated and the empty
+  case appear in the same build.
+- `test/fixtures/site-demo.json` — a configured identity, so the representative
+  h-card, `rel=me`, `rel=author`, `fediverse:creator` and the feed author all
+  render. Supplied through `SITE_FIXTURE`, which deep-merges over
+  `_data/site.json` at load time (`_11ty/siteConfig.js`); the committed default
+  is never modified.
+
+`SITE_FIXTURE` reaches templates through `_data/eleventyComputed.js`'s computed
+`site` — computed data is the only tier that outranks a `_data/*` global — and
+reaches the build config and data files through the same loader, so an overlaid
+build cannot render one identity in the markup and another in the feed.
+
+The fixture deliberately does not override `site.url`: the webmention fixture's
+targets are absolute, so changing the origin would silently zero every count.
 
 ```sh
 npm run demo:serve      # then open /articles/fixture-article/

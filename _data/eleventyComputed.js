@@ -16,13 +16,23 @@
 // feed's <title>, bypassing bookmark.liquid's fallback entirely; without
 // this, a titleless bookmark's feed entry ships as <title></title>, the
 // exact bug this fallback exists to prevent.
-import siteData from "./site.json" with { type: "json" };
+import { loadSiteConfig } from "../_11ty/siteConfig.js";
+
+const siteData = loadSiteConfig();
 import { resolveDate } from "../_11ty/dateResolver.js";
 
 // Same TIME_ZONE fallback as eleventy.config.js — see that file's comment.
 const TIME_ZONE = siteData.timezone || "utc";
 
 export default {
+  // Computed data is the only tier that outranks a `_data/*` global, so this
+  // is what makes SITE_FIXTURE visible to templates at all. With no fixture
+  // set, loadSiteConfig() returns _data/site.json verbatim and this is a
+  // no-op. See _11ty/siteConfig.js.
+  site() {
+    return siteData;
+  },
+
   title(data) {
     if (data.title || !data.postType) {
       return data.title;

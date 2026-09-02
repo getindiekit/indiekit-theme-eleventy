@@ -2,7 +2,9 @@ import sanitizeHTML from "sanitize-html";
 import { DateTime } from "luxon";
 
 import webmentionBlockList from "../_data/webmentionsBlockList.json" with { type: "json" };
-import siteData from "../_data/site.json" with { type: "json" };
+import { loadSiteConfig } from "./siteConfig.js";
+
+const siteData = loadSiteConfig();
 import getBaseUrl from "../_includes/getBaseUrl.js";
 import getHostname from "../_includes/getHostname.js";
 

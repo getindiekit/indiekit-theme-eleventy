@@ -29,7 +29,9 @@
 // has asked for loud failures.
 import { readFileSync } from "node:fs";
 import EleventyFetch from "@11ty/eleventy-fetch";
-import siteData from "./site.json" with { type: "json" };
+import { loadSiteConfig } from "../_11ty/siteConfig.js";
+
+const siteData = loadSiteConfig();
 
 // See _data/webmentions.js for how process.env.ELEVENTY_RUN_MODE is verified
 // to actually carry Eleventy's real run mode here (not a guessed env var).

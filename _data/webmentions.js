@@ -1,7 +1,9 @@
 import { DateTime } from "luxon";
 import Fetch from "@11ty/eleventy-fetch";
 
-import siteData from "./site.json" with { type: "json" };
+import { loadSiteConfig } from "../_11ty/siteConfig.js";
+
+const siteData = loadSiteConfig();
 import getBaseUrl from "../_includes/getBaseUrl.js";
 import getHostname from "../_includes/getHostname.js";
 

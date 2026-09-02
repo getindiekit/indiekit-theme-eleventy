@@ -2,7 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import Image, { eleventyImageTransformPlugin } from "@11ty/eleventy-img";
 import { getImageColors } from "@11ty/image-color";
-import siteData from "../_data/site.json" with { type: "json" };
+import { loadSiteConfig } from "./siteConfig.js";
+
+const siteData = loadSiteConfig();
 
 const SIZES_INLINE = "(min-width: 75em) 44.5625em, (min-width: 61.25em) 40.6875em, (min-width: 41.25em) 36.8125em, 96vw";
 

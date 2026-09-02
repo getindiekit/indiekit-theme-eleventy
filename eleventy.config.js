@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { DateTime } from "luxon";
 import { resolveDate } from "./_11ty/dateResolver.js";
+import { loadSiteConfig } from "./_11ty/siteConfig.js";
 import pluginSass from "./_11ty/sassPlugin.js";
 import pluginSyntaxHighlight from "./_11ty/syntaxHighlightPlugin.js";
 import pluginImage, { OG_CARD_TEMPLATE } from "./_11ty/imagePlugin.js";
@@ -16,7 +17,7 @@ import fontAwesomePlugin from "@11ty/font-awesome";
 // Site identity comes from _data/site.json, not hardcoded here (source read
 // siteData the same way). site.json's url has no trailing slash; the feed
 // plugin's `base` needs one — add it explicitly rather than relying on luck.
-const siteData = JSON.parse(readFileSync(new URL("./_data/site.json", import.meta.url)));
+const siteData = loadSiteConfig();
 const feedBase = siteData.url.endsWith("/") ? siteData.url : `${siteData.url}/`;
 
 // Source (zachleat.com, eleventy.config.js:28,71) registers this as global
