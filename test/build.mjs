@@ -1335,6 +1335,48 @@ check("archive h-feed entry dates match the same instant as the post's own page"
 // descendant combinators off `li` and a nested <article> would break every
 // one of them (see post-list-entry.liquid's own comment) — so the homepage
 // checks below pass tagName: "li" instead.
+// Remove nested microformat roots from an h-entry block, leaving only the
+// properties that belong to the entry itself.
+//
+// Required by the mf2 parsing spec, not a convenience: "when a child element
+// itself has a microformat (h-* or backcompat roots), properties within it are
+// added to that nested structure rather than the parent… such a property should
+// only be showing up on one of them"
+// (microformats.org/wiki/microformats2-parsing).
+//
+// Concretely: a reply's `u-in-reply-to h-cite` legitimately carries `p-name`
+// for the CITED post. A flat regex over the block sees that p-name and
+// concludes the titleless entry has a name, which is exactly backwards.
+function stripNestedMicroformats(block) {
+  const VOID = new Set(["area", "base", "br", "col", "embed", "hr", "img",
+    "input", "link", "meta", "source", "track", "wbr"]);
+  const isRoot = (attrs) => /\bclass="[^"]*\bh-[a-z][a-z0-9-]*\b/.test(`class="${(/class="([^"]*)"/.exec(attrs) || [, ""])[1]}"`);
+
+  let out = block;
+  for (let guard = 0; guard < 50; guard++) {
+    const tagRe = /<([a-z][a-z0-9-]*)\b([^>]*)>/gi;
+    let m, found = null, first = true;
+    while ((m = tagRe.exec(out))) {
+      if (first) { first = false; continue; } // the block's own root element
+      if (VOID.has(m[1].toLowerCase())) continue;
+      if (isRoot(m[2])) { found = { tag: m[1], start: m.index, afterOpen: tagRe.lastIndex }; break; }
+    }
+    if (!found) return out;
+
+    // Walk to the matching close, honouring same-name nesting.
+    const nest = new RegExp(`<${found.tag}\\b[^>]*>|</${found.tag}>`, "gi");
+    nest.lastIndex = found.afterOpen;
+    let depth = 1, end = -1, n;
+    while ((n = nest.exec(out))) {
+      depth += n[0].startsWith("</") ? -1 : 1;
+      if (depth === 0) { end = nest.lastIndex; break; }
+    }
+    if (end === -1) return out; // unbalanced; leave it rather than mangle
+    out = out.slice(0, found.start) + out.slice(end);
+  }
+  return out;
+}
+
 function extractHEntryBlocks(html, tagName = "article") {
   const tagRe = new RegExp(`<${tagName}\\b[^>]*>|</${tagName}>`, "g");
   const blocks = [];
@@ -1477,7 +1519,7 @@ check("p-name marks titled post types only — titleless types must not carry on
     const href = /href="\/([a-z]+)\//.exec(row);
     assert.ok(href, `listing row has no typed permalink href: ${row.slice(0, 120)}`);
     assert.ok(/\bu-url\b/.test(row), `listing row for /${href[1]}/ has no u-url`);
-    const hasName = /\bp-name\b/.test(row);
+    const hasName = /\bp-name\b/.test(stripNestedMicroformats(row));
     if (TITLED.has(href[1])) {
       assert.ok(hasName, `listing row for /${href[1]}/ is a titled type but has no p-name`);
     } else {
@@ -1503,7 +1545,8 @@ check("p-name marks titled post types only — titleless types must not carry on
       const blocks = extractHEntryBlocks(readFileSync(file, "utf8"));
       assert.equal(blocks.length, 1, `${file}: expected exactly one h-entry, found ${blocks.length}`);
       assert.ok(/\bu-url\b/.test(blocks[0]), `${file}: its h-entry has no u-url`);
-      const hasName = /\bp-name\b/.test(blocks[0]);
+      // Entry-level only: a nested h-cite's p-name is the CITED work's name.
+      const hasName = /\bp-name\b/.test(stripNestedMicroformats(blocks[0]));
       if (TITLED.has(type)) {
         assert.ok(hasName, `${file}: titled type with no p-name`);
       } else {
@@ -3958,6 +4001,85 @@ check("SITE_FIXTURE overlays site config for templates AND config consumers, wit
       "site-demo.json overrides site.url — webmention fixture targets would no longer match",
     );
   } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+
+
+check("response posts cite their target as an h-cite, and never invent a citation name", () => {
+  // The mf2 spec allows u-in-reply-to / u-like-of / u-repost-of / u-bookmark-of
+  // to take a URL *or an embedded h-cite* (microformats.org/wiki/h-entry). The
+  // embedded form is what lets a consumer show what is being responded to, so
+  // the property belongs on the h-cite container and u-url on the anchor.
+  const cases = [
+    ["replies/fixture-reply", "u-in-reply-to"],
+    ["likes/fixture-like", "u-like-of"],
+    ["bookmarks/fixture-bookmark", "u-bookmark-of"],
+    ["bookmarks/fixture-untitled-bookmark", "u-bookmark-of"],
+  ];
+  for (const [slug, property] of cases) {
+    const html = readFileSync(`_site/${slug}/index.html`, "utf8");
+    const cite = new RegExp(`class="${property} h-cite"([\\s\\S]*?)<\\/(?:div|span)>`).exec(html);
+    assert.ok(cite, `${slug}: no <… class="${property} h-cite"> — the property is not on a citation`);
+
+    // The property must NOT also sit on the inner anchor: mf2 says a property
+    // "should only be showing up on one of them".
+    const anchor = /<a class="([^"]*)"[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/.exec(cite[1]);
+    assert.ok(anchor, `${slug}: the h-cite contains no anchor`);
+    assert.ok(!anchor[1].includes(property), `${slug}: ${property} is duplicated onto the citation's anchor`);
+    assert.ok(/\bu-url\b/.test(anchor[1]), `${slug}: the citation's anchor has no u-url`);
+
+    // p-name only when there is a real name. An untitled bookmark's title falls
+    // back to its own url; claiming that as the citation's name asserts a url is
+    // a title — the same falsehood removed from post p-name.
+    const text = anchor[3].replace(/<[^>]*>/g, "").trim();
+    if (anchor[1].includes("p-name")) {
+      assert.notEqual(text, anchor[2], `${slug}: claims p-name whose text is just the url`);
+    }
+  }
+});
+
+await checkAsync("a citation enriches with author and published when the client sends an object", async () => {
+  // Indiekit writes inReplyTo as a bare url string, so the enrichment path has
+  // no fixture in the normal build. JF2 permits a nested object, and the
+  // template accepts either — untested code being a liability, drive the object
+  // shape through a real build rather than trusting it.
+  const fixture = "content/replies/_cite-object-check.md";
+  const outDir = "_site-cite-check";
+  writeFileSync(fixture, [
+    "---",
+    "date: 2026-08-30T09:00:00.000Z",
+    "inReplyTo:",
+    "  url: https://example.com/cited-post",
+    "  name: The cited post's real title",
+    "  published: 2026-08-29T10:00:00.000Z",
+    "  author:",
+    "    name: A Cited Author",
+    "    url: https://example.com/author",
+    "---",
+    "",
+    "A reply whose target arrived as a structured object.",
+    "",
+  ].join("\n"));
+
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(process.execPath,
+      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"], { stdio: "pipe" });
+
+    const html = readFileSync(`${outDir}/replies/_cite-object-check/index.html`, "utf8");
+    const cite = /class="u-in-reply-to h-cite"([\s\S]*?)<\/div>/.exec(html);
+    assert.ok(cite, "object-shaped reply target produced no h-cite");
+    assert.ok(
+      /<a class="u-url p-name"[^>]*href="https:\/\/example\.com\/cited-post"/.test(cite[1]),
+      "the object's url/name did not become u-url + p-name",
+    );
+    assert.ok(/\bp-author h-card\b/.test(cite[1]), "the object's author did not become a nested p-author h-card");
+    assert.ok(/A Cited Author/.test(cite[1]), "the cited author's name is missing");
+    assert.ok(/class="dt-published"/.test(cite[1]), "the object's published date did not become dt-published");
+  } finally {
+    rmSync(fixture, { force: true });
     rmSync(outDir, { recursive: true, force: true });
   }
 });

@@ -180,7 +180,7 @@ svg.z-icon {
    these rules are for the layout wrapper only, same division as everywhere else
    in this theme. Deliberately plain: it sits directly under the site
    description and should read as part of that block, not as a widget. */
-.h-card {
+.rail .h-card {
 	/* Stacked by default because its home is the rail, which is 224px wide —
 	   a horizontal avatar-beside-text row leaves ~144px for the text and wraps
 	   the bio to five or six lines. Measured, not guessed. The single-column
@@ -192,42 +192,52 @@ svg.z-icon {
 	margin-block: 1.5em 0;
 }
 @media (max-width: config.$oneColLayoutMaxWidth) {
-	.h-card {
+	.rail .h-card {
 		flex-direction: row;
 		gap: 1rem;
 	}
 }
-.h-card-avatar {
+.rail .h-card-avatar {
 	flex: 0 0 auto;
 	width: 4rem;
 	height: 4rem;
 	border-radius: 50%;
 	object-fit: cover;
 }
-.h-card-body {
+.rail .h-card-body {
 	min-width: 0;
 }
-.h-card-identity {
+.rail .h-card-identity {
 	margin: 0;
 	font-weight: 700;
 }
-.h-card-pronoun {
+.rail .h-card-pronoun {
 	font-weight: 400;
 	font-size: 0.8125rem; /* 13px /16 */
 	color: #666;
 }
-.h-card-meta {
+.rail .h-card-meta {
 	margin: 0.15em 0 0;
 	font-size: 0.875rem; /* 14px /16 */
 	color: #666;
 }
-.h-card .p-note {
+.rail .h-card .p-note {
 	margin: 0.4em 0 0;
 }
-.h-card-links {
+.rail .h-card-links {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.75em;
 	margin-top: 0.5em;
 	font-size: 0.875rem;
+}
+
+/* Citation metadata inside an h-cite — only rendered when a Micropub client
+   supplied a nested object with author/published rather than a bare URL, which
+   Indiekit itself does not do today. Kept deliberately quiet: the citation's
+   substance is the linked target above it. */
+.cite-meta {
+	margin: 0.35em 0 0;
+	font-size: 0.875rem; /* 14px /16 */
+	color: #666;
 }

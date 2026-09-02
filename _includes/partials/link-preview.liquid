@@ -17,9 +17,45 @@ JS, <browser-window> is an unknown element and renders its children as-is —
 a plain link. Callers pass `linkClass` so the microformats property
 (u-bookmark-of / u-in-reply-to) stays on the anchor.
 {% endcomment -%}
+{%- comment %} h-cite. The mf2 spec allows u-in-reply-to / u-like-of /
+   u-repost-of / u-bookmark-of to take EITHER a URL or an embedded h-cite
+   (microformats.org/wiki/h-entry), and the embedded form is what lets a
+   consumer show who and what is being responded to rather than a bare link.
+   So the property moves to the container and the anchor carries u-url + p-name,
+   which are h-cite's own properties.
+
+   Indiekit stores these as plain URL strings, so the URL-only shape is what a
+   real site produces today and it must read correctly on its own. `linkTarget`
+   is therefore accepted as either a string or an object: a Micropub client that
+   sends richer reply context (JF2 permits a nested object) gets p-author and
+   dt-published for free, and nothing is fabricated when it doesn't. Fetching
+   the target to fill those in would mean network at build time, which this
+   theme's builds do not do. {% endcomment -%}
+{%- assign citeUrl = linkTarget.url | default: linkTarget -%}
+{%- comment %} p-name only when a REAL name exists. Falling back to the URL
+   would assert that a URL is the citation's title — the same falsehood removed
+   from post p-name for the four titleless types. With no name, the anchor
+   carries u-url alone and a parser implies the name from the link text, which
+   is what h-cite expects. {% endcomment -%}
+{%- assign citeName = linkTarget.name | default: linkText -%}
+{%- comment %} …and never when the "name" IS the url. An untitled bookmark's
+   title falls back to its own bookmarkOf url (_data/eleventyComputed.js), so
+   a naive `linkText: title` would hand this the url and claim it as a title.
+   Compare rather than trust the caller: this holds for any caller, now or
+   later. {% endcomment -%}
+{%- if citeName and citeName != citeUrl %}{% assign citeClass = "u-url p-name" %}{% else %}{% assign citeClass = "u-url" %}{% assign citeName = citeName | default: citeUrl %}{% endif -%}
+<div class="{{ linkClass }} h-cite">
 <is-land on:idle on:visible>
 {%- if JS_ENABLED %}<template data-island><script type="module" src="/browser-window.js"></script></template>{% endif %}
-<browser-window url="{{ linkUrl }}" icon shadow flush>
-  <a class="{{ linkClass }}" href="{{ linkUrl }}">{{ linkText | default: linkUrl }}</a>
+<browser-window url="{{ citeUrl }}" icon shadow flush>
+  <a class="{{ citeClass }}" href="{{ citeUrl }}">{{ citeName }}</a>
 </browser-window>
 </is-land>
+{%- if linkTarget.author or linkTarget.published %}
+<p class="cite-meta">
+{%- if linkTarget.author %}<span class="p-author h-card">{% if linkTarget.author.url %}<a class="p-name u-url" href="{{ linkTarget.author.url }}">{{ linkTarget.author.name | default: linkTarget.author.url }}</a>{% else %}<span class="p-name">{{ linkTarget.author.name | default: linkTarget.author }}</span>{% endif %}</span>{% endif -%}
+{%- if linkTarget.author and linkTarget.published %} · {% endif -%}
+{%- if linkTarget.published %}<time class="dt-published" datetime="{{ linkTarget.published | isoInstant }}">{{ linkTarget.published | humanDate }}</time>{% endif -%}
+</p>
+{%- endif %}
+</div>

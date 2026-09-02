@@ -1,7 +1,7 @@
 {%- if lcp -%}
 <a class="u-url sr-only" href="{{ page.url }}">{{ title }}</a>{% comment %} Visual fix: sr-only so the permalink's own title isn't printed twice (h1 above already carries p-name) — see types/article.liquid's comment. {% endcomment %}
 {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
-{%- if likeOf %}<p>Liked <a class="u-like-of" href="{{ likeOf }}">{{ likeOf }}</a></p>{% endif %}
+{%- if likeOf %}{% assign likeUrl = likeOf.url | default: likeOf %}<p>Liked <span class="u-like-of h-cite"><a class="u-url{% if likeOf.name %} p-name{% endif %}" href="{{ likeUrl }}">{{ likeOf.name | default: likeUrl }}</a></span></p>{% endif %}
 {%- else -%}
 {%- comment %} Task (visual fix, corrected from the prior S4 pass): a like
 is titleless by IndieWeb design and has no text of its own (see
