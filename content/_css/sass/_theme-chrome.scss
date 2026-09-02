@@ -241,3 +241,25 @@ svg.z-icon {
 	font-size: 0.875rem; /* 14px /16 */
 	color: #666;
 }
+
+/* The /collections/ hub: one row per post type with its count. Deliberately a
+   plain list rather than a card grid — it is a directory, and the theme already
+   has one list idiom (.posts) that carries the visual weight. */
+.collection-list {
+	list-style: none;
+	margin: 1.5em 0 0;
+	padding: 0;
+}
+.collection-list li {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5em;
+	padding: 0.4em 0;
+	border-bottom: 1px dotted #d0d0d0;
+}
+.collection-count {
+	margin-left: auto;
+	font-size: 0.875rem; /* 14px /16 */
+	color: #666;
+	font-variant-numeric: tabular-nums;
+}

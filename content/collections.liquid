@@ -1,0 +1,24 @@
+---
+title: Collections
+layout: layouts/pagealign.liquid
+permalink: /collections/
+eleventyExcludeFromCollections: true
+eleventyImport:
+  collections: ["post"]
+---
+{%- comment %} The hub. Named "Collections" rather than "Interactions" because
+   it covers every post type, not only the four response types — an interactions
+   page would be the right name for likes/replies/reposts/bookmarks alone.
+{% endcomment -%}
+<ul class="collection-list">
+{%- for group in collections.postTypes %}
+	<li>
+		<a href="/{{ group.segment }}/">{{ group.segment | capitalize }}</a>
+		<span class="collection-count">{{ group.posts.size }}</span>
+	</li>
+{%- endfor %}
+	<li>
+		<a href="/archive/">Archive</a>
+		<span class="collection-count">{{ collections.post.size }}</span>
+	</li>
+</ul>

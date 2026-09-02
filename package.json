@@ -22,7 +22,6 @@
     "demo": "WEBMENTIONS_FIXTURE=test/fixtures/webmentions-demo.json SITE_FIXTURE=test/fixtures/site-demo.json npx @11ty/eleventy --output=_site-demo",
     "demo:serve": "WEBMENTIONS_FIXTURE=test/fixtures/webmentions-demo.json SITE_FIXTURE=test/fixtures/site-demo.json npx @11ty/eleventy --serve --port=8090 --incremental --output=_site-demo",
     "clean": "rm -rf _site .cache",
-    "search-index": "npx pagefind --site _site --glob \"{articles,bookmarks,likes,notes,photos,replies}/**/*.html\"",
     "test": "node test/build.mjs"
   },
   "dependencies": {

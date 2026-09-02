@@ -17,7 +17,7 @@ Task 19 (§9.2). Ported from /home/rmdes/zachleat.com/search.html, adapted:
   whenever JS runs. And whenever JS does NOT run, Pagefind's UI never
   renders either, so nothing on the page needs pagefind-ui.css at all — the
   no-JS fallback below is a plain <form>. A static reference would also
-  point at /pagefind/, which this repo's search-index script (package.json)
+  point at /pagefind/, which this repo's eleventy.after indexing hook
   only builds separately from `npm run build` — the new asset-existence
   guard (test/build.mjs) would flag it as broken on every plain build. Not
   carrying it is correct, not just guard-convenient.

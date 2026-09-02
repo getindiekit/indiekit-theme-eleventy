@@ -1,0 +1,25 @@
+---
+pagination:
+  data: collections.postTypes
+  size: 1
+  alias: group
+  addAllPagesToCollections: false
+permalink: "/{{ group.segment }}/"
+layout: layouts/pagealign.liquid
+eleventyComputed:
+  title: "{{ group.segment | capitalize }}"
+eleventyExcludeFromCollections: true
+eleventyImport:
+  collections: ["post"]
+---
+{%- comment %} One index per post type, at the same URL segment its posts live
+   under, so /notes/ lists what /notes/<slug>/ contains. Posts themselves are at
+   /<segment>/<slug>/, so an index at /<segment>/ cannot collide with them.
+   /archive/ still lists every type together; this is the filtered view.
+{% endcomment -%}
+<ol class="posts h-feed">
+{%- for post in group.posts %}
+  {%- capture socialHtml %}{% include "partials/post-social-counts.liquid", post: post %}{% endcapture -%}
+  {%- include "partials/post-list-entry.liquid", post: post, page: post, socialHtml: socialHtml -%}
+{%- endfor %}
+</ol>

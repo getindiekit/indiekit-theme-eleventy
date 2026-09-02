@@ -1185,7 +1185,11 @@ const mf2 = {
 
 for (const [type, classes] of Object.entries(mf2)) {
   check(`${type} render their microformats`, () => {
-    const files = globSync(`_site/${type}/**/index.html`);
+    // One directory deep: post permalinks are /<type>/<slug>/, while
+    // /<type>/index.html is that type's listing page (content/
+    // collection-index.liquid). `**` would hand this check a listing and
+    // then fail it for not looking like a post.
+    const files = globSync(`_site/${type}/*/index.html`);
     assert.ok(files.length > 0, `no built page under _site/${type}/`);
     const html = readFileSync(files[0], "utf8");
     for (const c of classes) {
@@ -1449,7 +1453,11 @@ check("every post permalink carries tmpl-page and has exactly one <h1>; the home
   const types = ["articles", "notes", "bookmarks", "likes", "replies", "photos"];
   let checkedPages = 0;
   for (const type of types) {
-    const files = globSync(`_site/${type}/**/index.html`);
+    // One directory deep: post permalinks are /<type>/<slug>/, while
+    // /<type>/index.html is that type's listing page (content/
+    // collection-index.liquid). `**` would hand this check a listing and
+    // then fail it for not looking like a post.
+    const files = globSync(`_site/${type}/*/index.html`);
     assert.ok(files.length > 0, `no built page under _site/${type}/ — scan is vacuous`);
     for (const file of files) {
       checkedPages++;
@@ -1480,7 +1488,11 @@ check("every post's content wrapper carries both content-grid and e-content", ()
   const types = ["articles", "notes", "bookmarks", "replies", "photos"];
   let checkedPages = 0;
   for (const type of types) {
-    const files = globSync(`_site/${type}/**/index.html`);
+    // One directory deep: post permalinks are /<type>/<slug>/, while
+    // /<type>/index.html is that type's listing page (content/
+    // collection-index.liquid). `**` would hand this check a listing and
+    // then fail it for not looking like a post.
+    const files = globSync(`_site/${type}/*/index.html`);
     assert.ok(files.length > 0, `no built page under _site/${type}/ — scan is vacuous`);
     for (const file of files) {
       checkedPages++;
@@ -1539,7 +1551,11 @@ check("p-name marks titled post types only — titleless types must not carry on
   }
 
   for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos"]) {
-    const files = globSync(`_site/${type}/**/index.html`);
+    // One directory deep: post permalinks are /<type>/<slug>/, while
+    // /<type>/index.html is that type's listing page (content/
+    // collection-index.liquid). `**` would hand this check a listing and
+    // then fail it for not looking like a post.
+    const files = globSync(`_site/${type}/*/index.html`);
     assert.ok(files.length > 0, `no built page under _site/${type}/`);
     for (const file of files) {
       const blocks = extractHEntryBlocks(readFileSync(file, "utf8"));
@@ -2936,19 +2952,19 @@ await checkAsync(
     // output out of `_site/pagefind` so this doesn't race or interfere with
     // that check.
     //
-    // The --glob value is extracted from package.json's own "search-index"
-    // script rather than hardcoded a second time here — a hardcoded copy
-    // would let this check keep passing even if package.json's script
-    // regressed to an unscoped (or differently-scoped) glob, since nothing
-    // would ever exercise the real script string. Confirmed by hand: with a
-    // hardcoded glob, reverting package.json's script to the old unscoped
-    // "npx pagefind --site _site" left this check green.
-    const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
-    const searchIndexScript = packageJson.scripts["search-index"];
-    const globMatch = /--glob\s+"([^"]+)"/.exec(searchIndexScript);
+    // The glob is extracted from eleventy.config.js rather than hardcoded a
+    // second time here — a hardcoded copy would let this check keep passing
+    // even if the real glob regressed to an unscoped one, since nothing would
+    // ever exercise the string that runs. It used to be read from a
+    // `search-index` npm script; indexing moved into the eleventy.after hook
+    // (that separate script broke search, see eleventy.config.js), so the
+    // script was dead config and reading it validated a value that no longer
+    // ran. Read the live one.
+    const configSource = readFileSync("eleventy.config.js", "utf8");
+    const globMatch = /glob:\s*"([^"]+)"/.exec(configSource);
     assert.ok(
       globMatch,
-      `package.json's "search-index" script has no --glob argument to scope the index: ${searchIndexScript}`,
+      "eleventy.config.js has no `glob:` scoping the Pagefind index",
     );
     const glob = globMatch[1];
 
@@ -4108,6 +4124,55 @@ check("the demo builds to its own output directory, never the one the suite read
       `"${name}" is missing a demo fixture, so it would not show the populated state`,
     );
   }
+});
+
+
+
+check("every post type has an index listing only its own posts, and the hub counts agree", () => {
+  // The indexes live at the same URL segment their posts do (/notes/ lists what
+  // /notes/<slug>/ contains), derived in eleventy.config.js from post.url rather
+  // than a hand-written singular->plural map — so an index cannot end up
+  // pointing somewhere its posts are not. That is the property worth guarding.
+  const hub = readFileSync("_site/collections/index.html", "utf8");
+  const rows = [...hub.matchAll(
+    /<a href="\/([a-z]+)\/">([^<]*)<\/a>\s*<span class="collection-count">(\d+)<\/span>/g,
+  )];
+  assert.ok(rows.length > 1, "the collections hub lists no post types");
+
+  let sawArchive = false;
+  for (const [, segment, , claimed] of rows) {
+    const indexPath = `_site/${segment}/index.html`;
+    assert.ok(existsSync(indexPath), `the hub links /${segment}/ but no index was built there`);
+    const html = readFileSync(indexPath, "utf8");
+
+    const entries = (html.match(/class="h-entry"/g) || []).length;
+    assert.equal(
+      entries,
+      Number(claimed),
+      `the hub claims ${claimed} posts for /${segment}/ but that index lists ${entries}`,
+    );
+
+    if (segment === "archive") { sawArchive = true; continue; }
+
+    // Only its own type. A listing that silently included everything would
+    // still have a plausible count, so check where each row actually links.
+    const linked = [...html.matchAll(/<a class="posts-link[^"]*" href="\/([a-z]+)\//g)].map((m) => m[1]);
+    assert.ok(linked.length > 0, `/${segment}/ lists no posts at all`);
+    const foreign = [...new Set(linked.filter((s) => s !== segment))];
+    assert.deepEqual(foreign, [], `/${segment}/ lists posts of other types: ${foreign.join(", ")}`);
+
+    // Every post of that type must appear — an index that lists one of six is
+    // worse than none, and the count check alone cannot see it.
+    const built = globSync(`_site/${segment}/*/index.html`).length;
+    assert.equal(entries, built, `/${segment}/ lists ${entries} posts but ${built} are built`);
+  }
+  assert.ok(sawArchive, "the hub does not link the full archive");
+
+  // And the hub has to be reachable, or it is a page nobody finds.
+  assert.ok(
+    readFileSync("_site/index.html", "utf8").includes('href="/collections/"'),
+    "nothing links to the collections hub",
+  );
 });
 
 

@@ -86,7 +86,11 @@ export default function (eleventyConfig) {
     const { index } = await createIndex();
     await index.addDirectory({
       path: dir.output,
-      glob: "{articles,bookmarks,likes,notes,photos,replies}/**/*.html",
+      // One directory deep, so only post permalinks (/<type>/<slug>/) are
+      // indexed. The per-type listing pages at /<type>/ are lists, not
+      // content — the same reason /archive/ and the homepage are excluded;
+      // indexing them puts a page of other posts' titles into the results.
+      glob: "{articles,bookmarks,likes,notes,photos,replies}/*/*.html",
     });
     await index.writeFiles({ outputPath: `${dir.output}/pagefind` });
   });
@@ -258,6 +262,26 @@ export default function (eleventyConfig) {
       .replace(/^-+|-+$/g, "");
 
   eleventyConfig.addFilter("slug", slug);
+
+  // One group per post type, keyed by the URL segment posts of that type
+  // actually live under (/notes/<slug>/ -> "notes"). Derived from post.url
+  // rather than mapping postType "note" -> "notes" by hand: the directory data
+  // files own the permalink scheme, so reading it back is the only way an index
+  // cannot end up pointing somewhere its posts are not.
+  eleventyConfig.addCollection("postTypes", (collectionApi) => {
+    const groups = new Map();
+    for (const item of collectionApi.getFilteredByTag("post")) {
+      const segment = item.url.split("/").filter(Boolean)[0];
+      if (!segment) continue;
+      if (!groups.has(segment)) {
+        groups.set(segment, { segment, postType: item.data.postType, posts: [] });
+      }
+      groups.get(segment).posts.push(item);
+    }
+    // Newest first within a type, matching the archive's own ordering.
+    for (const group of groups.values()) group.posts.reverse();
+    return [...groups.values()].sort((a, b) => a.segment.localeCompare(b.segment));
+  });
 
   eleventyConfig.addCollection("tagList", (collectionApi) => {
     const tags = new Map();
