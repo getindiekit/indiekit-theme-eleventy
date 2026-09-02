@@ -472,6 +472,10 @@ check("every class the markup emits has a rule in the compiled CSS", () => {
     // beside them, which do have rules.
     "u-uid", "p-note", "p-job-title", "p-locality", "p-country-name",
     "p-org", "u-email", "u-key",
+    // Core h-entry properties carried by partials/entry-meta.liquid. Semantic;
+    // the visible styling is .entry-updated beside dt-updated, and p-summary
+    // inherits the content column's own paragraph rules.
+    "p-summary", "dt-updated",
     // Emitted by the webmention templates when fixture data is loaded:
     // h-cite is the mf2 vocabulary for a cited/quoted post, u-comment and
     // p-content are its properties. Semantic, like the rest of this list.
@@ -513,12 +517,19 @@ check("every class the markup emits has a rule in the compiled CSS", () => {
   // icon later cannot re-break this check for a reason that is not a defect.
   const isFontAwesomeInternal = (c) => c === "svg-inline--fa" || c.startsWith("fa-");
 
+  // Bridgy Publish's content classes (e-bridgy-<target>-content) are generated
+  // from site.bridgy.targets, so the set is open-ended by design and cannot be
+  // enumerated here. They are vocabulary for a third-party service, not styling
+  // hooks — matched by prefix for the same reason the mf2 list exists.
+  const isBridgyContent = (c) => /^e-bridgy-[a-z0-9-]+-content$/.test(c);
+
   const unstyled = [...used].filter(
     (c) =>
       !defined.has(c) &&
       !mf2.has(c) &&
       !unstyledInSource.has(c) &&
-      !isFontAwesomeInternal(c),
+      !isFontAwesomeInternal(c) &&
+      !isBridgyContent(c),
   );
   assert.deepEqual(
     unstyled.sort(),
@@ -4363,6 +4374,91 @@ check("the JSON Feed is valid 1.1, omits titles on titleless posts, and carries 
     /<link rel="alternate" href="\/feed\.json"[^>]*type="application\/feed\+json">/,
     "no JSON Feed auto-discovery link, or the wrong media type",
   );
+});
+
+
+
+check("p-summary and dt-updated appear only where the post carries that data", () => {
+  // Both are CORE h-entry properties. dt-updated is backed by real data:
+  // Indiekit writes `updated` on every Micropub edit and preset-eleventy passes
+  // it into front matter. The property worth guarding is the ABSENCE case — a
+  // "last updated" stamped on every post from build time would look plausible
+  // and be a lie about every post that was never edited.
+  const article = readFileSync("_site/articles/fixture-article/index.html", "utf8");
+  const front = readFileSync("content/articles/fixture-article.md", "utf8");
+
+  const summary = /<p class="p-summary[^"]*">([^<]*)<\/p>/.exec(article);
+  assert.ok(summary, "the fixture with a summary emits no p-summary");
+  assert.ok(front.includes(summary[1].trim().slice(0, 30)), "p-summary text is not the post's own summary");
+
+  const updated = /<time class="dt-updated" datetime="([^"]*)"/.exec(article);
+  assert.ok(updated, "the fixture with an `updated` date emits no dt-updated");
+  const declared = /^updated:\s*(\S+)/m.exec(front);
+  assert.ok(declared, "the fixture no longer declares `updated` — this check is vacuous");
+  assert.equal(
+    Date.parse(updated[1]),
+    Date.parse(declared[1]),
+    "dt-updated is not the same instant as the post's own `updated` value",
+  );
+  // It must differ from published, or it is not recording an edit.
+  const published = /dt-published"[^>]*datetime="([^"]*)"/.exec(article);
+  assert.notEqual(Date.parse(updated[1]), Date.parse(published[1]), "dt-updated equals dt-published");
+
+  for (const slug of ["notes/fixture-note", "likes/fixture-like", "replies/fixture-reply"]) {
+    const html = readFileSync(`_site/${slug}/index.html`, "utf8");
+    assert.ok(!/p-summary/.test(html), `${slug} has no summary but emits p-summary`);
+    assert.ok(!/dt-updated/.test(html), `${slug} was never edited but claims dt-updated`);
+  }
+});
+
+check("Bridgy content classes are opt-in and generated from the configured targets", () => {
+  // These name a third-party service. This theme syndicates through Indiekit's
+  // own syndicator plugins, which do not read them, so for most sites they are
+  // inert vendor markup — hence opt-in, and generated from a list rather than
+  // two hardcoded silo names.
+  const site = JSON.parse(readFileSync("_data/site.json", "utf8"));
+  assert.equal(site.bridgy.enabled, false, "the committed default enables Bridgy classes");
+  assert.ok(
+    !/e-bridgy-/.test(readFileSync("_site/articles/fixture-article/index.html", "utf8")),
+    "Bridgy classes are emitted while disabled",
+  );
+
+  const sitePath = "_data/site.json";
+  const outDir = "_site-bridgy-check";
+  const original = readFileSync(sitePath);
+  try {
+    const config = JSON.parse(original.toString("utf8"));
+    config.bridgy = { enabled: true, targets: ["mastodon", "bluesky"] };
+    writeFileSync(sitePath, JSON.stringify(config, null, 2) + "\n");
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(process.execPath,
+      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe", env: { ...process.env, NPM_DOWNLOADS_OFFLINE: "1" } });
+
+    const html = readFileSync(`${outDir}/articles/fixture-article/index.html`, "utf8");
+    const cls = /<p class="(p-summary[^"]*)"/.exec(html);
+    assert.ok(cls, "no p-summary element in the opted-in build");
+    for (const target of ["mastodon", "bluesky"]) {
+      assert.ok(
+        cls[1].includes(`e-bridgy-${target}-content`),
+        `configured target "${target}" produced no e-bridgy-${target}-content class`,
+      );
+    }
+  } finally {
+    writeFileSync(sitePath, original);
+    rmSync(outDir, { recursive: true, force: true });
+    assert.ok(readFileSync(sitePath).equals(original), "_data/site.json was not restored");
+  }
+});
+
+check("the footer exposes the machine-readable exits", () => {
+  const html = readFileSync("_site/index.html", "utf8");
+  const footer = /<div class="footer">([\s\S]*?)<\/div>/.exec(html);
+  assert.ok(footer, "no footer rendered");
+  for (const [href, label] of [["/feed.xml", "Atom"], ["/feed.json", "JSON Feed"], ["/sitemap.xml", "Sitemap"]]) {
+    assert.ok(footer[1].includes(`href="${href}"`), `the footer does not link ${label} (${href})`);
+    assert.ok(existsSync(`_site${href}`), `the footer links ${href} but it was not built`);
+  }
 });
 
 

@@ -25,5 +25,9 @@
   "opengraph": {
     "defaultImage": "/img/og-default.png",
     "screenshotUrlTemplate": ""
+  },
+  "bridgy": {
+    "enabled": false,
+    "targets": []
   }
 }

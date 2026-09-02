@@ -1,6 +1,8 @@
 ---
 date: 2026-08-30T10:00:00.000Z
 title: Publishing to your own site first
+summary: Publish on your own site first, then syndicate. The work is the permalink you control.
+updated: 2026-08-31T09:15:00.000Z
 category:
   - indieweb
   - microformats

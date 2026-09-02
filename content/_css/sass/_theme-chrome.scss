@@ -263,3 +263,11 @@ svg.z-icon {
 	color: #666;
 	font-variant-numeric: tabular-nums;
 }
+
+/* "Updated <date>" beneath a post's title. Quiet by design — it is provenance,
+   not content, and only appears on posts that have actually been edited. */
+.entry-updated {
+	margin: 0.2em 0 0;
+	font-size: 0.875rem; /* 14px /16 */
+	color: #666;
+}

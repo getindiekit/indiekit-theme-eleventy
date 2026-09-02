@@ -72,6 +72,7 @@ task-visual-fix-report.md for the full evidence trail. {%- endcomment -%}
    preprocessor (eleventy.config.js), before the synthesis runs. {% endcomment -%}
     <h1 class="{% if title_isReal %}p-name {% endif %}primary-title{% unless hugeTitle %} primary-title-smalltitle{% endunless %}{% unless title_isReal %} sr-only{% endunless %}">{{ title }}</h1>
   {% include "partials/author-card.liquid" %}
+  {% include "partials/entry-meta.liquid" %}
   {% include "partials/syndication-links.liquid" %}
   {% case postType %}
     {% when "article" %}{% include "types/article.liquid" %}

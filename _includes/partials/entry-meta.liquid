@@ -1,0 +1,28 @@
+{%- comment -%}
+p-summary and dt-updated. Both are CORE h-entry properties
+(microformats.org/wiki/h-entry), not extensions.
+
+dt-updated is backed by real data: Indiekit sets `properties.updated` on every
+Micropub edit (endpoint-micropub/lib/post-data.js) and @indiekit/preset-eleventy
+spreads all properties into front matter without deleting it, so an edited post
+arrives here with an `updated` ISO string. A post that has never been edited has
+none, and renders none — this is not a "last built" stamp.
+
+p-summary is the short summary, distinct from e-content's full text. Micropub
+supports `summary`; a post without one renders nothing.
+
+BRIDGY. The e-bridgy-*-content classes tell Bridgy Publish which text to
+syndicate to a given silo, letting a short summary go out instead of a whole
+post. They are deliberately opt-in and deliberately not hardcoded to two silo
+names: this theme's own syndication happens through Indiekit's syndicator
+plugins, which do not read these classes at all, so for most sites they would be
+inert markup naming a vendor. A site that does use Bridgy Publish sets
+site.bridgy.enabled and lists its targets, and the classes are generated from
+that list rather than baked in.
+{%- endcomment -%}
+{%- if summary %}
+<p class="p-summary{% if site.bridgy.enabled %}{% for target in site.bridgy.targets %} e-bridgy-{{ target }}-content{% endfor %}{% endif %}">{{ summary }}</p>
+{%- endif %}
+{%- if updated %}
+<p class="entry-updated">Updated <time class="dt-updated" datetime="{{ updated | isoInstant }}">{{ updated | humanDate }}</time></p>
+{%- endif %}

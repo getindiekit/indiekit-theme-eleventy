@@ -17,9 +17,15 @@ depend on his data or his repository. {% endcomment %}
 {%- endif %}
 		Built with <a href="https://www.11ty.dev/">Eleventy v{{ eleventy.version }}</a>
 		· Published with <a href="https://getindiekit.com/">Indiekit</a>
-		{%- if site.url %}
-		· <a href="/feed.xml">Feed</a>
-		{%- endif %}
+{%- comment %} The machine-readable exits. Both feeds carry the same posts (a
+	   guard asserts it); the Atom one is required to name every entry, the JSON
+	   one is free to omit titles on titleless posts, so they are not redundant.
+	   The sitemap is listed for people, not crawlers — crawlers find it through
+	   robots.txt — but a reader who wants the shape of a site should not have to
+	   guess the URL. {% endcomment -%}
+		· <a href="/feed.xml" type="application/atom+xml">Atom</a>
+		· <a href="/feed.json" type="application/feed+json">JSON Feed</a>
+		· <a href="/sitemap.xml">Sitemap</a>
 {%- capture urlWithOrigin %}{{ site.url }}{{ page.url }}{% endcapture -%}
 {%- comment %} The third condition is the whole point of _data/speedlify.js:
 		the badge fetches its score client-side, so on a page the configured
