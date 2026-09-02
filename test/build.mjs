@@ -4176,6 +4176,131 @@ check("every post type has an index listing only its own posts, and the hub coun
 });
 
 
+
+check("the sitemap lists every indexable page, and only those", () => {
+  // The property that matters is completeness, and it is the one that fails
+  // silently: a sitemap listing half the site is still well-formed XML. The
+  // first attempt here was a template, which saw 13 of 25 pages — every page
+  // that consumes collections (the homepage, the per-type indexes,
+  // /collections/, the tag pages) was invisible to it. Derive the expected set
+  // from the built output, never from the same list the generator used.
+  const xml = readFileSync("_site/sitemap.xml", "utf8");
+  const site = JSON.parse(readFileSync("_data/site.json", "utf8"));
+  const base = site.url.replace(/\/$/, "");
+
+  assert.match(xml, /^<\?xml version="1\.0" encoding="UTF-8"\?>/, "sitemap has no XML declaration");
+  assert.match(
+    xml,
+    /<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/,
+    "sitemap is missing the sitemaps.org 0.9 namespace",
+  );
+
+  const locs = [...xml.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1]);
+  assert.ok(locs.length > 0, "sitemap lists no URLs");
+
+  const expected = globSync("_site/**/*.html")
+    .filter((f) => !f.startsWith("_site/opengraph/") && !f.endsWith("404.html"))
+    .filter((f) => !/<meta name="robots" content="noindex/.test(readFileSync(f, "utf8")))
+    .map((f) => `${base}/${f.replace(/^_site\//, "").replace(/index\.html$/, "")}`)
+    .sort();
+
+  assert.deepEqual(locs.slice().sort(), expected, "sitemap does not match the set of indexable built pages");
+
+  // Absolute, per the protocol, and under the length cap.
+  for (const loc of locs) {
+    assert.match(loc, /^https?:\/\//, `sitemap loc is not absolute: ${loc}`);
+    assert.ok(loc.length < 2048, `sitemap loc exceeds the 2048-character limit: ${loc}`);
+  }
+  assert.ok(locs.length <= 50000, "sitemap exceeds the 50,000-URL limit and needs a sitemap index");
+
+  // lastmod: W3C Datetime, only where it means something, and never disagreeing
+  // with what the page itself publishes.
+  const entries = [...xml.matchAll(/<url>\s*<loc>([^<]*)<\/loc>(?:\s*<lastmod>([^<]*)<\/lastmod>)?\s*<\/url>/g)];
+  assert.equal(entries.length, locs.length, "some <url> entries did not parse — check the sitemap's shape");
+  let withLastmod = 0;
+  for (const [, loc, lastmod] of entries) {
+    if (!lastmod) continue;
+    withLastmod++;
+    assert.match(
+      lastmod,
+      /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?$/,
+      `lastmod is not W3C Datetime: ${lastmod}`,
+    );
+    const file = `_site${loc.replace(base, "").replace(/\/$/, "/index.html")}`;
+    const published = /dt-published"[^>]*datetime="([^"]*)"/.exec(readFileSync(file, "utf8"));
+    assert.ok(published, `${loc} carries lastmod but the page publishes no dt-published`);
+    assert.equal(
+      Date.parse(lastmod),
+      Date.parse(published[1]),
+      `${loc}: sitemap lastmod and the page's own dt-published are different instants`,
+    );
+  }
+  assert.ok(withLastmod > 0, "no entry carries lastmod — the date wiring is not exercised");
+});
+
+check("robots.txt points at the sitemap and does not block the pages it wants de-indexed", () => {
+  const robots = readFileSync("_site/robots.txt", "utf8");
+  const site = JSON.parse(readFileSync("_data/site.json", "utf8"));
+  const base = site.url.replace(/\/$/, "");
+
+  assert.match(robots, /^User-agent: \*/m, "robots.txt has no User-agent group");
+  assert.ok(
+    robots.includes(`Sitemap: ${base}/sitemap.xml`),
+    `robots.txt does not reference the sitemap at ${base}/sitemap.xml`,
+  );
+  // Disallowing /opengraph/ would preserve exactly the indexing the noindex on
+  // those pages is trying to prevent: a crawler forbidden from fetching a page
+  // never reads the noindex inside it.
+  assert.ok(
+    !/Disallow:\s*\/opengraph/.test(robots),
+    "robots.txt disallows /opengraph/, which prevents crawlers from ever seeing its noindex",
+  );
+});
+
+
+
+check("after-hook artifacts are written to the build's real output directory", () => {
+  // eleventy.after's `dir.output` reports the directory configured in
+  // eleventy.config.js and ignores a CLI `--output=` override; only
+  // `directories.output` honours it. Both the sitemap writer and the Pagefind
+  // indexer originally used `dir.output`, so every build aimed elsewhere wrote
+  // its artifacts into _site: `npm run demo` produced a demo with no search
+  // index and no sitemap, and overwrote the ones the test suite reads. Nothing
+  // failed loudly — the demo just quietly had no search.
+  const outDir = "_site-outputdir-check";
+  const sitemapBefore = readFileSync("_site/sitemap.xml");
+
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(process.execPath,
+      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe", env: { ...process.env, NPM_DOWNLOADS_OFFLINE: "1" } });
+
+    assert.ok(existsSync(`${outDir}/sitemap.xml`), "the sitemap was not written into the overridden output directory");
+    assert.ok(existsSync(`${outDir}/pagefind`), "the Pagefind index was not written into the overridden output directory");
+
+    // …and the configured directory must be left alone.
+    assert.ok(
+      readFileSync("_site/sitemap.xml").equals(sitemapBefore),
+      "a build aimed at another directory overwrote _site/sitemap.xml",
+    );
+
+    // The sitemap must describe the directory it lives in, not another one.
+    const locs = [...readFileSync(`${outDir}/sitemap.xml`, "utf8").matchAll(/<loc>([^<]*)<\/loc>/g)]
+      .map((m) => m[1]);
+    const built = globSync(`${outDir}/**/*.html`)
+      .filter((f) => !f.includes("/opengraph/") && !f.endsWith("404.html")).length;
+    assert.ok(locs.length > 0, "the overridden build produced an empty sitemap");
+    assert.ok(
+      Math.abs(locs.length - built) <= 1,
+      `sitemap lists ${locs.length} urls but ${built} indexable pages were built into ${outDir}`,
+    );
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;
 const skipNote = skipped ? `, ${skipped} skipped` : "";

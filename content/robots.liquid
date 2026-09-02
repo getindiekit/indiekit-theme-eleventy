@@ -1,0 +1,17 @@
+---
+permalink: /robots.txt
+eleventyExcludeFromCollections: true
+---
+{%- comment %} The Sitemap directive is independent of any User-agent group
+   (sitemaps.org/protocol.html), so it sits on its own.
+
+   /opengraph/ is NOT disallowed on purpose. Those pages carry meta robots
+   noindex, and a crawler forbidden from fetching a page can never read the
+   noindex inside it — disallowing them would preserve exactly the indexing this
+   theme is trying to prevent. Blocking crawling and asking for de-indexing are
+   opposite instructions; only one of them works here.
+{% endcomment -%}
+User-agent: *
+Allow: /
+
+Sitemap: {{ site.url }}/sitemap.xml

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { DateTime } from "luxon";
 import { resolveDate } from "./_11ty/dateResolver.js";
@@ -37,6 +38,19 @@ function resolveModule(name) {
 }
 
 export default function (eleventyConfig) {
+  // The real output directory for this run.
+  //
+  // eleventy.after's `dir.output` reports the directory configured at the
+  // bottom of this file and ignores a CLI `--output=` override; `directories
+  // .output` honours it (verified: with --output=_probe-out, dir.output was
+  // "_site" while directories.output was "./_probe-out/"). Anything an after
+  // hook writes must use the latter, or a build aimed elsewhere silently writes
+  // into _site — which is exactly what happened: `npm run demo --output=
+  // _site-demo` left the demo with no search index and no sitemap, and wrote
+  // both into the directory the test suite reads.
+  const outputDirOf = ({ dir, directories }) =>
+    String(directories?.output || dir?.output || "_site").replace(/\/+$/, "");
+
   eleventyConfig.addGlobalData("JS_ENABLED", () => JS_ENABLED);
 
   // Task 17 (§1.6, source eleventy.config.js:75-88). Micropub sends
@@ -80,19 +94,21 @@ export default function (eleventyConfig) {
   //
   // Scoped to the six post-type directories so OG cards, the search page
   // itself and the homepage never enter the index.
-  eleventyConfig.on("eleventy.after", async ({ dir, runMode }) => {
+  eleventyConfig.on("eleventy.after", async (hookArgs) => {
+    const { runMode } = hookArgs;
+    const outputDir = outputDirOf(hookArgs);
     if (runMode === "serve" || runMode === "watch") return; // dev: skip the cost
     const { createIndex } = await import("pagefind");
     const { index } = await createIndex();
     await index.addDirectory({
-      path: dir.output,
+      path: outputDir,
       // One directory deep, so only post permalinks (/<type>/<slug>/) are
       // indexed. The per-type listing pages at /<type>/ are lists, not
       // content — the same reason /archive/ and the homepage are excluded;
       // indexing them puts a page of other posts' titles into the results.
       glob: "{articles,bookmarks,likes,notes,photos,replies}/*/*.html",
     });
-    await index.writeFiles({ outputPath: `${dir.output}/pagefind` });
+    await index.writeFiles({ outputPath: `${outputDir}/pagefind` });
   });
 
   eleventyConfig.addPreprocessor("real-title", "*", (data) => {
@@ -263,6 +279,14 @@ export default function (eleventyConfig) {
 
   eleventyConfig.addFilter("slug", slug);
 
+  // Post dates, recorded while grouping post types below, for the sitemap's
+  // lastmod. The sitemap is written from the eleventy.after hook (see further
+  // down) because a collection cannot see pages that themselves consume
+  // collections — the type indexes, /collections/ and every tag page were all
+  // invisible to it — and the after hook has no access to template data. This
+  // Map is the deliberate, documented bridge between the two.
+  const postDates = new Map();
+
   // One group per post type, keyed by the URL segment posts of that type
   // actually live under (/notes/<slug>/ -> "notes"). Derived from post.url
   // rather than mapping postType "note" -> "notes" by hand: the directory data
@@ -277,6 +301,7 @@ export default function (eleventyConfig) {
         groups.set(segment, { segment, postType: item.data.postType, posts: [] });
       }
       groups.get(segment).posts.push(item);
+      if (item.date) postDates.set(item.url, item.date.toISOString());
     }
     // Newest first within a type, matching the archive's own ordering.
     for (const group of groups.values()) group.posts.reverse();
@@ -296,6 +321,76 @@ export default function (eleventyConfig) {
     // Newest-first within a tag, matching the archive's own ordering.
     for (const tag of tags.values()) tags.get(tag.slug).posts.reverse();
     return [...tags.values()].sort((a, b) => a.name.localeCompare(b.name));
+  });
+
+  // sitemap.xml, written from the finished output rather than a template.
+  //
+  // A template cannot produce a correct sitemap here: pages that consume
+  // collections (the homepage, /archive/, the per-type indexes, /collections/,
+  // every tag page) are either absent from collections.all or excluded from it,
+  // so a template-rendered sitemap silently listed 13 of 25 pages — a valid
+  // sitemap that quietly omits half the site. The after hook receives every
+  // rendered result, which is the only complete view. Same mechanism as the
+  // Pagefind index above, for the same reason.
+  //
+  // Protocol: sitemaps.org 0.9. `loc` must be absolute and entity-escaped;
+  // `lastmod` must be W3C Datetime, which toISOString() satisfies. changefreq
+  // and priority are omitted — both optional, both ignored by Google, and a
+  // made-up priority on every page is noise. lastmod is emitted only for posts,
+  // where the date means something: stamping listing pages with a build time
+  // would claim the whole site changed on every build, and an inaccurate
+  // lastmod is worse than none.
+  //
+  // The 50,000-URL / 50MB cap would need an Indiekit site to pass 50,000 posts
+  // before it applied, at which point this wants splitting into a sitemap index.
+  eleventyConfig.on("eleventy.after", async (hookArgs) => {
+    const { results, incremental } = hookArgs;
+    // `results` holds only the templates rebuilt in THIS pass, so on an
+    // incremental build it is a handful of pages, not the site. Writing from it
+    // there replaces a complete sitemap with a partial one — observed listing a
+    // temporary test fixture and little else, five seconds after the full build
+    // that had produced the correct file. Leave the last full build's sitemap in
+    // place instead; a partial sitemap is worse than a slightly stale one.
+    if (incremental) {
+      return;
+    }
+
+    const escapeXml = (value) =>
+      value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+
+    const base = siteData.url.replace(/\/$/, "");
+    const urls = (results || [])
+      .filter((result) => {
+        if (!result.url || !result.outputPath?.endsWith(".html")) return false;
+        // OG cards are renders for social scrapers, not pages. robots.txt
+        // deliberately does not Disallow them — a crawler blocked from fetching
+        // a page never sees the noindex inside it — so excluding them here is
+        // what actually keeps them out of an index.
+        if (result.url.startsWith("/opengraph/")) return false;
+        if (result.url === "/404.html") return false;
+        return !/<meta name="robots" content="noindex/.test(result.content || "");
+      })
+      .map((result) => result.url)
+      .sort();
+
+    const body = urls
+      .map((url) => {
+        const lastmod = postDates.get(url);
+        return [
+          "\t<url>",
+          `\t\t<loc>${escapeXml(base + url)}</loc>`,
+          ...(lastmod ? [`\t\t<lastmod>${lastmod}</lastmod>`] : []),
+          "\t</url>",
+        ].join("\n");
+      })
+      .join("\n");
+
+    await writeFile(
+      `${outputDirOf(hookArgs)}/sitemap.xml`,
+      `<?xml version="1.0" encoding="UTF-8"?>\n` +
+        `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`,
+    );
   });
 
   // webmention-avatar.liquid's fallback <img> references this path. Source
