@@ -21,6 +21,8 @@
     "start": "npx @11ty/eleventy --serve --port=8090 --incremental",
     "demo": "WEBMENTIONS_FIXTURE=test/fixtures/webmentions-demo.json SITE_FIXTURE=test/fixtures/site-demo.json npx @11ty/eleventy --output=_site-demo",
     "demo:serve": "WEBMENTIONS_FIXTURE=test/fixtures/webmentions-demo.json SITE_FIXTURE=test/fixtures/site-demo.json npx @11ty/eleventy --serve --port=8090 --incremental --output=_site-demo",
+    "demo:serve:light": "WEBMENTIONS_FIXTURE=test/fixtures/webmentions-demo.json SITE_FIXTURE=test/fixtures/site-demo.json,test/fixtures/theme-light.json npx @11ty/eleventy --serve --port=8091 --incremental --output=_site-demo-light",
+    "demo:serve:knobs": "WEBMENTIONS_FIXTURE=test/fixtures/webmentions-demo.json SITE_FIXTURE=test/fixtures/site-demo.json,test/fixtures/theme-knobs.json npx @11ty/eleventy --serve --port=8092 --incremental --output=_site-demo-knobs",
     "clean": "rm -rf _site .cache",
     "test": "node test/build.mjs"
   },

@@ -5173,6 +5173,19 @@ check("the scheme toggle renders by default, is absent when theme.schemeToggle i
   assert.ok(!/scheme-toggle-to-(light|dark)/.test(css), "the sun/moon swap rules were removed with the pair; a survivor is dead CSS");
 });
 
+check("SITE_FIXTURE accepts a comma-separated list, merged left to right", () => {
+  // The demo scripts stack the sample identity with a theme variant. Both
+  // halves must land: the author from the first file, the scheme from the second.
+  const outDir = "_site-fixturelist-check";
+  try {
+    const built = buildWithFixture("test/fixtures/site-demo.json,test/fixtures/theme-light.json", outDir);
+    assert.match(built.html, /Ada Lovelace/, "the identity fixture did not apply");
+    assert.match(built.html, /<html[^>]* data-scheme="light"/, "the theme fixture did not apply on top");
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
 rmSync(KNOBS_OUT, { recursive: true, force: true });
 
 const failed = checks.filter((c) => !c).length;

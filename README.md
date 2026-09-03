@@ -169,6 +169,32 @@ distinctions in a single colour.
 npm run demo:serve      # then open /articles/fixture-article/
 ```
 
+### Previewing the theme variants side by side
+
+Three dev servers, three ports, each a live Eleventy watcher over the same
+source with the demo identity and webmentions loaded:
+
+```sh
+npm run demo:serve         # :8090  the shipped default — theme.scheme "auto" follows your OS
+npm run demo:serve:light   # :8091  the same default forced to light, for comparing against dark
+npm run demo:serve:knobs   # :8092  every knob at its non-default: dark, rounded, rail on the left,
+                           #        Georgia headings, no strip, no leader, no anchors, no toggle
+```
+
+Run them in separate terminals; each watches the source and rebuilds its own
+output directory (`_site-demo`, `_site-demo-light`, `_site-demo-knobs`). If a
+port is taken, Eleventy steps to the next free one and prints the URL it chose,
+so read the `Server at` line rather than assuming the number.
+
+`SITE_FIXTURE` accepts a comma-separated list merged left to right, which is
+how the variants stack `site-demo.json` (identity) with `theme-light.json` or
+`theme-knobs.json` (theme). Any combination of fixtures works the same way.
+
+Two things a dev server does not do until restarted: pick up a new key added
+to `_data/site.json` or `THEME_DEFAULTS` (the loaded config is cached for the
+life of the process), and re-index Pagefind after content edits (the index is
+built once, on the first build of the session).
+
 The demo builds to **`_site-demo/`**, not `_site/`. That separation is
 deliberate: the test suite reads whatever is in `_site`, so a demo build left
 there makes guards fail for the right reason but the wrong cause — the feed
