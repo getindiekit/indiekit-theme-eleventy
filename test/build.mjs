@@ -5046,12 +5046,26 @@ check("theme.signature.spectrum and .anchors gate their markup; leader and headi
 
 check("IndieWeb stats share one muted family and the phone h-card lives in the menu", () => {
   const defer = readFileSync("_site/_css/defer.css", "utf8");
-  assert.match(defer, /\.webmentions__facepile > h3\s*\{[^}]*color:\s*var\(--c-fg-muted\)/, "facepile heading is not muted");
-  assert.match(defer, /\.webmentions__facepile > h3\s*\{[^}]*font-size:\s*var\(--text-sm\)/, "facepile heading is not --text-sm");
+  assert.match(defer, /\.webmentions \.webmentions__facepile > h3[\s\S]*?\{[^}]*color:\s*var\(--c-fg-muted\)/, "facepile heading is not muted");
+  assert.match(defer, /\.webmentions \.webmentions__facepile > h3[\s\S]*?\{[^}]*font-size:\s*var\(--text-sm\)/, "facepile heading is not --text-sm");
+  assert.match(defer, /\.webmentions \.webmentions__facepile > h3[\s\S]*?\{[^}]*text-transform:\s*none/, "facepile heading is not un-uppercased — it ties the critical bundle's :is() rule but loses at equal specificity");
   assert.match(defer, /\.webmentions summary\.hed-h3\s*\{[^}]*color:\s*var\(--c-fg-muted\)/, "comments summary is not muted");
   const initial = readFileSync("_site/_css/initial.css", "utf8");
   assert.match(initial, /\.rail \.h-card\s*\{\s*display:\s*none/, "the rail h-card is not hidden at one-column width");
   assert.match(initial, /\.rail-sticky:has\(\.navigation-toggle\[aria-expanded=true\]\) \.h-card/, "no rule shows the h-card when the menu opens");
+  const hideIndex = initial.search(/\.rail \.h-card\s*\{[^}]*display:\s*none/);
+  const chromeFlexIndex = initial.search(/\.rail \.h-card\s*\{[^}]*display:\s*flex/);
+  assert.ok(hideIndex > -1 && chromeFlexIndex > -1, "could not locate both .rail .h-card rules to compare cascade order");
+  assert.ok(hideIndex > chromeFlexIndex, "the hide rule does not come after _theme-chrome.scss's unscoped .rail .h-card rule, so it loses the cascade");
+
+  assert.match(initial, /\.tags \.tag-social\s*\{[^}]*background-color:\s*var\(--c-social-bg\)/, "the social pill does not read --c-social-bg");
+  const tagIndex = initial.search(/\.tags \.tag\s*\{/);
+  const tagSocialIndex = initial.search(/\.tags \.tag-social\s*\{[^}]*background-color:\s*var\(--c-social-bg\)/);
+  assert.ok(tagSocialIndex > tagIndex, "the neutral .tag-social override does not come after .tags .tag, so it loses the cascade");
+
+  assert.match(defer, /\bcode\s*\{[^}]*background-color:\s*var\(--card-bg\)/, "inline code does not read --card-bg");
+  const themeCodeSource = readFileSync("content/_css/sass/_theme-code.scss", "utf8");
+  assert.ok(!/--surface-/.test(themeCodeSource), "_theme-code.scss still references a bare --surface- step instead of --card-bg");
 });
 
 check("every emitted token is read somewhere, and every ramp and scale is used", () => {

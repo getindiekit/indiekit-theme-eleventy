@@ -50,9 +50,19 @@ dl.nextprev {
 	}
 }
 @media (min-width: 40.625em) {
+	/* Bleed the card out to content-main's own edge, no further. A fixed
+	   -1rem bled past that edge whenever nav.content-grid-sibling had no auto-
+	   margin slack of its own to absorb it into — true whenever theme.measure
+	   is wide enough (or theme.rail.width narrow enough, as with the knob
+	   fixture's 18rem rail) that the nav fills its container edge to edge.
+	   Measured: 4px of horizontal document overflow on the article permalink
+	   at 1280px with rail.width=18rem. content-main's own inline padding is
+	   --space-s at every width this rule applies (_layout.scss), so matching
+	   the bleed to that token instead of a literal makes the two edges
+	   coincide exactly, however much slack nav does or doesn't have. */
 	dl.nextprev {
-		margin-left: -1rem;
-		margin-right: -1rem;
+		margin-left: calc(-1 * var(--space-s));
+		margin-right: calc(-1 * var(--space-s));
 	}
 }
 dl.nextprev dt {

@@ -87,6 +87,14 @@ html[data-rail="start"] .rail {
 	padding: 0.15em 0.5em;
 }
 
+/* The social counts share the .tag class for sizing but are not a category:
+   they stay neutral, as their own tokens say. */
+.tags .tag-social {
+	background-color: var(--c-social-bg);
+	color: var(--c-social-fg);
+	padding: 0;
+}
+
 /* --- Cards -------------------------------------------------------------- */
 
 /* NOTE: dl.nextprev and the webmention facepiles are styled in _lists.scss and
@@ -95,3 +103,21 @@ html[data-rail="start"] .rail {
    written here would lose to them at any specificity, silently. Those
    components read --card-bg in their own files instead, which is the right
    shape anyway: a component consuming a token beats a layer shouting over it. */
+
+/* --- The h-card at one column ------------------------------------------ */
+
+@media (max-width: config.$oneColLayoutMaxWidth) {
+	/* At one column the card sat above every page's title and pushed the post
+	   below the fold. It joins the menu: present in the DOM on every page (so
+	   rel=author still resolves to it), shown when the menu opens. Lives here,
+	   not in _navigation.scss: _theme-chrome.scss's own `.rail .h-card` rule is
+	   imported after navigation and won at equal specificity. This layer is
+	   imported last. */
+	.rail .h-card {
+		display: none;
+	}
+	.rail-sticky:has(.navigation-toggle[aria-expanded="true"]) .h-card {
+		display: flex;
+		flex-basis: 100%;
+	}
+}

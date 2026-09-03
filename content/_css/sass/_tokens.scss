@@ -228,16 +228,17 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 	--c-link-visited: var(--accent-800);
 	--c-focus: #{pick-step($accent, $_bg, 3)};
 
-	// Text placed ON the accent (the active nav pill). Guaranteed readable for
-	// free: --c-link is clamped to >=4.5:1 against --c-bg, and contrast is
-	// symmetric, so the background colour reversed out against surface-50 passes
-	// by the same margin.
+	// Text placed ON the accent, for any filled accent surface a site adds.
+	// Guaranteed readable for free: --c-link is clamped to >=4.5:1 against
+	// --c-bg, and contrast is symmetric, so the background colour reversed out
+	// against surface-50 passes by the same margin.
 	--c-on-accent: var(--surface-50);
 
-	// The secondary colour's one job: filled surfaces that carry text, which is
-	// all the raw hue can safely do — amber is 2.16:1 on white and fails even the
-	// 3:1 non-text threshold as a foreground. A light step gives the fill, a dark
-	// step of the same hue gives the text on it, so the pair is legible by
+	// The secondary colour's two jobs: filled surfaces that carry text (this
+	// pair), and the text highlight below. Filled surfaces are all the raw hue
+	// can safely do — amber is 2.16:1 on white and fails even the 3:1 non-text
+	// threshold as a foreground. A light step gives the fill, a dark step of
+	// the same hue gives the text on it, so the pair is legible by
 	// construction whatever secondary is configured to.
 	--c-accent-fill: var(--secondary-100);
 	--c-accent-fill-fg: var(--secondary-900);

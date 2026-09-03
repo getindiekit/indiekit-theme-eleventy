@@ -155,15 +155,4 @@
 		   Tinting it with the brand hue would make the menu look coloured. */
 		box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
 	}
-
-	/* At one column the card sat above every page's title and pushed the post
-	   below the fold. It joins the menu: present in the DOM on every page (so
-	   rel=author still resolves to it), shown when the menu opens. */
-	.rail .h-card {
-		display: none;
-	}
-	.rail-sticky:has(.navigation-toggle[aria-expanded="true"]) .h-card {
-		display: flex;
-		flex-basis: 100%;
-	}
 }

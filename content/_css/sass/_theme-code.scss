@@ -1,5 +1,4 @@
 @use "mixins";
-@use "config";
 
 // Task S2 (audit §4.4, §4.7, plan step 5): source _theme.scss:622-716
 // ("Code" section, minus the --page-padding/--uln-* :root block, which
@@ -17,7 +16,7 @@ code {
 	font-style: normal;
 	font-weight: 400;
 	line-height: 100%;
-	background-color: var(--surface-100);
+	background-color: var(--card-bg);
 	padding: .2em .2em .1em;
 	margin: 0 .25em 0 .1em;
 	color: var(--c-fg);

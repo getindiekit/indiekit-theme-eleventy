@@ -88,14 +88,11 @@
 }
 
 /* The stats read as one family: the same muted colour and small size as the
-   listing-row counts and the collections hub, never a heading voice. */
-.webmentions__facepile > h3 {
-	color: var(--c-fg-muted);
-	font-size: var(--text-sm);
-	font-family: var(--font-body);
-	font-weight: 700;
-	text-transform: none;
-}
+   listing-row counts and the collections hub, never a heading voice. The
+   facepile selector carries `.webmentions` so it reaches (0,2,1) and ties the
+   critical bundle's scoped heading rule, which :is(.hed-h3) lifts to a class
+   term; at a tie this sheet loads later and wins. */
+.webmentions .webmentions__facepile > h3,
 .webmentions summary.hed-h3 {
 	color: var(--c-fg-muted);
 	font-size: var(--text-sm);
