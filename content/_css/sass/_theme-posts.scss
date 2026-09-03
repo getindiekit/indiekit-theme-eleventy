@@ -21,7 +21,7 @@
 .posts .posts-link {
 	display: inline;
 	padding: 0;
-	margin-right: 6px;
+	margin-right: var(--space-2xs);
 	font-size: 1.157894736842em; /* 22px /19 */
 	line-height: 110%;
 	text-decoration: none;
@@ -66,13 +66,13 @@
 	margin: .5em 0;
 }
 .posts .description {
-	padding-left: 24px;
+	padding-left: var(--space-l);
 }
 .posts img {
 	display: block;
 }
 .posts .description {
-	margin-top: .210526316em; /* 4px /19 */
+	margin-top: .210526316em;
 	color: var(--c-fg);
 	font-style: italic;
 }
@@ -171,7 +171,7 @@ a[href]:is(:focus, :hover) .project_img {
 	.posts .date {
 		display: block;
 		text-align: left;
-		font-size: 0.8125rem; /* 13px /16 */
+		font-size: var(--text-xs);
 		color: var(--c-fg-muted);
 	}
 }
@@ -261,7 +261,7 @@ a[href]:is(:focus, :hover) .project_img {
 }
 .posts .deprecated,
 .posts .deprecated :link {
-	font-size: 1.25rem; /* 20px /16 */
+	font-size: var(--text-lg);
 }
 
 .posts-withimg {

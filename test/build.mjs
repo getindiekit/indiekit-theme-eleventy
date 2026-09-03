@@ -4753,6 +4753,50 @@ check("every component colour resolves through a token at runtime", () => {
 });
 
 
+
+check("the space and type scales exist, are used, and do not swallow type-relative spacing", () => {
+  // Two spacing systems live here on purpose, and conflating them is the
+  // failure this guards. 117 of the theme's spacing values are in `em` and are
+  // deliberately type-relative — the port source computes them against local
+  // font size and says so ("margin-top: .210526316em; /* 4px /19 */" is 4px at
+  // a 19px type size). Those must keep scaling with their component's type. The
+  // scale is for LAYOUT spacing, the rem/px values that position chrome and
+  // must not move when type changes.
+  // All three bundles: opengraph.css is a real stylesheet with its own :root,
+  // and omitting it undercounted adoption by a sixth.
+  const css = globSync("_site/_css/*.css").map((f) => readFileSync(f, "utf8")).join("\n");
+
+  for (const step of ["3xs", "2xs", "xs", "s", "m", "l", "xl", "2xl", "3xl"]) {
+    assert.match(css, new RegExp(`--space-${step}\\s*:`), `--space-${step} is not emitted`);
+  }
+  for (const step of ["xs", "sm", "base", "lg", "xl"]) {
+    assert.match(css, new RegExp(`--text-${step}\\s*:`), `--text-${step} is not emitted`);
+  }
+
+  // Emitting a scale nothing uses is the dead-token defect in another costume.
+  const spaceUses = (css.match(/var\(--space-/g) || []).length;
+  const textUses = (css.match(/var\(--text-/g) || []).length;
+  // Floors set just under what the conversion actually produced (21 and 11), so
+  // this catches a scale falling out of use rather than asserting a number
+  // nobody may add to.
+  assert.ok(spaceUses >= 18, `only ${spaceUses} var(--space-*) uses — the scale is declared but not adopted`);
+  assert.ok(textUses >= 8, `only ${textUses} var(--text-*) uses — the type scale is declared but not adopted`);
+
+  // And the em system must still be there. If a future sweep "tidies" those
+  // into the rem scale, every one of them changes size, and it would look like
+  // a refactor rather than a regression.
+  const sources = globSync("content/_css/**/*.scss").filter((f) => !f.endsWith("_tokens.scss"));
+  const emSpacing = sources
+    .map((f) => readFileSync(f, "utf8"))
+    .join("\n")
+    .match(/(?:margin|padding|gap)[a-z-]*:\s*[^;]*?[0-9.]+em\b/g) || [];
+  assert.ok(
+    emSpacing.length > 80,
+    `only ${emSpacing.length} type-relative em spacing values remain — they were probably converted into the rem scale, which changes all of them`,
+  );
+});
+
+
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;
 const skipNote = skipped ? `, ${skipped} skipped` : "";

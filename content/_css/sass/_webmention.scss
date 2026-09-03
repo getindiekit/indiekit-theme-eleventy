@@ -8,7 +8,7 @@
     display:flex;
     align-items: center;
     flex-wrap: wrap;
-    margin-left: 8px;
+    margin-left: var(--space-xs);
     margin-bottom: 1em;
 }
 .webmentions__facepile > h3 {
@@ -63,7 +63,7 @@
 
 /* Webmention form */
 .form-webmention {
-    margin-bottom: 2rem;
+    margin-bottom: var(--space-xl);
 }
 .form-webmention label {
     display: block;

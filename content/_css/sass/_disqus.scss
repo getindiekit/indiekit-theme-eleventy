@@ -109,12 +109,12 @@ details.static-comments-empty > summary::-webkit-details-marker {
 	line-height: 1.5;
 }
 .static-comments-tag {
-	margin-left: 6px;
+	margin-left: var(--space-2xs);
 }
 .static-comments-selflink {
 	font-size: 80%;
 	margin-left: 2px;
-	margin-right: 8px;
+	margin-right: var(--space-xs);
 }
 @media (min-width: 28.125em) { /* 450px */
 	.static-comments-hed {

@@ -6,7 +6,7 @@
 .footer {
 	margin-top: clamp(2em, 15vh, 4em);
 	margin-bottom: 1em;
-	font-size: 1rem;
+	font-size: var(--text-base);
 	line-height: 130%;
 	font-style: italic;
 }
@@ -22,7 +22,7 @@
 .footer {
 	margin-top: clamp(2em, 15vh, 4em);
 	margin-bottom: 1em;
-	font-size: 1rem;
+	font-size: var(--text-base);
 	line-height: 130%;
 	font-style: italic;
 }
@@ -192,7 +192,7 @@ svg.z-icon {
 @media (max-width: config.$oneColLayoutMaxWidth) {
 	.rail .h-card {
 		flex-direction: row;
-		gap: 1rem;
+		gap: var(--space-m);
 	}
 }
 .rail .h-card-avatar {
@@ -211,12 +211,12 @@ svg.z-icon {
 }
 .rail .h-card-pronoun {
 	font-weight: 400;
-	font-size: 0.8125rem; /* 13px /16 */
+	font-size: var(--text-xs);
 	color: var(--c-fg-muted);
 }
 .rail .h-card-meta {
 	margin: 0.15em 0 0;
-	font-size: 0.875rem; /* 14px /16 */
+	font-size: var(--text-sm);
 	color: var(--c-fg-muted);
 }
 .rail .h-card .p-note {
@@ -227,7 +227,7 @@ svg.z-icon {
 	flex-wrap: wrap;
 	gap: 0.75em;
 	margin-top: 0.5em;
-	font-size: 0.875rem;
+	font-size: var(--text-sm);
 }
 
 /* Citation metadata inside an h-cite — only rendered when a Micropub client
@@ -236,7 +236,7 @@ svg.z-icon {
    substance is the linked target above it. */
 .cite-meta {
 	margin: 0.35em 0 0;
-	font-size: 0.875rem; /* 14px /16 */
+	font-size: var(--text-sm);
 	color: var(--c-fg-muted);
 }
 
@@ -257,7 +257,7 @@ svg.z-icon {
 }
 .collection-count {
 	margin-left: auto;
-	font-size: 0.875rem; /* 14px /16 */
+	font-size: var(--text-sm);
 	color: var(--c-fg-muted);
 	font-variant-numeric: tabular-nums;
 }
@@ -266,6 +266,6 @@ svg.z-icon {
    not content, and only appears on posts that have actually been edited. */
 .entry-updated {
 	margin: 0.2em 0 0;
-	font-size: 0.875rem; /* 14px /16 */
+	font-size: var(--text-sm);
 	color: var(--c-fg-muted);
 }

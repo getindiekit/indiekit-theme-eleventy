@@ -58,14 +58,14 @@ body :not([class*="pagefind"]):not([class*="pagefind"] *) {
 @media (min-width: config.$twoColLayoutMinWidth) {
 	.rail {
 		/* Full-height field rather than a floating column. */
-		padding: 1.25rem 1rem;
+		padding: 1.25rem var(--space-m);
 		min-height: 100vh;
 	}
 }
 
 @media (max-width: config.$oneColLayoutMaxWidth) {
 	.rail {
-		padding: 0.75rem 1rem;
+		padding: var(--space-s) var(--space-m);
 	}
 }
 
@@ -82,7 +82,7 @@ body :not([class*="pagefind"]):not([class*="pagefind"] *) {
    without inventing a fifth. */
 .posts li[data-post-type] {
 	position: relative;
-	padding-left: 1.5rem;
+	padding-left: var(--space-l);
 }
 .posts li[data-post-type]::after {
 	content: "";
@@ -112,7 +112,7 @@ body :not([class*="pagefind"]):not([class*="pagefind"] *) {
 .footer {
 	background-color: var(--footer-bg);
 	color: var(--footer-fg);
-	padding: 1.25rem 1rem;
+	padding: 1.25rem var(--space-m);
 	--c-fg: var(--footer-fg);
 	--c-link: var(--footer-fg);
 	--c-link-visited: var(--footer-fg);

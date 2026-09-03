@@ -40,13 +40,13 @@ body {
 .og {
   position: relative;
   height: 100%;
-  padding: 4rem;
+  padding: var(--space-3xl);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 1rem;
+  gap: var(--space-m);
   color: var(--surface-50);
-  font-size: 32px;
+  font-size: var(--text-xl);
   background: linear-gradient(160deg, config.$primaryColor, var(--accent-950));
 }
 
@@ -118,7 +118,7 @@ body {
   margin: 0;
   display: flex;
   align-items: baseline;
-  gap: 1rem;
+  gap: var(--space-m);
   font-size: 0.65em;
 }
 

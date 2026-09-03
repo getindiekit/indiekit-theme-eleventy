@@ -52,7 +52,7 @@
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
-		gap: 1rem;
+		gap: var(--space-m);
 	}
 	/* The h-card is a third child of that flex row. Give it a full-width basis
 	   so it wraps onto its own line beneath the title and the toggle, instead
@@ -147,7 +147,7 @@
 		z-index: 10;
 		min-width: 10rem;
 		margin: 0;
-		padding: 0.35rem 0.75rem;
+		padding: 0.35rem var(--space-s);
 		border: 1px solid config.$borderColor;
 		border-radius: 0.35em;
 		background-color: var(--c-bg);

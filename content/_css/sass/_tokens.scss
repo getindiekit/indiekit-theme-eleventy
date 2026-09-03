@@ -98,6 +98,28 @@ $surface: ramp(cfg.$surface);
 
 $_bg: map.get($surface, 50);
 
+// --- Scales -------------------------------------------------------------
+//
+// SPACING IS TWO SYSTEMS HERE, and only one of them belongs in a scale.
+//
+// 116 of this theme's 158 spacing values are in `em`, and they are deliberately
+// type-relative: the port source computes them against the local font size, as
+// its own comments record (`margin-top: .210526316em; /* 4px /19 */` is "4px at
+// a 19px type size"). Those scale with the component's type and must keep
+// doing so — converting them to a rem scale would silently change every one.
+//
+// The scale below is for LAYOUT spacing: the 42 rem/px values that position
+// chrome and should not move when type changes. Steps are derived from the
+// values already in use, not invented, so adopting them changes nothing
+// visually — the point is one place to adjust rhythm, not new numbers.
+$_space: (3xs: 0.25rem, 2xs: 0.375rem, xs: 0.5rem, s: 0.75rem,
+          m: 1rem, l: 1.5rem, xl: 2rem, 2xl: 3rem, 3xl: 4rem);
+
+// Type sizes set at the root scale. Sizes expressed in em or % elsewhere are
+// nested-scale values (a caption inside a larger block), the same distinction
+// as above, and are left alone.
+$_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
+
 // --- Tokens -------------------------------------------------------------
 
 :root {
@@ -109,6 +131,12 @@ $_bg: map.get($surface, 50);
 	}
 	@each $key, $value in $secondary {
 		--secondary-#{$key}: #{$value};
+	}
+	@each $key, $value in $_space {
+		--space-#{$key}: #{$value};
+	}
+	@each $key, $value in $_text {
+		--text-#{$key}: #{$value};
 	}
 
 	// Surfaces and text. Named by ROLE, so a dark variant later swaps which step
