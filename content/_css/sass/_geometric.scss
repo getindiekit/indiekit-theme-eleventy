@@ -1,0 +1,120 @@
+@use "config";
+
+// Geometric layer — the design decisions, as opposed to the token layer that
+// supplies their values.
+//
+// Derived from the Indiekit logo: four saturated solids, hard edges, flat
+// fields. So: no border-radius, no shadows, no gradients. Where the port source
+// used depth to separate things, this uses colour and edge.
+//
+// This is also where the token system stops being plumbing. The rail inverts by
+// REDEFINING four custom properties inside its own scope — every descendant
+// (nav links, the h-card, muted meta, borders) follows without a single
+// override of its own. That is not achievable with Sass variables, which are
+// resolved at build time and cannot be rebound per selector.
+
+/* --- Flat by default ---------------------------------------------------- */
+
+/* The logo has no soft edges. Removing these globally is deliberate: leaving
+   two or three rounded survivors reads as an oversight rather than a style. */
+/* Enumerating selectors missed several (the avatar's 50%, the social pill's
+   segment radii, listing thumbnails). Reset broadly and re-exempt Pagefind's
+   shipped UI, which is a third-party stylesheet this theme does not own. */
+body :not([class*="pagefind"]):not([class*="pagefind"] *) {
+	border-radius: 0;
+}
+/* The social pill rounds its end segments with a two-class selector, which
+   outranks the reset above. Matched at equal specificity rather than reaching
+   for !important. */
+.tags .tag-social > :first-child,
+.tags .tag-social > :last-child {
+	border-radius: 0;
+}
+:where(.navigation-toggle[aria-expanded="true"] + #site-nav, .posts-thumb img) {
+	box-shadow: none;
+}
+
+/* --- The rail as a colour field ----------------------------------------- */
+
+.rail {
+	/* --c-field, not --c-link: this rule rebinds --c-link below, and a custom
+	   property resolves at its use site, so reading it here would pick up the
+	   rebound value and paint the rail in its own text colour. */
+	background-color: var(--c-field);
+	color: var(--c-field-fg);
+
+	/* Rebinding, not overriding. Everything inside the rail resolves these four
+	   names, so the nav, the h-card, its muted meta and every border invert
+	   together — and a site that reconfigures its primary gets a correctly
+	   inverted rail for free. */
+	--c-fg: var(--c-field-fg);
+	--c-fg-muted: color-mix(in srgb, var(--c-field-fg) 72%, transparent);
+	--c-border: color-mix(in srgb, var(--c-field-fg) 28%, transparent);
+	--c-link: var(--c-field-fg);
+	--c-link-visited: var(--c-field-fg);
+	--c-bg: transparent;
+}
+
+@media (min-width: config.$twoColLayoutMinWidth) {
+	.rail {
+		/* Full-height field rather than a floating column. */
+		padding: 1.25rem 1rem;
+		min-height: 100vh;
+	}
+}
+
+@media (max-width: config.$oneColLayoutMaxWidth) {
+	.rail {
+		padding: 0.75rem 1rem;
+	}
+}
+
+/* The active nav item reverses out of the field instead of filling with it. */
+.rail .tags-rail-links :any-link.active {
+	background-color: var(--c-field-fg);
+	color: var(--c-field);
+	--icon-color-override: var(--c-field);
+}
+
+/* --- Post-type markers -------------------------------------------------- */
+
+/* A solid block per row, echoing the logo's solids. Originals are filled,
+   responses are outlined in the same hue — six distinctions from four colours,
+   without inventing a fifth. */
+.posts li[data-post-type] {
+	position: relative;
+	padding-left: 1.5rem;
+}
+.posts li[data-post-type]::after {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0.55em;
+	width: 0.75rem;
+	height: 0.75rem;
+	background-color: var(--type-color, var(--c-fg-muted));
+}
+.posts li[data-post-type="article"] { --type-color: var(--c-type-article); }
+.posts li[data-post-type="note"]    { --type-color: var(--c-type-note); }
+.posts li[data-post-type="photo"]   { --type-color: var(--c-type-photo); }
+.posts li[data-post-type="like"]    { --type-color: var(--c-type-like); }
+
+/* Responses: same hue, hollow. */
+.posts li[data-post-type="reply"]::after,
+.posts li[data-post-type="bookmark"]::after {
+	background-color: transparent;
+	border: 2px solid var(--type-color);
+}
+.posts li[data-post-type="reply"]    { --type-color: var(--c-type-reply); }
+.posts li[data-post-type="bookmark"] { --type-color: var(--c-type-bookmark); }
+
+/* --- Footer as a band --------------------------------------------------- */
+
+.footer {
+	background-color: var(--surface-900);
+	color: var(--surface-100);
+	padding: 1.25rem 1rem;
+	--c-fg: var(--surface-100);
+	--c-link: var(--surface-100);
+	--c-link-visited: var(--surface-100);
+}

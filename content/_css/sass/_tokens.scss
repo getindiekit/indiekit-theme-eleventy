@@ -150,5 +150,34 @@ $_bg: map.get($surface, 50);
 	--c-social-reply: #535100;
 	--c-social-reply-bg: #edf1e4;
 
+	// Inverted field (the rail). These deliberately reference RAMP steps rather
+	// than semantic tokens: the rail rebinds --c-link and friends inside its own
+	// scope, and a custom property is substituted at its USE site, so consuming
+	// --c-link on the same element that rebinds it resolves to the new value —
+	// the rail painted itself in its own text colour. Ramp steps are never
+	// rebound, so they are safe to read from inside an inverted scope.
+	--c-field: var(--accent-500);
+	--c-field-fg: var(--surface-50);
+
+	// POST-TYPE MARKERS. The logo is four solids in four hues; the theme has six
+	// post types. Rather than invent two more colours, the sixth distinction is
+	// filled versus outline — originals are filled, responses are outlined in the
+	// same hue. A marker conveys which kind of post this is, so WCAG's 3:1
+	// non-text threshold applies to it, and each hue goes through the same
+	// pick-step clamp as everything else: raw amber is 2.16:1 and would be
+	// decorative rather than legible.
+	// 4.5 rather than the 3 a marker strictly needs: pick-step returns the
+	// LIGHTEST passing step, and at 3 the hues come back washed (#b58542 for
+	// amber) — fine for a link, wrong for a solid block. Asking for the text
+	// ratio yields the deeper, richer end of each hue, which reads as the logo's
+	// saturated solids rather than pastels, and clears the marker threshold with
+	// room to spare.
+	--c-type-article: #{pick-step(ramp(#9435f4), $_bg, 4.5)};
+	--c-type-note: #{pick-step(ramp(#f0a000), $_bg, 4.5)};
+	--c-type-photo: #{pick-step(ramp(#f06f00), $_bg, 4.5)};
+	--c-type-like: #{pick-step(ramp(#ff2f0f), $_bg, 4.5)};
+	--c-type-reply: var(--c-type-article);
+	--c-type-bookmark: var(--c-type-photo);
+
 	--c-danger: #{pick-step(ramp(#ff2f0f), $_bg, 4.5)};
 }

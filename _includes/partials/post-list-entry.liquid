@@ -79,7 +79,7 @@ page renders itself.
 {%- assign photo = post.data.photo -%}
 {%- assign postType = post.data.postType -%}
 {%- assign category = post.data.category -%}
-<li class="h-entry">
+<li class="h-entry" data-post-type="{{ postType }}">
 	{% include "partials/author-card.liquid" %}
 	{% case postType %}
 		{% when "article" %}{% include "types/article.liquid" %}
