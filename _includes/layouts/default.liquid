@@ -23,10 +23,10 @@ modules:
 			</a>
 {%- if site.theme.schemeToggle %}
 			<button type="button" class="scheme-toggle" aria-pressed="false" aria-label="Switch to dark scheme">
-				{%- comment %} Solid, not regular: the outlined sun's rays read as a cog at
-				   icon size. {% endcomment -%}
-				<span class="scheme-toggle-to-dark" aria-hidden="true">{% icon "fas:moon" %}</span>
-				<span class="scheme-toggle-to-light" aria-hidden="true">{% icon "fas:sun" %}</span>
+				{%- comment %} One half-filled circle for both states: the contrast symbol.
+				   A sun/moon pair was tried; Font Awesome's sun reads as a cog at icon
+				   size. The button's label says which way it switches. {% endcomment -%}
+				<span class="scheme-toggle-icon" aria-hidden="true">{% icon "fas:circle-half-stroke" %}</span>
 			</button>
 {%- endif %}
 		</header>

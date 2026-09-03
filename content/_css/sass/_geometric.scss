@@ -146,29 +146,15 @@ html[data-rail="start"] .rail {
 		cursor: pointer;
 		line-height: 1;
 	}
+	/* One icon for both states, the contrast symbol; the button's label carries
+	   the direction. A sun/moon pair with CSS swapping was tried and dropped:
+	   Font Awesome's sun reads as a cog at this size. */
+	.scheme-toggle-icon {
+		display: inline-flex;
+	}
 	.scheme-toggle .z-icon {
 		width: 1.25em;
 		height: 1.25em;
 		margin: 0;
-	}
-	/* The icon names what you get by clicking: a moon on a light page, a sun on
-	   a dark one. Two rules cover the explicit dark value and auto under an OS
-	   dark preference; every other case shows the moon. */
-	.scheme-toggle-to-light {
-		display: none;
-	}
-	html[data-scheme="dark"] .scheme-toggle-to-light {
-		display: inline;
-	}
-	html[data-scheme="dark"] .scheme-toggle-to-dark {
-		display: none;
-	}
-	@media (prefers-color-scheme: dark) {
-		html[data-scheme="auto"] .scheme-toggle-to-light {
-			display: inline;
-		}
-		html[data-scheme="auto"] .scheme-toggle-to-dark {
-			display: none;
-		}
 	}
 }

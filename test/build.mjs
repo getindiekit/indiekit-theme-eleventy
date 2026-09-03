@@ -5160,8 +5160,7 @@ check("every emitted token is read somewhere, and every ramp and scale is used",
 check("the scheme toggle renders by default, is absent when theme.schemeToggle is false, and applies a stored choice before first paint", () => {
   assert.ok(knobs, "knob build failed");
   assert.match(defaults.html, /<button type="button" class="scheme-toggle" aria-pressed="false" aria-label="Switch to dark scheme">/, "no toggle button in the default build");
-  assert.match(defaults.html, /class="scheme-toggle-to-dark"[^>]*>[\s\S]*?#fas-fa-moon/, "moon icon missing from the toggle");
-  assert.match(defaults.html, /class="scheme-toggle-to-light"[^>]*>[\s\S]*?#fas-fa-sun/, "sun icon missing from the toggle");
+  assert.match(defaults.html, /class="scheme-toggle-icon"[^>]*>[\s\S]*?#fas-fa-circle-half-stroke/, "contrast icon missing from the toggle");
   assert.match(defaults.html, /<html[^>]* data-scheme-default="auto"/, "no data-scheme-default on <html>");
   const script = defaults.html.indexOf('localStorage.getItem("scheme")');
   const style = defaults.html.indexOf("<style>");
@@ -5170,8 +5169,8 @@ check("the scheme toggle renders by default, is absent when theme.schemeToggle i
   assert.ok(!/scheme-toggle/.test(knobs.html), "schemeToggle=false still renders the toggle");
   assert.ok(!/localStorage\.getItem\("scheme"\)/.test(knobs.html), "schemeToggle=false still emits the head script");
   const css = readFileSync("_site/_css/initial.css", "utf8");
-  assert.match(css, /html\[data-scheme=dark\] \.scheme-toggle-to-light\s*\{[^}]*display:\s*inline/, "no dark-scheme icon swap rule");
-  assert.match(css, /html\[data-scheme=auto\] \.scheme-toggle-to-light\s*\{[^}]*display:\s*inline/, "no auto+OS-dark icon swap rule");
+  assert.match(css, /\.scheme-toggle-icon\s*\{[^}]*display:/, "no rule for the toggle's icon wrapper");
+  assert.ok(!/scheme-toggle-to-(light|dark)/.test(css), "the sun/moon swap rules were removed with the pair; a survivor is dead CSS");
 });
 
 rmSync(KNOBS_OUT, { recursive: true, force: true });
