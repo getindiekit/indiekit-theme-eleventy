@@ -5160,8 +5160,8 @@ check("every emitted token is read somewhere, and every ramp and scale is used",
 check("the scheme toggle renders by default, is absent when theme.schemeToggle is false, and applies a stored choice before first paint", () => {
   assert.ok(knobs, "knob build failed");
   assert.match(defaults.html, /<button type="button" class="scheme-toggle" aria-pressed="false" aria-label="Switch to dark scheme">/, "no toggle button in the default build");
-  assert.match(defaults.html, /class="scheme-toggle-to-dark"[^>]*>[\s\S]*?#far-fa-moon/, "moon icon missing from the toggle");
-  assert.match(defaults.html, /class="scheme-toggle-to-light"[^>]*>[\s\S]*?#far-fa-sun/, "sun icon missing from the toggle");
+  assert.match(defaults.html, /class="scheme-toggle-to-dark"[^>]*>[\s\S]*?#fas-fa-moon/, "moon icon missing from the toggle");
+  assert.match(defaults.html, /class="scheme-toggle-to-light"[^>]*>[\s\S]*?#fas-fa-sun/, "sun icon missing from the toggle");
   assert.match(defaults.html, /<html[^>]* data-scheme-default="auto"/, "no data-scheme-default on <html>");
   const script = defaults.html.indexOf('localStorage.getItem("scheme")');
   const style = defaults.html.indexOf("<style>");

@@ -23,8 +23,10 @@ modules:
 			</a>
 {%- if site.theme.schemeToggle %}
 			<button type="button" class="scheme-toggle" aria-pressed="false" aria-label="Switch to dark scheme">
-				<span class="scheme-toggle-to-dark" aria-hidden="true">{% icon "far:moon" %}</span>
-				<span class="scheme-toggle-to-light" aria-hidden="true">{% icon "far:sun" %}</span>
+				{%- comment %} Solid, not regular: the outlined sun's rays read as a cog at
+				   icon size. {% endcomment -%}
+				<span class="scheme-toggle-to-dark" aria-hidden="true">{% icon "fas:moon" %}</span>
+				<span class="scheme-toggle-to-light" aria-hidden="true">{% icon "fas:sun" %}</span>
 			</button>
 {%- endif %}
 		</header>
