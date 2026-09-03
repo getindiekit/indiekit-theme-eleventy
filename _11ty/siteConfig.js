@@ -114,9 +114,14 @@ export function loadSiteConfig() {
 	const base = JSON.parse(
 		readFileSync(new URL("../_data/site.json", import.meta.url), "utf8"),
 	);
-	let config = process.env.SITE_FIXTURE
-		? merge(base, JSON.parse(readFileSync(process.env.SITE_FIXTURE, "utf8")))
-		: base;
+	// SITE_FIXTURE may name several files, comma-separated, merged left to right.
+	// That is what lets the demo scripts stack the sample identity with a theme
+	// variant (see package.json's demo:serve:* scripts) without duplicating the
+	// identity block into every variant fixture.
+	let config = base;
+	for (const fixture of (process.env.SITE_FIXTURE || "").split(",").map((f) => f.trim()).filter(Boolean)) {
+		config = merge(config, JSON.parse(readFileSync(fixture, "utf8")));
+	}
 
 	// Colour inputs may also come from the environment, which is how an Indiekit
 	// deployment sets them without editing a tracked file. Same precedence as
