@@ -39,7 +39,7 @@
 // `.tags:empty { display: none }` matters here too: the listing emits an
 // empty `<span class="tags">` for post types that carry none.
 .tag-inline {
-	font-family: system-ui, sans-serif;
+	font-family: var(--font-body);
 	font-weight: 800;
 }
 .tags:empty {

@@ -90,7 +90,7 @@ html:not(.tmpl-list) .content-main code a[href] {
 // every heading rendered at browser defaults (2em serif Times for h1).
 // First-paint (every page has a heading), so critical.
 h1, h2, h3, .hed-h1, .hed-h2, .hed-h3 {
-	font-family: Hex Franklin Tight, system-ui, sans-serif;
+	font-family: var(--font-heading);
 	font-variation-settings: "wdth" 60, "TYTE" -50, "NOTC" 0;
 	font-weight: 900;
 	margin-top: 1.4em;

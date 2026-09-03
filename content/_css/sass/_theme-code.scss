@@ -12,7 +12,7 @@
 // highlighting — no code block is above the fold on any page this theme
 // currently builds.
 code {
-	font-family: config.$monospaceFont;
+	font-family: var(--font-mono);
 	font-size: .947368421em; /* 18px / 19px */
 	font-style: normal;
 	font-weight: 400;
@@ -49,7 +49,7 @@ a[href] > code {
 	color: inherit;
 }
 pre {
-	font-family: config.$monospaceFont;
+	font-family: var(--font-mono);
 	padding: var(--page-padding);
 	margin: 0;
 	/* Monokai. Deliberately NOT tokenised: a syntax palette encodes language

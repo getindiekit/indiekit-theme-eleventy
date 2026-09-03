@@ -17,7 +17,7 @@
 	background-color: var(--c-fg);
 }
 .printed-page blockquote {
-	font-family: config.$monospaceFont;
+	font-family: var(--font-mono);
 	font-style: normal;
 	margin: 0;
 	padding: 0;

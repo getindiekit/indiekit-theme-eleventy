@@ -4929,6 +4929,25 @@ check("theme.signature.leader switches the dotted leader token", () => {
   assert.equal(knobs.tokens["--leader-border"], "0");
 });
 
+check("no font-family is hard-coded outside the token layer", () => {
+  const files = globSync("content/_css/sass/*.scss").filter((f) => !f.endsWith("_tokens.scss") && !f.endsWith("_fonts.scss"));
+  const offenders = [];
+  for (const file of files) {
+    readFileSync(file, "utf8").split("\n").forEach((line, i) => {
+      if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
+      const m = /font-family\s*:\s*([^;]+);/.exec(line);
+      if (!m) return;
+      const value = m[1].trim();
+      if (value === "inherit" || /^var\(--font-/.test(value)) return;
+      // _disqus.scss's Comic Sans is a joke rule on the "static-comments" empty
+      // state, ported verbatim; it is not a theme face.
+      if (file.endsWith("_disqus.scss") && /Comic Sans/.test(value)) return;
+      offenders.push(`${file}:${i + 1} ${value}`);
+    });
+  }
+  assert.deepEqual(offenders, [], `font-family literals bypass the font tokens:\n  ${offenders.join("\n  ")}`);
+});
+
 rmSync(KNOBS_OUT, { recursive: true, force: true });
 
 const failed = checks.filter((c) => !c).length;
