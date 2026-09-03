@@ -4992,6 +4992,30 @@ check("the grid reads --rail-width and --measure, and rail=start swaps the colum
   assert.ok(!/\b31em\b/.test(cssWithoutTokenDecl), "a literal 31em survives in the compiled CSS outside the --measure declaration");
 });
 
+check("the dark scheme is emitted for auto and forced, and every dark token meets its ratio", () => {
+  const css = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(css, /@media \(prefers-color-scheme: dark\)\s*\{\s*html\[data-scheme=auto\]/, "no auto dark block");
+  assert.match(css, /color-scheme:\s*light dark/, ":root does not declare color-scheme");
+
+  const t = readTokens("_site/_css/initial.css", 'html[data-scheme=dark]');
+  const bg = parseColor(t["--c-bg"]);
+  assert.ok(bg, `dark --c-bg is not a colour: ${t["--c-bg"]}`);
+  assert.ok(Math.max(...bg) < 0.25, `dark --c-bg is not dark: ${t["--c-bg"]}`);
+  for (const [token, min] of [
+    ["--c-fg", 4.5], ["--c-fg-muted", 4.5], ["--c-heading", 4.5], ["--c-link", 4.5],
+    ["--c-link-hover", 4.5], ["--c-link-visited", 4.5], ["--c-danger", 4.5], ["--c-focus", 3],
+  ]) {
+    const ratio = wcagContrast(parseColor(t[token]), bg);
+    assert.ok(ratio >= min, `dark ${token} is ${ratio.toFixed(2)}:1 against --c-bg, below ${min}:1`);
+  }
+  const fill = parseColor(t["--c-accent-fill"]);
+  const onFill = parseColor(t["--c-accent-fill-fg"]);
+  assert.ok(wcagContrast(onFill, fill) >= 4.5, `dark --c-accent-fill-fg is ${wcagContrast(onFill, fill).toFixed(2)}:1 on its fill`);
+  for (const token of ["--rail-bg", "--footer-bg", "--card-bg", "--c-highlight", "--c-border", "--c-on-accent"]) {
+    assert.ok(parseColor(t[token]), `dark ${token} missing or not a colour: ${t[token]}`);
+  }
+});
+
 rmSync(KNOBS_OUT, { recursive: true, force: true });
 
 const failed = checks.filter((c) => !c).length;

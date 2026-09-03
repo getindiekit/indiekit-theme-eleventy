@@ -98,6 +98,52 @@ $surface: ramp(cfg.$surface);
 
 $_bg: map.get($surface, 50);
 
+// Dark counterpart: walks DARK to light and returns the first passing step, so
+// a link keeps its saturation instead of washing to the palest passing tint.
+@function pick-step-dark($ramp, $bg, $min) {
+	@each $key in (700, 600, 500, 400, 300, 200, 100, 50) {
+		$candidate: map.get($ramp, $key);
+		@if contrast($candidate, $bg) >= $min {
+			@return $candidate;
+		}
+	}
+	@return map.get($ramp, 50);
+}
+
+$_bg-dark: map.get($surface, 950);
+
+// Every role token rebound against the dark surface. Same ramps, same clamp,
+// so a site gets a readable dark variant from the same two inputs.
+@mixin dark-tokens {
+	--c-bg: var(--surface-950);
+	--c-fg: var(--surface-100);
+	--c-fg-muted: #{pick-step-dark($surface, $_bg-dark, 4.5)};
+	--c-heading: var(--surface-50);
+	--c-border: var(--surface-800);
+
+	--c-link: #{pick-step-dark($accent, $_bg-dark, 4.5)};
+	--c-link-hover: var(--accent-300);
+	--c-link-visited: var(--accent-200);
+	--c-focus: #{pick-step-dark($accent, $_bg-dark, 3)};
+	--c-on-accent: var(--surface-950);
+
+	--c-accent-fill: var(--secondary-900);
+	--c-accent-fill-fg: var(--secondary-100);
+	--c-highlight: var(--secondary-900);
+
+	--c-social-fg: var(--c-fg-muted);
+	--c-marker: var(--c-fg-muted);
+
+	--rail-bg: var(--surface-900);
+	--rail-fg: var(--surface-100);
+	--rail-edge: var(--c-link);
+	--footer-bg: var(--surface-900);
+	--footer-fg: var(--surface-100);
+	--card-bg: var(--surface-900);
+
+	--c-danger: #{pick-step-dark(ramp(#ff2f0f), $_bg-dark, 4.5)};
+}
+
 // --- Scales -------------------------------------------------------------
 //
 // SPACING IS TWO SYSTEMS HERE, and only one of them belongs in a scale.
@@ -123,6 +169,8 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 // --- Tokens -------------------------------------------------------------
 
 :root {
+	color-scheme: light dark;
+
 	@each $key, $value in $accent {
 		--accent-#{$key}: #{$value};
 	}
@@ -230,4 +278,13 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 	--card-border: var(--c-border);
 
 	--c-danger: #{pick-step(ramp(#ff2f0f), $_bg, 4.5)};
+}
+
+@media (prefers-color-scheme: dark) {
+	html[data-scheme="auto"] {
+		@include dark-tokens;
+	}
+}
+html[data-scheme="dark"] {
+	@include dark-tokens;
 }
