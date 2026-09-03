@@ -4969,6 +4969,29 @@ check("every border-radius reads a radius token", () => {
   assert.ok(!/body :not\(\[class\*="pagefind"\]\)/.test(css), "the global border-radius:0 reset is still emitted");
 });
 
+check("theme.rail.side, theme.scheme and the heading-font state are written on <html>", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.match(defaults.html, /<html[^>]* data-rail="end"/);
+  assert.match(defaults.html, /<html[^>]* data-scheme="auto"/);
+  assert.match(defaults.html, /<html[^>]* data-heading-font="default"/);
+  assert.match(knobs.html, /<html[^>]* data-rail="start"/);
+  assert.match(knobs.html, /<html[^>]* data-scheme="dark"/);
+  assert.match(knobs.html, /<html[^>]* data-heading-font="custom"/);
+});
+
+check("the grid reads --rail-width and --measure, and rail=start swaps the columns", () => {
+  const css = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(css, /grid-template-columns:\s*1fr var\(--rail-width\) 2\.5rem/, "default grid does not read --rail-width");
+  assert.match(css, /minmax\(auto, var\(--measure\)\)/, "content grid does not read --measure");
+  assert.match(css, /max-width:\s*var\(--measure\)/, "content-grid-sibling does not read --measure");
+  assert.match(css, /html\[data-rail=start\][^{]*\.body-grid\s*\{[^}]*grid-template-columns:\s*2\.5rem var\(--rail-width\) 1fr/, "no start-side grid");
+  // Excludes the --measure custom-property declaration itself: that line IS
+  // the token's source value (site.json's default), not a rule that bypassed
+  // var(--measure). Every other occurrence would be a leak.
+  const cssWithoutTokenDecl = css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--measure:\s*31em;/, "");
+  assert.ok(!/\b31em\b/.test(cssWithoutTokenDecl), "a literal 31em survives in the compiled CSS outside the --measure declaration");
+});
+
 rmSync(KNOBS_OUT, { recursive: true, force: true });
 
 const failed = checks.filter((c) => !c).length;

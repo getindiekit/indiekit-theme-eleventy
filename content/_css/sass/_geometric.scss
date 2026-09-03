@@ -24,6 +24,11 @@
 	border-inline-start: 3px solid var(--rail-edge);
 }
 
+html[data-rail="start"] .rail {
+	border-inline-start: 0;
+	border-inline-end: 3px solid var(--rail-edge);
+}
+
 @media (min-width: config.$twoColLayoutMinWidth) {
 	.rail {
 		/* Full-height field rather than a floating column. */
