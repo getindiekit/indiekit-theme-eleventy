@@ -1082,11 +1082,17 @@ await checkAsync(
 
       // Distinguish the critical bundle from default.liquid's unrelated
       // "infinity-burger" <style> block (a hardcoded @media rule that also
-      // renders on every page) by a marker unique to initial.scss's
-      // compiled output — a CSS custom property from sass/_config.scss,
-      // pulled in transitively by every partial initial.scss @uses, and
-      // absent from defer.css.
-      const criticalMarker = "--z-border-radius-1";
+      // renders on every page) by a marker unique to initial.scss's compiled
+      // output and absent from defer.css.
+      //
+      // This was --z-border-radius-1, an arbitrary ported token that later
+      // turned out to be dead and was removed — the check then failed because
+      // its MARKER had gone, not because the bundle had. Anchored now to the
+      // token layer's own declaration, which is structurally central: tokens
+      // are emitted into critical deliberately (a token arriving in the
+      // deferred sheet would mean a flash of unstyled colour), so if this
+      // marker ever disappears from initial.css, that IS the regression.
+      const criticalMarker = "--accent-500:";
       assert.ok(
         readFileSync(linkedFile, "utf8").includes(criticalMarker),
         `linked ${linkMatch[1]} does not contain the critical CSS — wrong file, or bundle regressed`,

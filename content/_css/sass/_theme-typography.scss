@@ -111,7 +111,7 @@ h1, h2, h3,
 }
 h1,
 .hed-h1 {
-	color: var(--c-fg);
+	color: var(--c-heading);
 	font-size: 1.421052631579em; /* 27px /19 */
 	line-height: 110%;
 }
@@ -247,9 +247,6 @@ table + .caption {
 // paint (no FOUC window where `var(--page-padding)` is undefined).
 :root {
 	--page-padding: .25rem;
-	--uln-padding-v: .75rem;
-	--uln-padding-h: 0 1.5rem;
-	--uln-color: var(--c-border);
 }
 @media (min-width: 25em) { /* 400px */
 	:root {

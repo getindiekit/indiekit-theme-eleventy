@@ -80,6 +80,7 @@ $_steps: (50: 97%, 100: 94%, 200: 86%, 300: 78%, 400: 65%, 500: 55%,
 }
 
 $accent: ramp(cfg.$primary);
+$secondary: ramp(cfg.$secondary);
 $surface: ramp(cfg.$surface);
 
 // The lightest step meeting $min against $bg — the clamp. Walks light to dark
@@ -105,6 +106,9 @@ $_bg: map.get($surface, 50);
 	}
 	@each $key, $value in $surface {
 		--surface-#{$key}: #{$value};
+	}
+	@each $key, $value in $secondary {
+		--secondary-#{$key}: #{$value};
 	}
 
 	// Surfaces and text. Named by ROLE, so a dark variant later swaps which step
@@ -134,8 +138,13 @@ $_bg: map.get($surface, 50);
 	// Amber is a FILL only: at 2.16:1 on white it fails even the 3:1 non-text
 	// threshold, so it may never carry text or be a border. Anything placed on
 	// it uses --c-accent-fill-fg.
-	--c-accent-fill: #f0a000;
-	--c-accent-fill-fg: var(--surface-950);
+	// The secondary colour's one job: filled surfaces that carry text, which is
+	// all the raw hue can safely do — amber is 2.16:1 on white and fails even the
+	// 3:1 non-text threshold as a foreground. A light step gives the fill, a dark
+	// step of the same hue gives the text on it, so the pair is legible by
+	// construction whatever secondary is configured to.
+	--c-accent-fill: var(--secondary-100);
+	--c-accent-fill-fg: var(--secondary-900);
 
 	// The social-count pill encodes three DIFFERENT things — boosts, likes,
 	// replies — so its colours carry information rather than brand. Deriving them
@@ -178,6 +187,17 @@ $_bg: map.get($surface, 50);
 	--c-type-like: #{pick-step(ramp(#ff2f0f), $_bg, 4.5)};
 	--c-type-reply: var(--c-type-article);
 	--c-type-bookmark: var(--c-type-photo);
+
+	// COMPONENT LAYER. The third tier of primitive -> semantic -> component.
+	// The inverted surfaces previously only rebound global semantics inside their
+	// own scope, which works and is invisible: nothing in the token list said a
+	// rail existed, so restyling it meant reading the stylesheet to discover that
+	// it redefines --c-link. These name the seam. Rebinding still happens — it is
+	// what makes descendants follow — but it is no longer the only door in.
+	--rail-bg: var(--c-field);
+	--rail-fg: var(--c-field-fg);
+	--footer-bg: var(--surface-900);
+	--footer-fg: var(--surface-100);
 
 	--c-danger: #{pick-step(ramp(#ff2f0f), $_bg, 4.5)};
 }

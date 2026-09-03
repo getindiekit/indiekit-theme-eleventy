@@ -15,6 +15,7 @@ export default function(eleventyConfig, pluginOptions = {}) {
 	const theme = pluginOptions.theme || {};
 	const themeConfigSource = [
 		`$primary: ${theme.primary || "#9435f4"};`,
+		`$secondary: ${theme.secondary || "#f0a000"};`,
 		`$surface: ${theme.surface || "#ffffff"};`,
 	].join("\n");
 

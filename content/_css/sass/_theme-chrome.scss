@@ -54,7 +54,6 @@
 	color: var(--c-fg-muted);
 	padding: .25em .5em;
 	text-decoration: none;
-	border-radius: var(--z-border-radius-2);
 }
 
 /* Search overrides — port source _theme.scss:1779-1787. Pagefind ships its own
@@ -142,7 +141,6 @@ svg.z-icon {
    emits `.active` on the current link (default.liquid) and it had no styling,
    so "you are here" was invisible. */
 .tags-rail-links :any-link.active {
-	--icon-color-override: var(--c-on-accent);
 	color: var(--c-on-accent);
 	background-color: config.$primaryColor;
 }

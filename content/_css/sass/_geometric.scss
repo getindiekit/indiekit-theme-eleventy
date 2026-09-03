@@ -40,18 +40,18 @@ body :not([class*="pagefind"]):not([class*="pagefind"] *) {
 	/* --c-field, not --c-link: this rule rebinds --c-link below, and a custom
 	   property resolves at its use site, so reading it here would pick up the
 	   rebound value and paint the rail in its own text colour. */
-	background-color: var(--c-field);
-	color: var(--c-field-fg);
+	background-color: var(--rail-bg);
+	color: var(--rail-fg);
 
 	/* Rebinding, not overriding. Everything inside the rail resolves these four
 	   names, so the nav, the h-card, its muted meta and every border invert
 	   together — and a site that reconfigures its primary gets a correctly
 	   inverted rail for free. */
-	--c-fg: var(--c-field-fg);
-	--c-fg-muted: color-mix(in srgb, var(--c-field-fg) 72%, transparent);
-	--c-border: color-mix(in srgb, var(--c-field-fg) 28%, transparent);
-	--c-link: var(--c-field-fg);
-	--c-link-visited: var(--c-field-fg);
+	--c-fg: var(--rail-fg);
+	--c-fg-muted: color-mix(in srgb, var(--rail-fg) 72%, transparent);
+	--c-border: color-mix(in srgb, var(--rail-fg) 28%, transparent);
+	--c-link: var(--rail-fg);
+	--c-link-visited: var(--rail-fg);
 	--c-bg: transparent;
 }
 
@@ -73,7 +73,6 @@ body :not([class*="pagefind"]):not([class*="pagefind"] *) {
 .rail .tags-rail-links :any-link.active {
 	background-color: var(--c-field-fg);
 	color: var(--c-field);
-	--icon-color-override: var(--c-field);
 }
 
 /* --- Post-type markers -------------------------------------------------- */
@@ -111,10 +110,20 @@ body :not([class*="pagefind"]):not([class*="pagefind"] *) {
 /* --- Footer as a band --------------------------------------------------- */
 
 .footer {
-	background-color: var(--surface-900);
-	color: var(--surface-100);
+	background-color: var(--footer-bg);
+	color: var(--footer-fg);
 	padding: 1.25rem 1rem;
-	--c-fg: var(--surface-100);
-	--c-link: var(--surface-100);
-	--c-link-visited: var(--surface-100);
+	--c-fg: var(--footer-fg);
+	--c-link: var(--footer-fg);
+	--c-link-visited: var(--footer-fg);
+}
+
+/* --- Category pills ------------------------------------------------------ */
+
+/* The secondary colour's visible home. A category is a small labelled surface,
+   which is exactly what a fill-only hue is good for. */
+.tags .tag {
+	background-color: var(--c-accent-fill);
+	color: var(--c-accent-fill-fg);
+	padding: 0.15em 0.5em;
 }

@@ -4,6 +4,7 @@
   "description": "A reference Eleventy theme for Indiekit.",
   "theme": {
     "primary": "#9435f4",
+    "secondary": "#f0a000",
     "surface": "#ffffff"
   },
   "author": {

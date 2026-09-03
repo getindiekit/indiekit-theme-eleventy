@@ -58,6 +58,7 @@ export function loadSiteConfig() {
 	// there is nothing else to override.
 	const envColors = {
 		primary: process.env.INDIEKIT_COLOR_PRIMARY,
+		secondary: process.env.INDIEKIT_COLOR_SECONDARY,
 		surface: process.env.INDIEKIT_COLOR_SURFACE,
 	};
 	for (const [key, value] of Object.entries(envColors)) {
