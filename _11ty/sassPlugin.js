@@ -29,6 +29,7 @@ export default function(eleventyConfig, pluginOptions = {}) {
 		`$rail-width: ${theme.rail.width};`,
 		`$measure: ${theme.measure};`,
 		`$leader: ${theme.signature.leader};`,
+		`$spectrum: ${theme.signature.spectrum};`,
 	].join("\n");
 
 	const themeConfigImporter = {

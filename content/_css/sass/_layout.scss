@@ -1,4 +1,5 @@
 @use "config";
+@use "theme-config" as cfg;
 
 /* Ellipsis */
 .text-ellipsis {
@@ -223,24 +224,32 @@
 	}
 }
 
-@supports (display: grid) {
-	@media (min-width: 56.25em) { /* 900px /16 */
-		.page-gradient {
-			position: relative;
-		}
-		.page-gradient:after {
-			content: "";
-			position: absolute;
-			top: 0;
-			bottom: 0;
-			left: 0;
-			right: auto;
-			width: 0.1875em; /* 3px /16 */
-			/* A literal spectrum, not a brand colour: the point of this rule is that
-			   it is every hue. Deriving it from the primary would make it one hue. */
-			background-image: linear-gradient(238deg, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ff80, #00ffff, #0080ff, #0000ff, #8000ff, #ff0080);
-			min-height: 100vh;
-			height: 100%;
+// theme.signature.spectrum gates the rule at compile time, not just the
+// class on <html> (base.liquid): the class attribute alone is not enough,
+// because this file is part of the critical bundle inlined verbatim into
+// every page's <style> (see _11ty/sassPlugin.js's inlineCriticalCss) — a
+// selector left in the compiled CSS would still leak the literal text
+// "page-gradient" onto the page even with the class never applied.
+@if cfg.$spectrum {
+	@supports (display: grid) {
+		@media (min-width: 56.25em) { /* 900px /16 */
+			.page-gradient {
+				position: relative;
+			}
+			.page-gradient:after {
+				content: "";
+				position: absolute;
+				top: 0;
+				bottom: 0;
+				left: 0;
+				right: auto;
+				width: 0.1875em; /* 3px /16 */
+				/* A literal spectrum, not a brand colour: the point of this rule is that
+				   it is every hue. Deriving it from the primary would make it one hue. */
+				background-image: linear-gradient(238deg, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ff80, #00ffff, #0080ff, #0000ff, #8000ff, #ff0080);
+				min-height: 100vh;
+				height: 100%;
+			}
 		}
 	}
 }

@@ -5029,6 +5029,21 @@ check("the dark scheme is emitted for auto and forced, and every dark token meet
   }
 });
 
+check("theme.signature.spectrum and .anchors gate their markup; leader and heading case follow their tokens", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.match(defaults.html, /<html[^>]* class="[^"]*page-gradient/, "default has no spectrum class");
+  assert.ok(!/page-gradient/.test(knobs.html), "spectrum=false still emits page-gradient");
+  assert.match(defaults.html, /<script src="\/heading-anchors\.js" type="module">/, "default does not load heading-anchors");
+  assert.ok(!/heading-anchors\.js/.test(knobs.html), "anchors=false still loads heading-anchors.js");
+
+  const css = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(css, /border-bottom:\s*var\(--leader-border\)/, "the leader does not read --leader-border");
+  assert.match(css, /html\[data-heading-font=default\][^{]*\{[^}]*text-transform:\s*uppercase/, "heading uppercase is not scoped to the default font");
+  assert.match(css, /html\[data-heading-font=default\][^{]*\{[^}]*font-variation-settings/, "variation axes are not scoped to the default font");
+  const unscoped = css.replace(/html\[data-heading-font=default\][^{]*\{[^}]*\}/g, "");
+  assert.ok(!/font-variation-settings/.test(unscoped), "a font-variation-settings rule is still unscoped");
+});
+
 rmSync(KNOBS_OUT, { recursive: true, force: true });
 
 const failed = checks.filter((c) => !c).length;

@@ -65,7 +65,7 @@ through to site.description below — not an error case. {% endcomment -%}
 <!doctype html>
 {%- assign headingFontState = "custom" -%}
 {%- if site.theme.fonts.heading == "Hex Franklin Tight" -%}{%- assign headingFontState = "default" -%}{%- endif -%}
-<html lang="en" data-scheme="{{ site.theme.scheme }}" data-rail="{{ site.theme.rail.side }}" data-heading-font="{{ headingFontState }}"{% if tmpl or templateclass or classes.html %} class="{% if tmpl %}tmpl-{{ tmpl }}{% endif %}{% if templateclass %} {{ templateclass }}{% endif %}{%- if classes.html %} {{ classes.html }}{% endif -%}"{% endif %}{% if eleventy.env.runMode == "serve" %} data-eleventy-runmode="{{ eleventy.env.runMode }}"{% endif %}>
+<html lang="en" data-scheme="{{ site.theme.scheme }}" data-rail="{{ site.theme.rail.side }}" data-heading-font="{{ headingFontState }}"{% if tmpl or templateclass or classes.html or site.theme.signature.spectrum %} class="{% if tmpl %}tmpl-{{ tmpl }}{% endif %}{% if templateclass %} {{ templateclass }}{% endif %}{%- if classes.html %} {{ classes.html }}{% endif -%}{%- if site.theme.signature.spectrum %} page-gradient{% endif -%}"{% endif %}{% if eleventy.env.runMode == "serve" %} data-eleventy-runmode="{{ eleventy.env.runMode }}"{% endif %}>
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -264,6 +264,7 @@ ported. {% endcomment %}
 		<script src="{{ url }}" defer></script>
 {%- endfor %}
 {%- for url in modules -%}
+{%- if url == "/heading-anchors.js" and site.theme.signature.anchors == false %}{% continue %}{% endif -%}
 		<script src="{{ url }}" type="module"></script>
 {%- endfor %}
 {%- endif %}

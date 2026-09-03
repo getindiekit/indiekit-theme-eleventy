@@ -134,8 +134,8 @@ svg.z-icon {
 	font-weight: 900;
 	line-height: 1;
 	color: var(--c-link);
-	text-transform: uppercase;
 }
+html[data-heading-font="default"] .rail .hed-h1 { text-transform: uppercase; }
 
 /* Current-page nav state — port source _theme.scss:1421-1425. This theme's nav
    emits `.active` on the current link (default.liquid) and it had no styling,
