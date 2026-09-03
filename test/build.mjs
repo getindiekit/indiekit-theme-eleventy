@@ -4948,6 +4948,27 @@ check("no font-family is hard-coded outside the token layer", () => {
   assert.deepEqual(offenders, [], `font-family literals bypass the font tokens:\n  ${offenders.join("\n  ")}`);
 });
 
+check("every border-radius reads a radius token", () => {
+  const files = globSync("content/_css/sass/*.scss")
+    .filter((f) => !f.endsWith("_tokens.scss"))
+    // _geometric.scss: post-type marker shapes, replaced by icons in the next task
+    .filter((f) => !f.endsWith("_geometric.scss"));
+  const offenders = [];
+  for (const file of files) {
+    readFileSync(file, "utf8").split("\n").forEach((line, i) => {
+      if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
+      const m = /border-radius\s*:\s*([^;]+);/.exec(line);
+      if (m && !/^(0|var\(--radius(-avatar)?\)|var\(--radius\) var\(--radius\) 0 0)$/.test(m[1].trim())) {
+        offenders.push(`${file}:${i + 1} ${m[1].trim()}`);
+      }
+    });
+  }
+  assert.deepEqual(offenders, [], `border-radius literals bypass theme.shape:\n  ${offenders.join("\n  ")}`);
+  // And the reset is gone: a rounded site must actually round.
+  const css = readFileSync(`${KNOBS_OUT}/_css/initial.css`, "utf8") + readFileSync(`${KNOBS_OUT}/_css/defer.css`, "utf8");
+  assert.ok(!/body :not\(\[class\*="pagefind"\]\)/.test(css), "the global border-radius:0 reset is still emitted");
+});
+
 rmSync(KNOBS_OUT, { recursive: true, force: true });
 
 const failed = checks.filter((c) => !c).length;

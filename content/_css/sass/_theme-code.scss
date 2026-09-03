@@ -21,7 +21,7 @@ code {
 	padding: .2em .2em .1em;
 	margin: 0 .25em 0 .1em;
 	color: var(--c-fg);
-	border-radius: .2em;
+	border-radius: var(--radius);
 
 	/* Disable ligatures */
 	font-variant-ligatures: no-common-ligatures;
@@ -87,12 +87,12 @@ pre > code {
 }
 @media (min-width: 40.625em) { /* 650px */
 	:where(.tmpl-page) pre {
-		border-radius: 0.5rem; /* 8px /16 */
+		border-radius: var(--radius); /* 8px /16 */
 	}
 }
 @media (min-width: 56.25em) { /* 900px */
 	pre {
-		border-radius: 0.5rem; /* 8px /16 */
+		border-radius: var(--radius); /* 8px /16 */
 	}
 	.livedemo pre {
 		border-radius: 0;

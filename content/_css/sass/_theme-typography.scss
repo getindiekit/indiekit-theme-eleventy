@@ -63,7 +63,7 @@ body {
 		--highlight-color: var(--c-highlight);
 		background-color: var(--highlight-color);
 		text-decoration-color: inherit;
-		border-radius: 0.0625em; /* 1px /16 */
+		border-radius: var(--radius); /* 1px /16 */
 		box-shadow: 0 0 0 2px var(--highlight-color);
 		padding: .125em;
 		-webkit-box-decoration-break: clone;

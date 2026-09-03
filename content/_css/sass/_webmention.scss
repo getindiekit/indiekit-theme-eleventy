@@ -22,7 +22,7 @@
     margin-left: -12px;
     width: var(--webmention-avatar-size);
     height: var(--webmention-avatar-size);
-    border-radius: 50%;
+    border-radius: var(--radius-avatar);
     border: 2px solid var(--c-bg);
     line-height: 1;
     overflow: hidden;

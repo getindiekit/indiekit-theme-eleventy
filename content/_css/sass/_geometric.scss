@@ -4,35 +4,14 @@
 // supplies their values.
 //
 // Derived from the Indiekit logo: four saturated solids, hard edges, flat
-// fields. So: no border-radius, no shadows, no gradients. Where the port source
-// used depth to separate things, this uses colour and edge.
+// fields. Sharp is the default; theme.shape switches every corner through
+// --radius and --radius-avatar, so nothing here resets radii any more.
 //
 // This is also where the token system stops being plumbing. The rail inverts by
 // REDEFINING four custom properties inside its own scope — every descendant
 // (nav links, the h-card, muted meta, borders) follows without a single
 // override of its own. That is not achievable with Sass variables, which are
 // resolved at build time and cannot be rebound per selector.
-
-/* --- Flat by default ---------------------------------------------------- */
-
-/* The logo has no soft edges. Removing these globally is deliberate: leaving
-   two or three rounded survivors reads as an oversight rather than a style. */
-/* Enumerating selectors missed several (the avatar's 50%, the social pill's
-   segment radii, listing thumbnails). Reset broadly and re-exempt Pagefind's
-   shipped UI, which is a third-party stylesheet this theme does not own. */
-body :not([class*="pagefind"]):not([class*="pagefind"] *) {
-	border-radius: 0;
-}
-/* The social pill rounds its end segments with a two-class selector, which
-   outranks the reset above. Matched at equal specificity rather than reaching
-   for !important. */
-.tags .tag-social > :first-child,
-.tags .tag-social > :last-child {
-	border-radius: 0;
-}
-:where(.navigation-toggle[aria-expanded="true"] + #site-nav, .posts-thumb img) {
-	box-shadow: none;
-}
 
 /* --- The rail as a colour field ----------------------------------------- */
 

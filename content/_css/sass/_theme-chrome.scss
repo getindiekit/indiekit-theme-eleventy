@@ -199,7 +199,7 @@ svg.z-icon {
 	flex: 0 0 auto;
 	width: 4rem;
 	height: 4rem;
-	border-radius: 50%;
+	border-radius: var(--radius-avatar);
 	object-fit: cover;
 }
 .rail .h-card-body {
