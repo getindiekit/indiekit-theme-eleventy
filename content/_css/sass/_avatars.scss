@@ -3,7 +3,7 @@
 	width: 1.3em;
 	height: 1.3em;
 	max-height: 1.3em;
-	border-radius: 15%;
+	border-radius: var(--radius-avatar);
 	vertical-align: text-bottom;
 	margin: 0 .25em 0 0;
 }
@@ -25,7 +25,9 @@
 }
 .z-avatar-sq,
 .z-avatars-square .z-avatar {
-	border-radius: 5%;
+	// A square avatar keeps corner radius only — --radius-avatar is what makes
+	// the base rule round, the opposite of what this override is for.
+	border-radius: var(--radius);
 }
 .z-avatars-fff .z-avatar {
 	box-shadow: 0 0 0px 1px var(--c-fg);

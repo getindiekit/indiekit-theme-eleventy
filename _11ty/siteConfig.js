@@ -38,6 +38,73 @@ function merge(base, overlay) {
 	return out;
 }
 
+// Every theme key with its shipped value. site.json states the same values so
+// a reader sees them; this is what guarantees an OMITTED key never breaks a
+// build. A test asserts the two stay identical.
+export const THEME_DEFAULTS = Object.freeze({
+	primary: "#9435f4",
+	secondary: "#f0a000",
+	surface: "#ffffff",
+	scheme: "auto",
+	schemeToggle: true,
+	fonts: {
+		heading: "Hex Franklin Tight",
+		body: "Lato",
+		mono: "Consolas, Monaco, monospace",
+	},
+	shape: "sharp",
+	rail: { side: "end", width: "14rem" },
+	measure: "31em",
+	signature: { spectrum: true, leader: true, anchors: true },
+});
+
+const HEX = /^#[0-9a-f]{6}$/i;
+const LENGTH = /^\d+(\.\d+)?(rem|em|px|ch)$/;
+
+function fail(key, reason) {
+	throw new Error(`site.json theme.${key}: ${reason}`);
+}
+
+// Fail the build, name the key. The audience edits JSON and never CSS, so a
+// silent fallback would hide the one mistake they can actually fix.
+export function validateTheme(theme) {
+	for (const key of ["primary", "secondary", "surface"]) {
+		if (!HEX.test(theme[key])) fail(key, `expected a six-digit hex colour like #9435f4, got ${JSON.stringify(theme[key])}`);
+	}
+	if (!["light", "dark", "auto"].includes(theme.scheme)) fail("scheme", `expected light, dark or auto, got ${JSON.stringify(theme.scheme)}`);
+	if (typeof theme.schemeToggle !== "boolean") fail("schemeToggle", `expected true or false, got ${JSON.stringify(theme.schemeToggle)}`);
+	for (const key of ["heading", "body", "mono"]) {
+		const value = theme.fonts?.[key];
+		if (typeof value !== "string" || value.trim() === "" || /[;}]/.test(value)) {
+			fail(`fonts.${key}`, `expected a font-family list without ; or }, got ${JSON.stringify(value)}`);
+		}
+	}
+	if (!["sharp", "rounded"].includes(theme.shape)) fail("shape", `expected sharp or rounded, got ${JSON.stringify(theme.shape)}`);
+	if (!["start", "end"].includes(theme.rail?.side)) fail("rail.side", `expected start or end, got ${JSON.stringify(theme.rail?.side)}`);
+	if (!LENGTH.test(theme.rail?.width)) fail("rail.width", `expected a length like 14rem, got ${JSON.stringify(theme.rail?.width)}`);
+	if (!LENGTH.test(theme.measure)) fail("measure", `expected a length like 31em, got ${JSON.stringify(theme.measure)}`);
+	for (const key of ["spectrum", "leader", "anchors"]) {
+		if (typeof theme.signature?.[key] !== "boolean") fail(`signature.${key}`, `expected true or false, got ${JSON.stringify(theme.signature?.[key])}`);
+	}
+
+	// Unknown keys are typos otherwise silently ignored — a misspelled
+	// `theme.raill` would just fall back to the default rail with no warning.
+	for (const key of Object.keys(theme)) {
+		if (!(key in THEME_DEFAULTS)) fail(key, `unknown key; valid keys are ${Object.keys(THEME_DEFAULTS).join(", ")}`);
+	}
+	for (const key of Object.keys(theme.fonts || {})) {
+		if (!(key in THEME_DEFAULTS.fonts)) fail(`fonts.${key}`, `unknown key; valid keys are ${Object.keys(THEME_DEFAULTS.fonts).join(", ")}`);
+	}
+	for (const key of Object.keys(theme.rail || {})) {
+		if (!(key in THEME_DEFAULTS.rail)) fail(`rail.${key}`, `unknown key; valid keys are ${Object.keys(THEME_DEFAULTS.rail).join(", ")}`);
+	}
+	for (const key of Object.keys(theme.signature || {})) {
+		if (!(key in THEME_DEFAULTS.signature)) fail(`signature.${key}`, `unknown key; valid keys are ${Object.keys(THEME_DEFAULTS.signature).join(", ")}`);
+	}
+
+	return theme;
+}
+
 let cached;
 
 export function loadSiteConfig() {
@@ -47,7 +114,7 @@ export function loadSiteConfig() {
 	const base = JSON.parse(
 		readFileSync(new URL("../_data/site.json", import.meta.url), "utf8"),
 	);
-	cached = process.env.SITE_FIXTURE
+	let config = process.env.SITE_FIXTURE
 		? merge(base, JSON.parse(readFileSync(process.env.SITE_FIXTURE, "utf8")))
 		: base;
 
@@ -63,10 +130,18 @@ export function loadSiteConfig() {
 	};
 	for (const [key, value] of Object.entries(envColors)) {
 		if (value) {
-			cached = merge(cached, { theme: { [key]: value } });
+			config = merge(config, { theme: { [key]: value } });
 		}
 	}
 
+	config = merge(config, { theme: merge(THEME_DEFAULTS, config.theme || {}) });
+	validateTheme(config.theme);
+
+	// Only cache once validation has passed, so a throw here does not poison a
+	// later call — with `cached` set before validating, a second
+	// loadSiteConfig() after a failed build would return the invalid config
+	// instead of re-validating and throwing again.
+	cached = config;
 	return cached;
 }
 

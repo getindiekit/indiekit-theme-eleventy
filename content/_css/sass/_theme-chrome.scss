@@ -39,7 +39,7 @@
 // `.tags:empty { display: none }` matters here too: the listing emits an
 // empty `<span class="tags">` for post types that carry none.
 .tag-inline {
-	font-family: system-ui, sans-serif;
+	font-family: var(--font-body);
 	font-weight: 800;
 }
 .tags:empty {
@@ -63,7 +63,13 @@
 html:root {
 	--pagefind-ui-font: inherit;
 	--pagefind-ui-scale: 1;
-	--pagefind-ui-background: var(--surface-100);
+	/* Pagefind's UI reads these custom properties; pointing every one at a role
+	   token is what makes the panel follow the scheme, not only its background. */
+	--pagefind-ui-background: var(--card-bg);
+	--pagefind-ui-text: var(--c-fg);
+	--pagefind-ui-primary: var(--c-link);
+	--pagefind-ui-border: var(--c-border);
+	--pagefind-ui-tag: var(--card-bg);
 }
 .content-main .pagefind-ui ol {
 	padding-left: 0;
@@ -134,8 +140,8 @@ svg.z-icon {
 	font-weight: 900;
 	line-height: 1;
 	color: var(--c-link);
-	text-transform: uppercase;
 }
+html[data-heading-font="default"] .rail .hed-h1 { text-transform: uppercase; }
 
 /* Current-page nav state — port source _theme.scss:1421-1425. This theme's nav
    emits `.active` on the current link (default.liquid) and it had no styling,
@@ -199,7 +205,7 @@ svg.z-icon {
 	flex: 0 0 auto;
 	width: 4rem;
 	height: 4rem;
-	border-radius: 50%;
+	border-radius: var(--radius-avatar);
 	object-fit: cover;
 }
 .rail .h-card-body {

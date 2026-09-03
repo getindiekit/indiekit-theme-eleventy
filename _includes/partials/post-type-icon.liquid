@@ -1,0 +1,27 @@
+{%- comment -%}
+One icon per postType, from the Font Awesome sprite the social counts
+(post-social-counts.liquid) already use. Shape was tried and rejected;
+colour was tried and rejected (see _geometric.scss). An icon is legible
+without decoding.
+
+Split out of post-list-entry.liquid and captured by every one of that
+partial's callers BEFORE the `page: post` override they apply, for the
+identical reason post-social-counts.liquid's `socialHtml` already is:
+@11ty/font-awesome files each {% icon %}'s sprite symbol against
+`this.page.url` (plugin.js:51). Called from inside the override, the symbol
+files under the POST's own url instead of the listing page's, so the
+listing's {% getBundle %} never outputs it and the <use> it left behind
+resolves to nothing — the icon renders blank. Capturing here, before the
+override, files it against the real listing page.
+
+Expects a local `post` (one collections.post item), passed by each of
+post-list-entry.liquid's callers.
+{%- endcomment -%}
+{%- case post.data.postType -%}
+	{%- when "article" %}{% icon "far:file-lines" %}
+	{%- when "bookmark" %}{% icon "far:bookmark" %}
+	{%- when "like" %}{% icon "far:heart" %}
+	{%- when "photo" %}{% icon "far:image" %}
+	{%- when "reply" %}{% icon "fas:reply" %}
+	{%- else %}{% icon "far:comment" %}
+{%- endcase -%}

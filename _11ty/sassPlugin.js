@@ -12,11 +12,25 @@ export default function(eleventyConfig, pluginOptions = {}) {
 	// the values cannot simply be prepended to the source, and writing a
 	// _theme-config.scss into content/ would put a build artifact in the input
 	// tree. An importer keeps it in memory and applies to every compile below.
-	const theme = pluginOptions.theme || {};
+	// Every value here has already been defaulted and validated by
+	// _11ty/siteConfig.js, so nothing is optional and nothing is escaped beyond
+	// JSON.stringify, which yields a valid Sass quoted string.
+	const theme = pluginOptions.theme;
+	const rounded = theme.shape === "rounded";
 	const themeConfigSource = [
-		`$primary: ${theme.primary || "#9435f4"};`,
-		`$secondary: ${theme.secondary || "#f0a000"};`,
-		`$surface: ${theme.surface || "#ffffff"};`,
+		`$primary: ${theme.primary};`,
+		`$secondary: ${theme.secondary};`,
+		`$surface: ${theme.surface};`,
+		`$font-heading: ${JSON.stringify(theme.fonts.heading)};`,
+		`$font-body: ${JSON.stringify(theme.fonts.body)};`,
+		`$font-mono: ${JSON.stringify(theme.fonts.mono)};`,
+		`$radius: ${rounded ? "0.35em" : "0"};`,
+		`$radius-avatar: ${rounded ? "50%" : "0"};`,
+		`$rail-width: ${theme.rail.width};`,
+		`$measure: ${theme.measure};`,
+		`$leader: ${theme.signature.leader};`,
+		`$spectrum: ${theme.signature.spectrum};`,
+		`$scheme-toggle: ${theme.schemeToggle};`,
 	].join("\n");
 
 	const themeConfigImporter = {

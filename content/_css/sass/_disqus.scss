@@ -35,7 +35,7 @@ details.static-comments-empty > summary::-webkit-details-marker {
 .static-comments-reply .static-comments-reply {
 	margin-top: 2em;
 	padding-left: 1.5em;
-	border-left: 4px solid var(--surface-100);
+	border-left: 4px solid var(--c-border);
 }
 .static-comments-hed {
 	display: flex;
@@ -61,7 +61,7 @@ details.static-comments-empty > summary::-webkit-details-marker {
 	width: var(--webmention-comment-avatar-size);
 	height: var(--webmention-comment-avatar-size);
 	margin-right: .5em;
-	border-radius: 50%;
+	border-radius: var(--radius-avatar);
 }
 .static-comments-msg {
 	clear: both;

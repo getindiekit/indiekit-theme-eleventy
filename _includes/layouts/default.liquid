@@ -1,7 +1,6 @@
 ---
 layout: layouts/base.liquid
 classes:
-  html: page-gradient
   body: body-grid
 modules:
   # Task 18 (§7.4): source (zachleat.com default.liquid:6-8) declares these
@@ -22,6 +21,14 @@ modules:
 			<a href="/" class="header">
 				<span class="hed-h1">{{ site.name }}</span>
 			</a>
+{%- if site.theme.schemeToggle %}
+			<button type="button" class="scheme-toggle" aria-pressed="false" aria-label="Switch to dark scheme">
+				{%- comment %} One half-filled circle for both states: the contrast symbol.
+				   A sun/moon pair was tried; Font Awesome's sun reads as a cog at icon
+				   size. The button's label says which way it switches. {% endcomment -%}
+				<span class="scheme-toggle-icon" aria-hidden="true">{% icon "fas:circle-half-stroke" %}</span>
+			</button>
+{%- endif %}
 		</header>
 		<aside>
 			<nav role="navigation">
@@ -49,6 +56,35 @@ modules:
 					});
 				}
 			</script>
+{%- if site.theme.schemeToggle %}
+			<script type="module">
+				const html = document.documentElement;
+				const button = document.querySelector(".scheme-toggle");
+				const osDark = matchMedia("(prefers-color-scheme: dark)");
+				const resolve = (scheme) => (scheme === "auto" ? (osDark.matches ? "dark" : "light") : scheme);
+				const render = () => {
+					const dark = resolve(html.dataset.scheme) === "dark";
+					button.setAttribute("aria-pressed", String(dark));
+					button.setAttribute("aria-label", dark ? "Switch to light scheme" : "Switch to dark scheme");
+				};
+				button.addEventListener("click", () => {
+					const next = resolve(html.dataset.scheme) === "dark" ? "light" : "dark";
+					// Choosing what the site would show anyway is not an override: drop the
+					// stored value and return to the configured default, so "follow the OS"
+					// stays reachable without a third state.
+					if (next === resolve(html.dataset.schemeDefault)) {
+						try { localStorage.removeItem("scheme"); } catch (e) {}
+						html.dataset.scheme = html.dataset.schemeDefault;
+					} else {
+						try { localStorage.setItem("scheme", next); } catch (e) {}
+						html.dataset.scheme = next;
+					}
+					render();
+				});
+				osDark.addEventListener("change", render);
+				render();
+			</script>
+{%- endif %}
 		</aside>
 {%- comment %} The site's representative h-card lives in the rail, not on the
    homepage: it is site chrome, so rel=author (footer) resolves to an h-card

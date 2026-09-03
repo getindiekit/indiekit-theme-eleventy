@@ -1102,6 +1102,11 @@ await checkAsync(
         !inlinedStyles.some((s) => s.includes(criticalMarker)),
         "critical CSS is inlined under serve mode — livereload can't hot-swap this, defeating the point of the link",
       );
+
+      assert.ok(
+        existsSync(`${outDir}/pagefind/pagefind.js`),
+        "a serve-mode build wrote no Pagefind index, so the search page would be empty on a dev server",
+      );
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }
@@ -3926,6 +3931,22 @@ check("every SVG <use> reference resolves to a <symbol> defined on the same page
   }
 });
 
+check("every listing row carries one post-type icon with a text label", () => {
+  const html = readFileSync("_site/index.html", "utf8");
+  const rows = [...html.matchAll(/<li class="h-entry" data-post-type="(\w+)">([\s\S]*?)<\/li>/g)];
+  assert.ok(rows.length >= 5, `only ${rows.length} listing rows found`);
+  const expected = { article: "file-lines", note: "comment", photo: "image", like: "heart", reply: "reply", bookmark: "bookmark" };
+  for (const [, type, body] of rows) {
+    assert.match(body, /<span class="post-type-icon" aria-hidden="true">/, `${type}: no icon wrapper`);
+    assert.ok(body.includes(`fa-${expected[type]}`) || body.includes(`#fa${expected[type].replace(/(^|-)(\w)/g, (_, __, c) => c.toUpperCase())}`),
+      `${type}: icon is not ${expected[type]}`);
+    assert.match(body, new RegExp(`<span class="sr-only">${type[0].toUpperCase()}${type.slice(1)}</span>`), `${type}: no sr-only label`);
+  }
+  const css = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(css, /\.post-type-icon/, "no rule for .post-type-icon");
+  assert.ok(!/data-post-type[^{]*::after/.test(css), "the CSS shape markers are still emitted");
+});
+
 check("listing rows use the short date format; permalinks keep the long one", () => {
   // "30 August 2026" is 14 characters and wrapped to two and three lines in the
   // row's reserved column, landing at a different x on every row — the reported
@@ -4565,14 +4586,24 @@ function wcagContrast(a, b) {
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
-// Read :root custom properties out of a compiled stylesheet, resolving one
-// level of var() indirection (--c-fg: var(--surface-900)).
-function readTokens(cssPath) {
+// Read custom properties out of a compiled stylesheet for one selector block
+// (default :root), resolving one level of var() indirection. Values from the
+// selector block win over :root, so a dark block that says
+// `--c-bg: var(--surface-950)` resolves through the ramp declared on :root.
+function readTokens(cssPath, selector = ":root") {
   const css = readFileSync(cssPath, "utf8");
-  const root = /:root\s*\{([\s\S]*?)\}/.exec(css);
+  const block = (sel) => {
+    const re = new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\{([\\s\\S]*?)\\}");
+    return re.exec(css);
+  };
+  const root = block(":root");
   assert.ok(root, `${cssPath}: no :root block — the token layer did not compile`);
+  const target = selector === ":root" ? root : block(selector);
+  assert.ok(target, `${cssPath}: no ${selector} block`);
   const raw = {};
-  for (const m of root[1].matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) raw[m[1]] = m[2].trim();
+  for (const src of [root[1], target[1]]) {
+    for (const m of src.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) raw[m[1]] = m[2].trim();
+  }
   const resolved = {};
   for (const [key, value] of Object.entries(raw)) {
     const ref = /^var\((--[\w-]+)\)$/.exec(value);
@@ -4633,6 +4664,14 @@ check("every text token meets WCAG AA and every UI token meets 3:1, recomputed f
     wcagContrast(onFill, fill) >= 4.5,
     `--c-accent-fill-fg is ${wcagContrast(onFill, fill).toFixed(2)}:1 on --c-accent-fill`,
   );
+
+  // --c-highlight sits UNDER link text (.about-description :any-link), so the
+  // link must stay readable ON it, not just on --c-bg.
+  const highlightRatio = wcagContrast(parseColor(t["--c-link"]), parseColor(t["--c-highlight"]));
+  assert.ok(
+    highlightRatio >= 4.5,
+    `--c-link on --c-highlight is ${highlightRatio.toFixed(2)}:1, below the 4.5:1 floor`,
+  );
 });
 
 check("a primary that fails contrast on its own is clamped to a step that passes", () => {
@@ -4655,6 +4694,27 @@ check("a primary that fails contrast on its own is clamped to a step that passes
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }
+  }
+});
+
+check("a legal primary/secondary pair that would put an unreadable link on the highlight is clamped", () => {
+  // #7b3fa0 (primary) on white is a fine 4.31:1+ link on its own, and #1020cc
+  // (secondary) is a fine highlight fill on its own — but the link on the
+  // highlight, which is what a reader actually sees, is only 4.31:1... on the
+  // page background, and worse on the un-clamped highlight. --c-highlight
+  // must be clamped against --c-link, not against --c-bg.
+  const outDir = "_site-highlight-check";
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(process.execPath,
+      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe", env: { ...process.env, INDIEKIT_COLOR_PRIMARY: "#7b3fa0", INDIEKIT_COLOR_SECONDARY: "#1020cc", NPM_DOWNLOADS_OFFLINE: "1" } });
+
+    const t = readTokens(`${outDir}/_css/initial.css`);
+    const ratio = wcagContrast(parseColor(t["--c-link"]), parseColor(t["--c-highlight"]));
+    assert.ok(ratio >= 4.5, `--c-link on --c-highlight is only ${ratio.toFixed(2)}:1 for this primary/secondary pair`);
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
   }
 });
 
@@ -4750,6 +4810,19 @@ check("every component colour resolves through a token at runtime", () => {
       !name.startsWith("--pagefind"),
   );
   assert.deepEqual(dangling, [], `var() references with no declaration: ${dangling.join(", ")}`);
+
+  // A component reading a raw ramp step directly (var(--surface-100) instead
+  // of var(--c-border)) is invisible to the dark scheme: the two dark blocks
+  // rebind role tokens, not ramp steps, so a raw read stays stuck on its light
+  // value forever. Only :root and the two dark blocks are allowed to name a
+  // ramp step; strip them and nothing outside should reference one.
+  // Bare :root only: `html:root` (the Pagefind override) is a component rule and must be scanned.
+  const rest = css
+    .replace(/(?<![\w:-]):root\s*\{[^}]*\}/g, "")
+    .replace(/html\[data-scheme=auto\]\s*\{[^}]*\}/g, "")
+    .replace(/html\[data-scheme=dark\]\s*\{[^}]*\}/g, "");
+  const rawRampRefs = [...rest.matchAll(/var\(--(?:surface|accent|secondary)-\d+/g)].map((m) => m[0]);
+  assert.deepEqual(rawRampRefs, [], `raw ramp step(s) read outside the token layer, invisible to the dark scheme: ${rawRampRefs.join(", ")}`);
 });
 
 
@@ -4796,6 +4869,311 @@ check("the space and type scales exist, are used, and do not swallow type-relati
   );
 });
 
+
+// --- theme configuration --------------------------------------------------
+
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { loadSiteConfig, validateTheme, THEME_DEFAULTS } from "../_11ty/siteConfig.js";
+
+check("every theme key has a shipped default and site.json states it", () => {
+  const shipped = JSON.parse(readFileSync("_data/site.json", "utf8")).theme;
+  assert.deepEqual(shipped, THEME_DEFAULTS, "_data/site.json theme differs from THEME_DEFAULTS");
+  const loaded = loadSiteConfig().theme;
+  for (const key of ["primary", "secondary", "surface", "scheme", "shape", "measure"]) {
+    assert.ok(loaded[key], `theme.${key} missing after load`);
+  }
+  for (const key of ["heading", "body", "mono"]) assert.ok(loaded.fonts[key], `theme.fonts.${key} missing`);
+  for (const key of ["side", "width"]) assert.ok(loaded.rail[key], `theme.rail.${key} missing`);
+  for (const key of ["spectrum", "leader", "anchors"]) {
+    assert.equal(typeof loaded.signature[key], "boolean", `theme.signature.${key} is not boolean`);
+  }
+});
+
+check("an invalid theme value throws naming the key", () => {
+  const bad = [
+    [{ primary: "purple" }, "theme.primary"],
+    [{ surface: "#fff" }, "theme.surface"],
+    [{ scheme: "dim" }, "theme.scheme"],
+    [{ fonts: { heading: "" } }, "theme.fonts.heading"],
+    [{ fonts: { body: "Lato; color: red" } }, "theme.fonts.body"],
+    [{ shape: "round" }, "theme.shape"],
+    [{ rail: { side: "middle" } }, "theme.rail.side"],
+    [{ rail: { width: "wide" } }, "theme.rail.width"],
+    [{ measure: "50%" }, "theme.measure"],
+    [{ signature: { spectrum: "yes" } }, "theme.signature.spectrum"],
+    [{ raill: { side: "start" } }, "theme.raill"],
+    [{ signature: { spectrun: true } }, "theme.signature.spectrun"],
+    [{ schemeToggle: "yes" }, "theme.schemeToggle"],
+  ];
+  for (const [overlay, key] of bad) {
+    const merged = structuredClone(THEME_DEFAULTS);
+    for (const [k, v] of Object.entries(overlay)) {
+      merged[k] = typeof v === "object" ? { ...merged[k], ...v } : v;
+    }
+    assert.throws(() => validateTheme(merged), (e) => e.message.startsWith(`site.json ${key}:`),
+      `${key} did not throw with a message naming it`);
+  }
+  assert.doesNotThrow(() => validateTheme(THEME_DEFAULTS), "the shipped defaults do not validate");
+});
+
+check("a bad theme value fails the build with the key in the message", () => {
+  const fixture = join(tmpdir(), `theme-bad-${process.pid}.json`);
+  writeFileSync(fixture, JSON.stringify({ theme: { scheme: "dim" } }));
+  const outDir = "_site-badtheme-check";
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    let stderr = "";
+    try {
+      execFileSync(process.execPath, ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe", env: { ...process.env, SITE_FIXTURE: fixture, NPM_DOWNLOADS_OFFLINE: "1" } });
+      assert.fail("the build succeeded with theme.scheme = dim");
+    } catch (error) {
+      stderr = String(error.stderr || error.message);
+    }
+    assert.ok(stderr.includes("theme.scheme"), `build error does not name theme.scheme:\n${stderr.slice(0, 400)}`);
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+    rmSync(fixture, { force: true });
+  }
+});
+
+// One build with every knob at its non-default value; each knob then has its
+// own assertion against that build. Cheaper than one build per knob and just
+// as specific in what it reports.
+function buildWithFixture(fixturePath, outDir) {
+  rmSync(outDir, { recursive: true, force: true });
+  execFileSync(process.execPath, ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+    { stdio: "pipe", env: { ...process.env, SITE_FIXTURE: fixturePath, NPM_DOWNLOADS_OFFLINE: "1" } });
+  return {
+    outDir,
+    tokens: readTokens(`${outDir}/_css/initial.css`),
+    html: readFileSync(`${outDir}/index.html`, "utf8"),
+    article: readFileSync(`${outDir}/articles/fixture-article/index.html`, "utf8"),
+  };
+}
+
+const KNOBS_OUT = "_site-knobs-check";
+let knobs;
+try {
+  knobs = buildWithFixture("test/fixtures/theme-knobs.json", KNOBS_OUT);
+} catch (error) {
+  knobs = null;
+  console.log(`FAIL the knob fixture builds — ${String(error.stderr || error.message).slice(0, 300)}`);
+  checks.push(false);
+}
+const defaults = { tokens: readTokens("_site/_css/initial.css"), html: readFileSync("_site/index.html", "utf8") };
+
+check("theme.fonts.* reach the font tokens, with the shipped fallbacks after them", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.match(knobs.tokens["--font-heading"], /^Georgia, /, `--font-heading: ${knobs.tokens["--font-heading"]}`);
+  assert.match(knobs.tokens["--font-body"], /^Verdana, /, `--font-body: ${knobs.tokens["--font-body"]}`);
+  assert.match(knobs.tokens["--font-mono"], /^Courier New, /, `--font-mono: ${knobs.tokens["--font-mono"]}`);
+  assert.match(defaults.tokens["--font-heading"], /^Hex Franklin Tight, /);
+  assert.match(defaults.tokens["--font-body"], /^Lato, /);
+});
+
+check("theme.shape sets the radius tokens", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.equal(defaults.tokens["--radius"], "0");
+  assert.equal(defaults.tokens["--radius-avatar"], "0");
+  assert.equal(knobs.tokens["--radius"], "0.35em");
+  assert.equal(knobs.tokens["--radius-avatar"], "50%");
+});
+
+check("theme.rail.width and theme.measure reach their tokens", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.equal(defaults.tokens["--rail-width"], "14rem");
+  assert.equal(defaults.tokens["--measure"], "31em");
+  assert.equal(knobs.tokens["--rail-width"], "18rem");
+  assert.equal(knobs.tokens["--measure"], "40em");
+});
+
+check("theme.signature.leader switches the dotted leader token", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.equal(defaults.tokens["--leader-border"], "1px dotted var(--c-border)");
+  assert.equal(knobs.tokens["--leader-border"], "0");
+});
+
+check("no font-family is hard-coded outside the token layer", () => {
+  const files = globSync("content/_css/sass/*.scss").filter((f) => !f.endsWith("_tokens.scss") && !f.endsWith("_fonts.scss"));
+  const offenders = [];
+  for (const file of files) {
+    readFileSync(file, "utf8").split("\n").forEach((line, i) => {
+      if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
+      const m = /font-family\s*:\s*([^;]+);/.exec(line);
+      if (!m) return;
+      const value = m[1].trim();
+      if (value === "inherit" || /^var\(--font-/.test(value)) return;
+      // _disqus.scss's Comic Sans is a joke rule on the "static-comments" empty
+      // state, ported verbatim; it is not a theme face.
+      if (file.endsWith("_disqus.scss") && /Comic Sans/.test(value)) return;
+      offenders.push(`${file}:${i + 1} ${value}`);
+    });
+  }
+  assert.deepEqual(offenders, [], `font-family literals bypass the font tokens:\n  ${offenders.join("\n  ")}`);
+});
+
+check("every border-radius reads a radius token", () => {
+  const files = globSync("content/_css/sass/*.scss").filter((f) => !f.endsWith("_tokens.scss"));
+  const offenders = [];
+  for (const file of files) {
+    readFileSync(file, "utf8").split("\n").forEach((line, i) => {
+      if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
+      const m = /border-radius\s*:\s*([^;]+);/.exec(line);
+      if (m && !/^(0|var\(--radius(-avatar)?\)|var\(--radius\) var\(--radius\) 0 0)$/.test(m[1].trim())) {
+        offenders.push(`${file}:${i + 1} ${m[1].trim()}`);
+      }
+    });
+  }
+  assert.deepEqual(offenders, [], `border-radius literals bypass theme.shape:\n  ${offenders.join("\n  ")}`);
+  // Native form controls (the search box, webmention comment forms) must
+  // follow theme.shape too, not the browser's default radius.
+  const initialCss = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(initialCss, /button[^{]*\{[^}]*border-radius:\s*var\(--radius\)/, "input/button/select/textarea does not read --radius");
+  // And the reset is gone: a rounded site must actually round.
+  const css = readFileSync(`${KNOBS_OUT}/_css/initial.css`, "utf8") + readFileSync(`${KNOBS_OUT}/_css/defer.css`, "utf8");
+  assert.ok(!/body :not\(\[class\*="pagefind"\]\)/.test(css), "the global border-radius:0 reset is still emitted");
+});
+
+check("theme.rail.side, theme.scheme and the heading-font state are written on <html>", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.match(defaults.html, /<html[^>]* data-rail="end"/);
+  assert.match(defaults.html, /<html[^>]* data-scheme="auto"/);
+  assert.match(defaults.html, /<html[^>]* data-heading-font="default"/);
+  assert.match(knobs.html, /<html[^>]* data-rail="start"/);
+  assert.match(knobs.html, /<html[^>]* data-scheme="dark"/);
+  assert.match(knobs.html, /<html[^>]* data-heading-font="custom"/);
+});
+
+check("the grid reads --rail-width and --measure, and rail=start swaps the columns", () => {
+  const css = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(css, /grid-template-columns:\s*1fr var\(--rail-width\) 2\.5rem/, "default grid does not read --rail-width");
+  assert.match(css, /minmax\(auto, var\(--measure\)\)/, "content grid does not read --measure");
+  assert.match(css, /max-width:\s*var\(--measure\)/, "content-grid-sibling does not read --measure");
+  assert.match(css, /html\[data-rail=start\][^{]*\.body-grid\s*\{[^}]*grid-template-columns:\s*2\.5rem var\(--rail-width\) 1fr/, "no start-side grid");
+  // Excludes the --measure custom-property declaration itself: that line IS
+  // the token's source value (site.json's default), not a rule that bypassed
+  // var(--measure). Every other occurrence would be a leak.
+  const cssWithoutTokenDecl = css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--measure:\s*31em;/, "");
+  assert.ok(!/\b31em\b/.test(cssWithoutTokenDecl), "a literal 31em survives in the compiled CSS outside the --measure declaration");
+});
+
+check("the dark scheme is emitted for auto and forced, and every dark token meets its ratio", () => {
+  const css = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(css, /@media \(prefers-color-scheme: dark\)\s*\{\s*html\[data-scheme=auto\]/, "no auto dark block");
+  assert.match(css, /color-scheme:\s*light dark/, ":root does not declare color-scheme");
+  // color-scheme is only "light dark" (both allowed) for auto — a forced
+  // scheme must declare just the one it forces, or the UA still offers both.
+  assert.match(css, /html\[data-scheme=light\]\s*\{[^}]*color-scheme:\s*light;/, "html[data-scheme=light] does not force color-scheme: light");
+  assert.match(css, /html\[data-scheme=dark\]\s*\{[^}]*color-scheme:\s*dark;/, "html[data-scheme=dark] does not force color-scheme: dark");
+
+  const t = readTokens("_site/_css/initial.css", 'html[data-scheme=dark]');
+  const bg = parseColor(t["--c-bg"]);
+  assert.ok(bg, `dark --c-bg is not a colour: ${t["--c-bg"]}`);
+  assert.ok(Math.max(...bg) < 0.25, `dark --c-bg is not dark: ${t["--c-bg"]}`);
+  for (const [token, min] of [
+    ["--c-fg", 4.5], ["--c-fg-muted", 4.5], ["--c-heading", 4.5], ["--c-link", 4.5],
+    ["--c-link-hover", 4.5], ["--c-link-visited", 4.5], ["--c-danger", 4.5], ["--c-focus", 3],
+  ]) {
+    const ratio = wcagContrast(parseColor(t[token]), bg);
+    assert.ok(ratio >= min, `dark ${token} is ${ratio.toFixed(2)}:1 against --c-bg, below ${min}:1`);
+  }
+  const fill = parseColor(t["--c-accent-fill"]);
+  const onFill = parseColor(t["--c-accent-fill-fg"]);
+  assert.ok(wcagContrast(onFill, fill) >= 4.5, `dark --c-accent-fill-fg is ${wcagContrast(onFill, fill).toFixed(2)}:1 on its fill`);
+  for (const token of ["--rail-bg", "--footer-bg", "--card-bg", "--c-highlight", "--c-border", "--c-on-accent"]) {
+    assert.ok(parseColor(t[token]), `dark ${token} missing or not a colour: ${t[token]}`);
+  }
+  const darkHighlightRatio = wcagContrast(parseColor(t["--c-link"]), parseColor(t["--c-highlight"]));
+  assert.ok(
+    darkHighlightRatio >= 4.5,
+    `dark --c-link on --c-highlight is ${darkHighlightRatio.toFixed(2)}:1, below the 4.5:1 floor`,
+  );
+});
+
+check("theme.signature.spectrum and .anchors gate their markup; leader and heading case follow their tokens", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.match(defaults.html, /<html[^>]* class="[^"]*page-gradient/, "default has no spectrum class");
+  assert.ok(!/page-gradient/.test(knobs.html), "spectrum=false still emits page-gradient");
+  assert.match(defaults.html, /<script src="\/heading-anchors\.js" type="module">/, "default does not load heading-anchors");
+  assert.ok(!/heading-anchors\.js/.test(knobs.html), "anchors=false still loads heading-anchors.js");
+
+  const css = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(css, /border-bottom:\s*var\(--leader-border\)/, "the leader does not read --leader-border");
+  assert.match(css, /html\[data-heading-font=default\][^{]*\{[^}]*text-transform:\s*uppercase/, "heading uppercase is not scoped to the default font");
+  assert.match(css, /html\[data-heading-font=default\][^{]*\{[^}]*font-variation-settings/, "variation axes are not scoped to the default font");
+  const unscoped = css.replace(/html\[data-heading-font=default\][^{]*\{[^}]*\}/g, "");
+  assert.ok(!/font-variation-settings/.test(unscoped), "a font-variation-settings rule is still unscoped");
+});
+
+check("IndieWeb stats share one muted family and the phone h-card lives in the menu", () => {
+  const defer = readFileSync("_site/_css/defer.css", "utf8");
+  // The offline build has no webmention data, so these two assert the
+  // selector text itself, checked by hand against
+  // _includes/webmentionlist.liquid lines 9 and 61 rather than rendered output.
+  assert.match(defer, /\.webmentions \.webmentions__facepile > h3[\s\S]*?\{[^}]*color:\s*var\(--c-fg-muted\)/, "facepile heading is not muted");
+  assert.match(defer, /\.webmentions \.webmentions__facepile > h3[\s\S]*?\{[^}]*font-size:\s*var\(--text-sm\)/, "facepile heading is not --text-sm");
+  assert.match(defer, /\.webmentions \.webmentions__facepile > h3[\s\S]*?\{[^}]*text-transform:\s*none/, "facepile heading is not un-uppercased — it ties the critical bundle's :is() rule but loses at equal specificity");
+  assert.match(defer, /\.webmentions summary\.hed-h3\s*\{[^}]*color:\s*var\(--c-fg-muted\)/, "comments summary is not muted");
+  const initial = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(initial, /\.rail \.h-card\s*\{\s*display:\s*none/, "the rail h-card is not hidden at one-column width");
+  assert.match(initial, /\.rail-sticky:has\(\.navigation-toggle\[aria-expanded=true\]\) \.h-card/, "no rule shows the h-card when the menu opens");
+  const hideIndex = initial.search(/\.rail \.h-card\s*\{[^}]*display:\s*none/);
+  const chromeFlexIndex = initial.search(/\.rail \.h-card\s*\{[^}]*display:\s*flex/);
+  assert.ok(hideIndex > -1 && chromeFlexIndex > -1, "could not locate both .rail .h-card rules to compare cascade order");
+  assert.ok(hideIndex > chromeFlexIndex, "the hide rule does not come after _theme-chrome.scss's unscoped .rail .h-card rule, so it loses the cascade");
+  // The hide rule must only apply below the phone breakpoint (719px), not the
+  // two-column breakpoint (979px) — otherwise the rail h-card vanishes at every
+  // one-column width instead of only on phones.
+  assert.ok(
+    initial.lastIndexOf("@media (max-width: 61.1875em)", hideIndex) >
+      initial.lastIndexOf("@media (max-width: 44.9375em)", hideIndex),
+    "the rail h-card hide rule is scoped to the phone breakpoint (719px) instead of the two-column breakpoint (979px)",
+  );
+
+  assert.match(initial, /--pagefind-ui-text:\s*var\(--c-fg\)/, "Pagefind text does not follow the scheme");
+
+  assert.match(initial, /\.tags \.tag-social\s*\{[^}]*background-color:\s*var\(--c-social-bg\)/, "the social pill does not read --c-social-bg");
+  const tagIndex = initial.search(/\.tags \.tag\s*\{/);
+  const tagSocialIndex = initial.search(/\.tags \.tag-social\s*\{[^}]*background-color:\s*var\(--c-social-bg\)/);
+  assert.ok(tagSocialIndex > tagIndex, "the neutral .tag-social override does not come after .tags .tag, so it loses the cascade");
+
+  assert.match(defer, /\bcode\s*\{[^}]*background-color:\s*var\(--card-bg\)/, "inline code does not read --card-bg");
+  const themeCodeSource = readFileSync("content/_css/sass/_theme-code.scss", "utf8");
+  assert.ok(!/--surface-/.test(themeCodeSource), "_theme-code.scss still references a bare --surface- step instead of --card-bg");
+});
+
+check("every emitted token is read somewhere, and every ramp and scale is used", () => {
+  const css = globSync("_site/_css/*.css").map((f) => readFileSync(f, "utf8")).join("\n");
+  const root = /:root\s*\{([\s\S]*?)\}/.exec(readFileSync("_site/_css/initial.css", "utf8"))[1];
+  const declared = [...root.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]);
+  const referenced = new Set([...css.matchAll(/var\((--[\w-]+)/g)].map((m) => m[1]));
+  const group = (name) => /^--(accent|surface|secondary|space|text)-/.exec(name)?.[1];
+  const unused = declared.filter((name) => !group(name) && !referenced.has(name));
+  assert.deepEqual(unused, [], `tokens emitted but never read: ${unused.join(", ")}`);
+  for (const g of ["accent", "surface", "secondary", "space", "text"]) {
+    assert.ok([...referenced].some((n) => n.startsWith(`--${g}-`)), `the --${g}-* ramp/scale is emitted but never referenced`);
+  }
+});
+
+check("the scheme toggle renders by default, is absent when theme.schemeToggle is false, and applies a stored choice before first paint", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.match(defaults.html, /<button type="button" class="scheme-toggle" aria-pressed="false" aria-label="Switch to dark scheme">/, "no toggle button in the default build");
+  assert.match(defaults.html, /class="scheme-toggle-icon"[^>]*>[\s\S]*?#fas-fa-circle-half-stroke/, "contrast icon missing from the toggle");
+  assert.match(defaults.html, /<html[^>]* data-scheme-default="auto"/, "no data-scheme-default on <html>");
+  const script = defaults.html.indexOf('localStorage.getItem("scheme")');
+  const style = defaults.html.indexOf("<style>");
+  assert.ok(script > -1, "no stored-scheme head script");
+  assert.ok(style > -1 && script < style, "the stored-scheme script does not precede the critical <style>");
+  assert.ok(!/scheme-toggle/.test(knobs.html), "schemeToggle=false still renders the toggle");
+  assert.ok(!/localStorage\.getItem\("scheme"\)/.test(knobs.html), "schemeToggle=false still emits the head script");
+  const css = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(css, /\.scheme-toggle-icon\s*\{[^}]*display:/, "no rule for the toggle's icon wrapper");
+  assert.ok(!/scheme-toggle-to-(light|dark)/.test(css), "the sun/moon swap rules were removed with the pair; a survivor is dead CSS");
+});
+
+rmSync(KNOBS_OUT, { recursive: true, force: true });
 
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;

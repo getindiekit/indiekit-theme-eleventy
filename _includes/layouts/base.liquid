@@ -63,7 +63,9 @@ through to site.description below — not an error case. {% endcomment -%}
 {%- capture ogTitle %}{{ title }}—{{ site.name }}{% endcapture -%}
 {%- else -%}{%- assign ogTitle = site.name -%}{%- endif -%}
 <!doctype html>
-<html lang="en"{% if tmpl or templateclass or classes.html %} class="{% if tmpl %}tmpl-{{ tmpl }}{% endif %}{% if templateclass %} {{ templateclass }}{% endif %}{%- if classes.html %} {{ classes.html }}{% endif -%}"{% endif %}{% if eleventy.env.runMode == "serve" %} data-eleventy-runmode="{{ eleventy.env.runMode }}"{% endif %}>
+{%- assign headingFontState = "custom" -%}
+{%- if site.theme.fonts.heading == "Hex Franklin Tight" -%}{%- assign headingFontState = "default" -%}{%- endif -%}
+<html lang="en" data-scheme="{{ site.theme.scheme }}" data-scheme-default="{{ site.theme.scheme }}" data-rail="{{ site.theme.rail.side }}" data-heading-font="{{ headingFontState }}"{% if tmpl or templateclass or classes.html or site.theme.signature.spectrum %} class="{% if tmpl %}tmpl-{{ tmpl }}{% endif %}{% if templateclass %} {{ templateclass }}{% endif %}{%- if classes.html %} {{ classes.html }}{% endif -%}{%- if site.theme.signature.spectrum %} page-gradient{% endif -%}"{% endif %}{% if eleventy.env.runMode == "serve" %} data-eleventy-runmode="{{ eleventy.env.runMode }}"{% endif %}>
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -180,6 +182,12 @@ above. {% endcomment -%}
 		   /feed.xml is advertised below. {% endcomment -%}
 {% endif %}
 
+{%- comment %} A visitor's stored scheme is applied before the first paint, so
+   a dark choice never flashes light. Only the two explicit values are honoured;
+   anything else leaves the configured default in place. {% endcomment -%}
+{%- if site.theme.schemeToggle %}
+		<script>(function(){try{var s=localStorage.getItem("scheme");if(s==="light"||s==="dark"){document.documentElement.setAttribute("data-scheme",s);}}catch(e){}})();</script>
+{%- endif %}
 {% comment %} Critical CSS in production, blocking stylesheet for local dev
 for better livereload — livereload can't hot-swap an inlined <style>.
 Ported from zachleat.com, _includes/layouts/base.liquid:45-51. The source's
@@ -262,6 +270,7 @@ ported. {% endcomment %}
 		<script src="{{ url }}" defer></script>
 {%- endfor %}
 {%- for url in modules -%}
+{%- if url == "/heading-anchors.js" and site.theme.signature.anchors == false %}{% continue %}{% endif -%}
 		<script src="{{ url }}" type="module"></script>
 {%- endfor %}
 {%- endif %}

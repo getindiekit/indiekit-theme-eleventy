@@ -69,6 +69,12 @@ not obviously so (still a plausible-looking ISO string). Passing `page: post`
 on the include (LiquidJS locals shadow the parent scope for that render only)
 makes the filters read each post's own file, exactly as they do when that
 page renders itself.
+
+Also expects a local `postTypeIconHtml`, pre-rendered by partials/post-type-icon.liquid
+and captured by the caller BEFORE the `page: post` override above — same
+reason `socialHtml` already is (see that capture's own comment, and
+post-type-icon.liquid's). An {% icon %} called from inside this file would
+file its sprite symbol under the POST's url instead of the listing page's.
 {%- endcomment -%}
 {%- assign date = post.data.date -%}
 {%- assign title = post.data.title -%}
@@ -80,6 +86,11 @@ page renders itself.
 {%- assign postType = post.data.postType -%}
 {%- assign category = post.data.category -%}
 <li class="h-entry" data-post-type="{{ postType }}">
+	{%- comment %} One icon per type, muted, from the Font Awesome sprite the
+	   social counts already use. Shape was tried and rejected; colour was tried
+	   and rejected. An icon is legible without decoding. Pre-rendered by the
+	   caller — see this file's header comment. {% endcomment -%}
+	<span class="post-type-icon" aria-hidden="true">{{ postTypeIconHtml }}</span><span class="sr-only">{{ postType | capitalize }}</span>
 	{% include "partials/author-card.liquid" %}
 	{% case postType %}
 		{% when "article" %}{% include "types/article.liquid" %}

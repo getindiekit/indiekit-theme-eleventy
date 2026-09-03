@@ -22,7 +22,7 @@
     margin-left: -12px;
     width: var(--webmention-avatar-size);
     height: var(--webmention-avatar-size);
-    border-radius: 50%;
+    border-radius: var(--radius-avatar);
     border: 2px solid var(--c-bg);
     line-height: 1;
     overflow: hidden;
@@ -78,4 +78,25 @@
 .form-webmention [type="submit"] {
     margin-left: .25em;
     width: 12em;
+}
+/* Facepiles read as their own surface. --card-bg rather than a literal, and set
+   here rather than in the design layer: this file compiles into the deferred
+   bundle, which loads after critical, so an override from there could not win. */
+.webmentions__facepile {
+	background-color: var(--card-bg);
+	padding: var(--space-s);
+}
+
+/* The stats read as one family: the same muted colour and small size as the
+   listing-row counts and the collections hub, never a heading voice. The
+   facepile selector carries `.webmentions` so it reaches (0,2,1) and ties the
+   critical bundle's scoped heading rule, which :is(.hed-h3) lifts to a class
+   term; at a tie this sheet loads later and wins. */
+.webmentions .webmentions__facepile > h3,
+.webmentions summary.hed-h3 {
+	color: var(--c-fg-muted);
+	font-size: var(--text-sm);
+	font-family: var(--font-body);
+	font-weight: 700;
+	text-transform: none;
 }

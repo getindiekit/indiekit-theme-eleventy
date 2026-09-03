@@ -1,5 +1,3 @@
-@use "config";
-
 @mixin a11y-only {
 	position: absolute;
 	height: 1px;
@@ -28,13 +26,13 @@
 }
 @mixin webfont {
 	& {
-		font-family: Lato, Numero, config.$fallbackSystemFont;
+		font-family: var(--font-body);
 		font-weight: 400;
 	}
 }
 @mixin webfontBold {
 	& {
-		font-family: Lato, Numero, config.$fallbackSystemFont;
+		font-family: var(--font-body);
 		font-weight: 700;
 	}
 }

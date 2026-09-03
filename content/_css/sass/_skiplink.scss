@@ -21,8 +21,10 @@
 
 .skiplink {
 	text-align: center;
-	background: var(--surface-900);
-	color: var(--surface-50);
+	// Inverted chip: the page's foreground and background swapped, not a raw
+	// ramp step — it stays inverted whatever surface a site configures.
+	background: var(--c-fg);
+	color: var(--c-bg);
 	padding: 1em;
 	text-decoration: none;
 	font-weight: 700;

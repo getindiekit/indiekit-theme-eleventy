@@ -20,6 +20,7 @@
 // than an unreadable one: amber (#f0a000, 2.16:1 on white) walks down to a step
 // that passes, while purple (5.15:1) is used essentially as given.
 @use "sass:color";
+@use "sass:list";
 @use "sass:map";
 @use "sass:math";
 @use "theme-config" as cfg;
@@ -97,6 +98,68 @@ $surface: ramp(cfg.$surface);
 }
 
 $_bg: map.get($surface, 50);
+$_link: pick-step($accent, $_bg, 4.5);
+
+// Dark counterpart: walks DARK to light and returns the first passing step, so
+// a link keeps its saturation instead of washing to the palest passing tint.
+@function pick-step-dark($ramp, $bg, $min) {
+	@each $key in (700, 600, 500, 400, 300, 200, 100, 50) {
+		$candidate: map.get($ramp, $key);
+		@if contrast($candidate, $bg) >= $min {
+			@return $candidate;
+		}
+	}
+	@return map.get($ramp, 50);
+}
+
+$_bg-dark: map.get($surface, 950);
+$_link-dark: pick-step-dark($accent, $_bg-dark, 4.5);
+
+// The highlight sits UNDER link text, so it is clamped against the link, not
+// the page: the lightest secondary step (light scheme) or darkest (dark) that
+// keeps the already-clamped link at 4.5:1. The default lands on the same
+// step as before, so nothing changes visually until a config needs it.
+@function pick-highlight($ramp, $on, $steps) {
+	@each $key in $steps {
+		$candidate: map.get($ramp, $key);
+		@if contrast($candidate, $on) >= 4.5 {
+			@return $candidate;
+		}
+	}
+	@return map.get($ramp, list.nth($steps, -1));
+}
+
+// Every role token rebound against the dark surface. Same ramps, same clamp,
+// so a site gets a readable dark variant from the same two inputs.
+@mixin dark-tokens {
+	--c-bg: var(--surface-950);
+	--c-fg: var(--surface-100);
+	--c-fg-muted: #{pick-step-dark($surface, $_bg-dark, 4.5)};
+	--c-heading: var(--surface-50);
+	--c-border: var(--surface-800);
+
+	--c-link: #{$_link-dark};
+	--c-link-hover: var(--accent-300);
+	--c-link-visited: var(--accent-200);
+	--c-focus: #{pick-step-dark($accent, $_bg-dark, 3)};
+	--c-on-accent: var(--surface-950);
+
+	--c-accent-fill: var(--secondary-900);
+	--c-accent-fill-fg: var(--secondary-100);
+	--c-highlight: #{pick-highlight($secondary, $_link-dark, (900, 950))};
+
+	--c-social-fg: var(--c-fg-muted);
+	--c-marker: var(--c-fg-muted);
+
+	--rail-bg: var(--surface-900);
+	--rail-fg: var(--surface-100);
+	--rail-edge: var(--c-link);
+	--footer-bg: var(--surface-900);
+	--footer-fg: var(--surface-100);
+	--card-bg: var(--surface-900);
+
+	--c-danger: #{pick-step-dark(ramp(#ff2f0f), $_bg-dark, 4.5)};
+}
 
 // --- Scales -------------------------------------------------------------
 //
@@ -123,6 +186,8 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 // --- Tokens -------------------------------------------------------------
 
 :root {
+	color-scheme: light dark;
+
 	@each $key, $value in $accent {
 		--accent-#{$key}: #{$value};
 	}
@@ -139,6 +204,29 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 		--text-#{$key}: #{$value};
 	}
 
+	// Fonts. The configured stack first, the shipped fallback after it, so a
+	// name that fails to load degrades to the same system face the default does.
+	--font-heading: #{cfg.$font-heading}, system-ui, sans-serif;
+	--font-body: #{cfg.$font-body}, Numero, system-ui, sans-serif;
+	--font-mono: #{cfg.$font-mono}, monospace;
+
+	// Shape. One corner radius for boxes, one for avatars (a circle when rounded,
+	// a square when sharp — the logo has no soft edges).
+	--radius: #{cfg.$radius};
+	--radius-avatar: #{cfg.$radius-avatar};
+
+	// Layout. Read by the two-column grid and the content column.
+	--rail-width: #{cfg.$rail-width};
+	--measure: #{cfg.$measure};
+
+	// The dotted leader on listing rows is a signature of the port; off, the
+	// leader's flex spacer stays and only the rule disappears.
+	@if cfg.$leader {
+		--leader-border: 1px dotted var(--c-border);
+	} @else {
+		--leader-border: 0;
+	}
+
 	// Surfaces and text. Named by ROLE, so a dark variant later swaps which step
 	// each points at without renaming anything.
 	--c-bg: var(--surface-50);
@@ -148,7 +236,7 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 	--c-border: var(--surface-200);
 
 	// Interactive. 4.5:1 for text, 3:1 for non-text UI, per WCAG.
-	--c-link: #{pick-step($accent, $_bg, 4.5)};
+	--c-link: #{$_link};
 	--c-link-hover: var(--accent-700);
 	// Visited is a real distinction in the port source (:link and :visited were
 	// different greens), so it keeps its own token rather than collapsing into
@@ -157,64 +245,35 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 	--c-link-visited: var(--accent-800);
 	--c-focus: #{pick-step($accent, $_bg, 3)};
 
-	// Text placed ON the accent (the active nav pill). Guaranteed readable for
-	// free: --c-link is clamped to >=4.5:1 against --c-bg, and contrast is
-	// symmetric, so the background colour reversed out against surface-50 passes
-	// by the same margin.
+	// Text placed ON the accent, for any filled accent surface a site adds.
+	// Guaranteed readable for free: --c-link is clamped to >=4.5:1 against
+	// --c-bg, and contrast is symmetric, so the background colour reversed out
+	// against surface-50 passes by the same margin.
 	--c-on-accent: var(--surface-50);
 
-	// Amber is a FILL only: at 2.16:1 on white it fails even the 3:1 non-text
-	// threshold, so it may never carry text or be a border. Anything placed on
-	// it uses --c-accent-fill-fg.
-	// The secondary colour's one job: filled surfaces that carry text, which is
-	// all the raw hue can safely do — amber is 2.16:1 on white and fails even the
-	// 3:1 non-text threshold as a foreground. A light step gives the fill, a dark
-	// step of the same hue gives the text on it, so the pair is legible by
+	// The secondary colour's two jobs: filled surfaces that carry text (this
+	// pair), and the text highlight below. Filled surfaces are all the raw hue
+	// can safely do — amber is 2.16:1 on white and fails even the 3:1 non-text
+	// threshold as a foreground. A light step gives the fill, a dark step of
+	// the same hue gives the text on it, so the pair is legible by
 	// construction whatever secondary is configured to.
 	--c-accent-fill: var(--secondary-100);
 	--c-accent-fill-fg: var(--secondary-900);
+	// Text highlight (the homepage description's links). The secondary's second
+	// job: a tint of the same hue as the pills, so the two read as one family.
+	// Clamped against --c-link (the text sitting on it), not against the page.
+	--c-highlight: #{pick-highlight($secondary, $_link, (100, 50))};
 
-	// The social-count pill encodes three DIFFERENT things — boosts, likes,
-	// replies — so its colours carry information rather than brand. Deriving them
-	// from one primary would render all three the same hue and destroy the
-	// distinction at a glance, the same reason the syntax-highlighting palette is
-	// out of scope. They are tokens rather than literals so a site can still
-	// restyle them, and so a dark variant has somewhere to go.
-	--c-social-boost: #006000;
-	--c-social-boost-bg: #e4f7e4;
-	--c-social-like: #880808;
-	--c-social-like-bg: #ffeded;
-	--c-social-reply: #535100;
-	--c-social-reply-bg: #edf1e4;
+	// The social-count pill is neutral. Its icons already distinguish boosts,
+	// likes and replies; three saturated hues for three counts was decoration
+	// competing with the rest of the page.
+	--c-social-fg: var(--c-fg-muted);
+	--c-social-bg: transparent;
 
-	// Inverted field (the rail). These deliberately reference RAMP steps rather
-	// than semantic tokens: the rail rebinds --c-link and friends inside its own
-	// scope, and a custom property is substituted at its USE site, so consuming
-	// --c-link on the same element that rebinds it resolves to the new value —
-	// the rail painted itself in its own text colour. Ramp steps are never
-	// rebound, so they are safe to read from inside an inverted scope.
-	--c-field: var(--accent-500);
-	--c-field-fg: var(--surface-50);
-
-	// POST-TYPE MARKERS. The logo is four solids in four hues; the theme has six
-	// post types. Rather than invent two more colours, the sixth distinction is
-	// filled versus outline — originals are filled, responses are outlined in the
-	// same hue. A marker conveys which kind of post this is, so WCAG's 3:1
-	// non-text threshold applies to it, and each hue goes through the same
-	// pick-step clamp as everything else: raw amber is 2.16:1 and would be
-	// decorative rather than legible.
-	// 4.5 rather than the 3 a marker strictly needs: pick-step returns the
-	// LIGHTEST passing step, and at 3 the hues come back washed (#b58542 for
-	// amber) — fine for a link, wrong for a solid block. Asking for the text
-	// ratio yields the deeper, richer end of each hue, which reads as the logo's
-	// saturated solids rather than pastels, and clears the marker threshold with
-	// room to spare.
-	--c-type-article: #{pick-step(ramp(#9435f4), $_bg, 4.5)};
-	--c-type-note: #{pick-step(ramp(#f0a000), $_bg, 4.5)};
-	--c-type-photo: #{pick-step(ramp(#f06f00), $_bg, 4.5)};
-	--c-type-like: #{pick-step(ramp(#ff2f0f), $_bg, 4.5)};
-	--c-type-reply: var(--c-type-article);
-	--c-type-bookmark: var(--c-type-photo);
+	// POST-TYPE MARKERS. One muted colour for the per-type icon on listing rows
+	// (partials/post-type-icon.liquid). Colour and shape were both tried and
+	// rejected; the icon distinguishes without competing.
+	--c-marker: var(--c-fg-muted);
 
 	// COMPONENT LAYER. The third tier of primitive -> semantic -> component.
 	// The inverted surfaces previously only rebound global semantics inside their
@@ -222,10 +281,30 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 	// rail existed, so restyling it meant reading the stylesheet to discover that
 	// it redefines --c-link. These name the seam. Rebinding still happens — it is
 	// what makes descendants follow — but it is no longer the only door in.
-	--rail-bg: var(--c-field);
-	--rail-fg: var(--c-field-fg);
-	--footer-bg: var(--surface-900);
-	--footer-fg: var(--surface-100);
+	// Large areas stay quiet. A full-saturation rail forces every other accent
+	// to fight it; a tint with an accent edge reads as chrome without shouting.
+	--rail-bg: var(--surface-100);
+	--rail-fg: var(--c-fg);
+	--rail-edge: var(--c-link);
+	--footer-bg: var(--surface-100);
+	--footer-fg: var(--c-fg);
+	// Cards: the raised-but-flat blocks — the rail h-card, the prev/next panel,
+	// the webmention facepiles. A tint rather than a border, because the design
+	// has no shadows to separate them with.
+	--card-bg: var(--surface-100);
 
 	--c-danger: #{pick-step(ramp(#ff2f0f), $_bg, 4.5)};
+}
+
+@media (prefers-color-scheme: dark) {
+	html[data-scheme="auto"] {
+		@include dark-tokens;
+	}
+}
+html[data-scheme="dark"] {
+	@include dark-tokens;
+	color-scheme: dark;
+}
+html[data-scheme="light"] {
+	color-scheme: light;
 }

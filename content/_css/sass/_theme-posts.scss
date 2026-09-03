@@ -44,15 +44,17 @@
 .posts .subhed {
 	line-height: 1;
 	margin-top: 3em;
-	text-transform: uppercase;
 	display: flex;
 	gap: 1em;
 	align-items: center;
 }
+html[data-heading-font="default"] .posts .subhed { text-transform: uppercase; }
 .subhed-year {
-	font-family: Hex Franklin Tight, system-ui, sans-serif;
-	font-variation-settings: "wdth" 65, "TYTE" 0, "NOTC" 0;
+	font-family: var(--font-heading);
 	font-size: 2.315789473684em; /* 44px /19 */
+}
+html[data-heading-font="default"] .subhed-year {
+	font-variation-settings: "wdth" 65, "TYTE" 0, "NOTC" 0;
 }
 .subhed-count {
 	color: var(--c-fg-muted);
@@ -81,7 +83,7 @@
 	width: 100%;
 	max-width: 28.125rem;
 	border: 1px solid var(--c-border);
-	border-radius: .2em;
+	border-radius: var(--radius);
 	transition: .25s box-shadow, .25s border-color;
 	/* Shadow, not colour — translucent black is depth in any palette. */
 	box-shadow: 0 6px 12px 0px rgba(0, 0, 0, .1);
@@ -116,7 +118,7 @@ a[href]:is(:focus, :hover) .project_img {
   linear-gradient(
     to bottom,
     config.$primaryColor,
-    var(--accent-800),
+    var(--c-link-visited),
   );
 }
 .layout-list p + ol.posts {
@@ -193,7 +195,7 @@ a[href]:is(:focus, :hover) .project_img {
 	width: 3rem;
 	height: 3rem;
 	object-fit: cover;
-	border-radius: 0.2em;
+	border-radius: var(--radius);
 }
 
 /* Social proof pill — ported from _theme.scss:1295-1350. The source's
@@ -220,39 +222,22 @@ a[href]:is(:focus, :hover) .project_img {
 }
 .tags .tag-social > * {
 	display: inline-flex;
-	height: 1.5625rem; /* 25px /16 */
-	justify-content: center;
 	align-items: center;
-	gap: 0;
-	padding: 0.25em 0.5em;
-	border: 1px solid;
-	border-radius: 0;
-}
-.tags .tag-social > :first-child {
-	border-top-left-radius: 0.5em;
-	border-bottom-left-radius: 0.5em;
-}
-.tags .tag-social > :last-child {
-	border-top-right-radius: 0.5em;
-	border-bottom-right-radius: 0.5em;
-}
-.tags .tag-social > :not(:first-child) {
-	border-inline-start: none;
-}
-.tags .tag-social > :not(:last-child) {
-	border-inline-end: none;
+	gap: 0.15em;
+	padding: 0 0.35em 0 0;
+	border: 0;
 }
 .tag-social--boost {
-	color: var(--c-social-boost);
-	background-color: var(--c-social-boost-bg);
+	color: var(--c-social-fg);
+	background-color: var(--c-social-bg);
 }
 .tag-social--like {
-	color: var(--c-social-like);
-	background-color: var(--c-social-like-bg);
+	color: var(--c-social-fg);
+	background-color: var(--c-social-bg);
 }
 .tag-social--reply {
-	color: var(--c-social-reply);
-	background-color: var(--c-social-reply-bg);
+	color: var(--c-social-fg);
+	background-color: var(--c-social-bg);
 }
 .posts .deprecated,
 .posts .deprecated :link,
@@ -293,7 +278,7 @@ a[href]:is(:focus, :hover) .project_img {
 				content: "";
 				min-width: .75em;
 				flex-grow: 999;
-				border-bottom: 1px dotted var(--c-border);
+				border-bottom: var(--leader-border);
 			}
 			&:not(:empty):before {
 				margin-right: .5em;

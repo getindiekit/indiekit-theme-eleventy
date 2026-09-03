@@ -1,11 +1,12 @@
 @use "config";
+@use "theme-config" as cfg;
 
 // Geometric layer — the design decisions, as opposed to the token layer that
 // supplies their values.
 //
 // Derived from the Indiekit logo: four saturated solids, hard edges, flat
-// fields. So: no border-radius, no shadows, no gradients. Where the port source
-// used depth to separate things, this uses colour and edge.
+// fields. Sharp is the default; theme.shape switches every corner through
+// --radius and --radius-avatar, so nothing here resets radii any more.
 //
 // This is also where the token system stops being plumbing. The rail inverts by
 // REDEFINING four custom properties inside its own scope — every descendant
@@ -13,46 +14,20 @@
 // override of its own. That is not achievable with Sass variables, which are
 // resolved at build time and cannot be rebound per selector.
 
-/* --- Flat by default ---------------------------------------------------- */
-
-/* The logo has no soft edges. Removing these globally is deliberate: leaving
-   two or three rounded survivors reads as an oversight rather than a style. */
-/* Enumerating selectors missed several (the avatar's 50%, the social pill's
-   segment radii, listing thumbnails). Reset broadly and re-exempt Pagefind's
-   shipped UI, which is a third-party stylesheet this theme does not own. */
-body :not([class*="pagefind"]):not([class*="pagefind"] *) {
-	border-radius: 0;
-}
-/* The social pill rounds its end segments with a two-class selector, which
-   outranks the reset above. Matched at equal specificity rather than reaching
-   for !important. */
-.tags .tag-social > :first-child,
-.tags .tag-social > :last-child {
-	border-radius: 0;
-}
-:where(.navigation-toggle[aria-expanded="true"] + #site-nav, .posts-thumb img) {
-	box-shadow: none;
-}
-
 /* --- The rail as a colour field ----------------------------------------- */
 
 .rail {
-	/* --c-field, not --c-link: this rule rebinds --c-link below, and a custom
-	   property resolves at its use site, so reading it here would pick up the
-	   rebound value and paint the rail in its own text colour. */
 	background-color: var(--rail-bg);
 	color: var(--rail-fg);
+	/* The accent appears here as an EDGE, not a field. A 3px rule carries the
+	   brand at a fraction of the visual weight, and leaves every other element
+	   free to be read rather than to compete. */
+	border-inline-start: 3px solid var(--rail-edge);
+}
 
-	/* Rebinding, not overriding. Everything inside the rail resolves these four
-	   names, so the nav, the h-card, its muted meta and every border invert
-	   together — and a site that reconfigures its primary gets a correctly
-	   inverted rail for free. */
-	--c-fg: var(--rail-fg);
-	--c-fg-muted: color-mix(in srgb, var(--rail-fg) 72%, transparent);
-	--c-border: color-mix(in srgb, var(--rail-fg) 28%, transparent);
-	--c-link: var(--rail-fg);
-	--c-link-visited: var(--rail-fg);
-	--c-bg: transparent;
+html[data-rail="start"] .rail {
+	border-inline-start: 0;
+	border-inline-end: 3px solid var(--rail-edge);
 }
 
 @media (min-width: config.$twoColLayoutMinWidth) {
@@ -71,51 +46,35 @@ body :not([class*="pagefind"]):not([class*="pagefind"] *) {
 
 /* The active nav item reverses out of the field instead of filling with it. */
 .rail .tags-rail-links :any-link.active {
-	background-color: var(--c-field-fg);
-	color: var(--c-field);
-}
-
-/* --- Post-type markers -------------------------------------------------- */
-
-/* A solid block per row, echoing the logo's solids. Originals are filled,
-   responses are outlined in the same hue — six distinctions from four colours,
-   without inventing a fifth. */
-.posts li[data-post-type] {
-	position: relative;
-	padding-left: var(--space-l);
-}
-.posts li[data-post-type]::after {
-	content: "";
-	position: absolute;
-	left: 0;
-	top: 0.55em;
-	width: 0.75rem;
-	height: 0.75rem;
-	background-color: var(--type-color, var(--c-fg-muted));
-}
-.posts li[data-post-type="article"] { --type-color: var(--c-type-article); }
-.posts li[data-post-type="note"]    { --type-color: var(--c-type-note); }
-.posts li[data-post-type="photo"]   { --type-color: var(--c-type-photo); }
-.posts li[data-post-type="like"]    { --type-color: var(--c-type-like); }
-
-/* Responses: same hue, hollow. */
-.posts li[data-post-type="reply"]::after,
-.posts li[data-post-type="bookmark"]::after {
+	color: var(--c-link);
 	background-color: transparent;
-	border: 2px solid var(--type-color);
+	font-weight: 700;
 }
-.posts li[data-post-type="reply"]    { --type-color: var(--c-type-reply); }
-.posts li[data-post-type="bookmark"] { --type-color: var(--c-type-bookmark); }
+
+/* --- Post-type icons ---------------------------------------------------- */
+
+/* One muted icon per row, first in the flex row above the dotted-list
+   breakpoint and inline before the link below it. Sized to the social-count
+   icons so the two ends of a row match. */
+.post-type-icon {
+	flex: 0 0 auto;
+	color: var(--c-marker);
+	line-height: 1;
+}
+.post-type-icon .z-icon {
+	width: 1em;
+	height: 1em;
+	margin: 0 0.15em 0 0;
+	vertical-align: -0.1em;
+}
 
 /* --- Footer as a band --------------------------------------------------- */
 
 .footer {
 	background-color: var(--footer-bg);
 	color: var(--footer-fg);
+	border-top: 1px solid var(--c-border);
 	padding: 1.25rem var(--space-m);
-	--c-fg: var(--footer-fg);
-	--c-link: var(--footer-fg);
-	--c-link-visited: var(--footer-fg);
 }
 
 /* --- Category pills ------------------------------------------------------ */
@@ -125,5 +84,77 @@ body :not([class*="pagefind"]):not([class*="pagefind"] *) {
 .tags .tag {
 	background-color: var(--c-accent-fill);
 	color: var(--c-accent-fill-fg);
+	border: 0;
 	padding: 0.15em 0.5em;
+}
+
+/* The social counts share the .tag class for sizing but are not a category:
+   they stay neutral, as their own tokens say. */
+.tags .tag-social {
+	background-color: var(--c-social-bg);
+	color: var(--c-social-fg);
+	padding: 0;
+}
+
+/* --- Cards -------------------------------------------------------------- */
+
+/* NOTE: dl.nextprev and the webmention facepiles are styled in _lists.scss and
+   _webmention.scss, which compile into the DEFERRED bundle. This layer is in
+   the critical one, and the deferred sheet loads after it — so an override
+   written here would lose to them at any specificity, silently. Those
+   components read --card-bg in their own files instead, which is the right
+   shape anyway: a component consuming a token beats a layer shouting over it. */
+
+/* --- The h-card at one column ------------------------------------------ */
+
+@media (max-width: config.$oneColLayoutMaxWidth) {
+	/* Wherever the nav is behind the hamburger, so is the card: present in the
+	   DOM on every page (rel=author still resolves to it), shown when the menu
+	   opens. On two columns it stays in the rail. Lives here, not in
+	   _navigation.scss: _theme-chrome.scss's own `.rail .h-card` rule is imported
+	   after navigation and won at equal specificity; this layer is imported last. */
+	.rail .h-card {
+		display: none;
+	}
+	.rail-sticky:has(.navigation-toggle[aria-expanded="true"]) .h-card {
+		display: flex;
+		flex-basis: 100%;
+	}
+}
+
+/* --- Scheme toggle ------------------------------------------------------ */
+
+// theme.schemeToggle gates this section at compile time, not just the
+// markup (default.liquid): this file is part of the critical bundle inlined
+// verbatim into every page's <style> (see _11ty/sassPlugin.js's
+// inlineCriticalCss), so a selector left in the compiled CSS would still
+// leak the literal text "scheme-toggle" onto the page with the button never
+// rendered — the same reasoning as _layout.scss's page-gradient gate.
+@if cfg.$scheme-toggle {
+	.rail header {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: var(--space-xs);
+	}
+	.scheme-toggle {
+		flex: 0 0 auto;
+		background: none;
+		border: 0;
+		padding: 0.25em;
+		color: var(--c-link);
+		cursor: pointer;
+		line-height: 1;
+	}
+	/* One icon for both states, the contrast symbol; the button's label carries
+	   the direction. A sun/moon pair with CSS swapping was tried and dropped:
+	   Font Awesome's sun reads as a cog at this size. */
+	.scheme-toggle-icon {
+		display: inline-flex;
+	}
+	.scheme-toggle .z-icon {
+		width: 1.25em;
+		height: 1.25em;
+		margin: 0;
+	}
 }
