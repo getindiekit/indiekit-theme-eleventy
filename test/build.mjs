@@ -1102,6 +1102,11 @@ await checkAsync(
         !inlinedStyles.some((s) => s.includes(criticalMarker)),
         "critical CSS is inlined under serve mode — livereload can't hot-swap this, defeating the point of the link",
       );
+
+      assert.ok(
+        existsSync(`${outDir}/pagefind/pagefind.js`),
+        "a serve-mode build wrote no Pagefind index, so the search page would be empty on a dev server",
+      );
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }
@@ -5116,6 +5121,14 @@ check("IndieWeb stats share one muted family and the phone h-card lives in the m
   const chromeFlexIndex = initial.search(/\.rail \.h-card\s*\{[^}]*display:\s*flex/);
   assert.ok(hideIndex > -1 && chromeFlexIndex > -1, "could not locate both .rail .h-card rules to compare cascade order");
   assert.ok(hideIndex > chromeFlexIndex, "the hide rule does not come after _theme-chrome.scss's unscoped .rail .h-card rule, so it loses the cascade");
+  // The hide rule must only apply below the phone breakpoint (719px), not the
+  // two-column breakpoint (979px) — otherwise the rail h-card vanishes at every
+  // one-column width instead of only on phones.
+  assert.ok(
+    initial.lastIndexOf("@media (max-width: 44.9375em)", hideIndex) >
+      initial.lastIndexOf("@media (max-width: 61.1875em)", hideIndex),
+    "the rail h-card hide rule is scoped to the two-column breakpoint (979px) instead of the phone breakpoint (719px)",
+  );
 
   assert.match(initial, /\.tags \.tag-social\s*\{[^}]*background-color:\s*var\(--c-social-bg\)/, "the social pill does not read --c-social-bg");
   const tagIndex = initial.search(/\.tags \.tag\s*\{/);

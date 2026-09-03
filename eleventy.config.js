@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { DateTime } from "luxon";
@@ -89,15 +89,20 @@ export default function (eleventyConfig) {
   // Chaining the script onto `npm run build` was not enough: several checks in
   // test/build.mjs run `npx @11ty/eleventy` directly, so `npm test` rebuilt
   // _site without the index and left the search page broken every time.
-  // Running it from eleventy.after means any Eleventy build produces a working
-  // search page — there is no longer a way to build the site without it.
+  // Running it from eleventy.after means every build, including a dev
+  // server's first build, produces a working search page.
   //
   // Scoped to the six post-type directories so OG cards, the search page
   // itself and the homepage never enter the index.
   eleventyConfig.on("eleventy.after", async (hookArgs) => {
     const { runMode } = hookArgs;
     const outputDir = outputDirOf(hookArgs);
-    if (runMode === "serve" || runMode === "watch") return; // dev: skip the cost
+    // Dev mode: index once, not on every incremental rebuild. The search page
+    // destroys its own fallback form before importing /pagefind/pagefind-ui.js,
+    // so a dev server with no index shows an empty page and a console error.
+    // Content edited during a serve session is not re-indexed until the next
+    // full build; restart the server to refresh it.
+    if ((runMode === "serve" || runMode === "watch") && existsSync(`${outputDir}/pagefind/pagefind.js`)) return;
     const { createIndex } = await import("pagefind");
     const { index } = await createIndex();
     await index.addDirectory({
