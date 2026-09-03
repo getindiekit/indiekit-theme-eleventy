@@ -139,6 +139,29 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 		--text-#{$key}: #{$value};
 	}
 
+	// Fonts. The configured stack first, the shipped fallback after it, so a
+	// name that fails to load degrades to the same system face the default does.
+	--font-heading: #{cfg.$font-heading}, system-ui, sans-serif;
+	--font-body: #{cfg.$font-body}, Numero, system-ui, sans-serif;
+	--font-mono: #{cfg.$font-mono}, monospace;
+
+	// Shape. One corner radius for boxes, one for avatars (a circle when rounded,
+	// a square when sharp — the logo has no soft edges).
+	--radius: #{cfg.$radius};
+	--radius-avatar: #{cfg.$radius-avatar};
+
+	// Layout. Read by the two-column grid and the content column.
+	--rail-width: #{cfg.$rail-width};
+	--measure: #{cfg.$measure};
+
+	// The dotted leader on listing rows is a signature of the port; off, the
+	// leader's flex spacer stays and only the rule disappears.
+	@if cfg.$leader {
+		--leader-border: 1px dotted var(--c-border);
+	} @else {
+		--leader-border: 0;
+	}
+
 	// Surfaces and text. Named by ROLE, so a dark variant later swaps which step
 	// each points at without renaming anything.
 	--c-bg: var(--surface-50);

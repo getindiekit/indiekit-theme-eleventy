@@ -4565,14 +4565,24 @@ function wcagContrast(a, b) {
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
-// Read :root custom properties out of a compiled stylesheet, resolving one
-// level of var() indirection (--c-fg: var(--surface-900)).
-function readTokens(cssPath) {
+// Read custom properties out of a compiled stylesheet for one selector block
+// (default :root), resolving one level of var() indirection. Values from the
+// selector block win over :root, so a dark block that says
+// `--c-bg: var(--surface-950)` resolves through the ramp declared on :root.
+function readTokens(cssPath, selector = ":root") {
   const css = readFileSync(cssPath, "utf8");
-  const root = /:root\s*\{([\s\S]*?)\}/.exec(css);
+  const block = (sel) => {
+    const re = new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\{([\\s\\S]*?)\\}");
+    return re.exec(css);
+  };
+  const root = block(":root");
   assert.ok(root, `${cssPath}: no :root block — the token layer did not compile`);
+  const target = selector === ":root" ? root : block(selector);
+  assert.ok(target, `${cssPath}: no ${selector} block`);
   const raw = {};
-  for (const m of root[1].matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) raw[m[1]] = m[2].trim();
+  for (const src of [root[1], target[1]]) {
+    for (const m of src.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) raw[m[1]] = m[2].trim();
+  }
   const resolved = {};
   for (const [key, value] of Object.entries(raw)) {
     const ref = /^var\((--[\w-]+)\)$/.exec(value);
@@ -4862,6 +4872,64 @@ check("a bad theme value fails the build with the key in the message", () => {
   }
 });
 
+// One build with every knob at its non-default value; each knob then has its
+// own assertion against that build. Cheaper than one build per knob and just
+// as specific in what it reports.
+function buildWithFixture(fixturePath, outDir) {
+  rmSync(outDir, { recursive: true, force: true });
+  execFileSync(process.execPath, ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+    { stdio: "pipe", env: { ...process.env, SITE_FIXTURE: fixturePath, NPM_DOWNLOADS_OFFLINE: "1" } });
+  return {
+    outDir,
+    tokens: readTokens(`${outDir}/_css/initial.css`),
+    html: readFileSync(`${outDir}/index.html`, "utf8"),
+    article: readFileSync(`${outDir}/articles/fixture-article/index.html`, "utf8"),
+  };
+}
+
+const KNOBS_OUT = "_site-knobs-check";
+let knobs;
+try {
+  knobs = buildWithFixture("test/fixtures/theme-knobs.json", KNOBS_OUT);
+} catch (error) {
+  knobs = null;
+  console.log(`FAIL the knob fixture builds — ${String(error.stderr || error.message).slice(0, 300)}`);
+  checks.push(false);
+}
+const defaults = { tokens: readTokens("_site/_css/initial.css"), html: readFileSync("_site/index.html", "utf8") };
+
+check("theme.fonts.* reach the font tokens, with the shipped fallbacks after them", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.match(knobs.tokens["--font-heading"], /^Georgia, /, `--font-heading: ${knobs.tokens["--font-heading"]}`);
+  assert.match(knobs.tokens["--font-body"], /^Verdana, /, `--font-body: ${knobs.tokens["--font-body"]}`);
+  assert.match(knobs.tokens["--font-mono"], /^Courier New, /, `--font-mono: ${knobs.tokens["--font-mono"]}`);
+  assert.match(defaults.tokens["--font-heading"], /^Hex Franklin Tight, /);
+  assert.match(defaults.tokens["--font-body"], /^Lato, /);
+});
+
+check("theme.shape sets the radius tokens", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.equal(defaults.tokens["--radius"], "0");
+  assert.equal(defaults.tokens["--radius-avatar"], "0");
+  assert.equal(knobs.tokens["--radius"], "0.35em");
+  assert.equal(knobs.tokens["--radius-avatar"], "50%");
+});
+
+check("theme.rail.width and theme.measure reach their tokens", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.equal(defaults.tokens["--rail-width"], "14rem");
+  assert.equal(defaults.tokens["--measure"], "31em");
+  assert.equal(knobs.tokens["--rail-width"], "18rem");
+  assert.equal(knobs.tokens["--measure"], "40em");
+});
+
+check("theme.signature.leader switches the dotted leader token", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.equal(defaults.tokens["--leader-border"], "1px dotted var(--c-border)");
+  assert.equal(knobs.tokens["--leader-border"], "0");
+});
+
+rmSync(KNOBS_OUT, { recursive: true, force: true });
 
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;
