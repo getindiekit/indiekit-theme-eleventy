@@ -4816,8 +4816,9 @@ check("every component colour resolves through a token at runtime", () => {
   // rebind role tokens, not ramp steps, so a raw read stays stuck on its light
   // value forever. Only :root and the two dark blocks are allowed to name a
   // ramp step; strip them and nothing outside should reference one.
+  // Bare :root only: `html:root` (the Pagefind override) is a component rule and must be scanned.
   const rest = css
-    .replace(/:root\s*\{[^}]*\}/g, "")
+    .replace(/(?<![\w:-]):root\s*\{[^}]*\}/g, "")
     .replace(/html\[data-scheme=auto\]\s*\{[^}]*\}/g, "")
     .replace(/html\[data-scheme=dark\]\s*\{[^}]*\}/g, "");
   const rawRampRefs = [...rest.matchAll(/var\(--(?:surface|accent|secondary)-\d+/g)].map((m) => m[0]);
