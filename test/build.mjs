@@ -5125,10 +5125,12 @@ check("IndieWeb stats share one muted family and the phone h-card lives in the m
   // two-column breakpoint (979px) — otherwise the rail h-card vanishes at every
   // one-column width instead of only on phones.
   assert.ok(
-    initial.lastIndexOf("@media (max-width: 44.9375em)", hideIndex) >
-      initial.lastIndexOf("@media (max-width: 61.1875em)", hideIndex),
-    "the rail h-card hide rule is scoped to the two-column breakpoint (979px) instead of the phone breakpoint (719px)",
+    initial.lastIndexOf("@media (max-width: 61.1875em)", hideIndex) >
+      initial.lastIndexOf("@media (max-width: 44.9375em)", hideIndex),
+    "the rail h-card hide rule is scoped to the phone breakpoint (719px) instead of the two-column breakpoint (979px)",
   );
+
+  assert.match(initial, /--pagefind-ui-text:\s*var\(--c-fg\)/, "Pagefind text does not follow the scheme");
 
   assert.match(initial, /\.tags \.tag-social\s*\{[^}]*background-color:\s*var\(--c-social-bg\)/, "the social pill does not read --c-social-bg");
   const tagIndex = initial.search(/\.tags \.tag\s*\{/);

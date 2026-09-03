@@ -106,16 +106,12 @@ html[data-rail="start"] .rail {
 
 /* --- The h-card at one column ------------------------------------------ */
 
-@media (max-width: 44.9375em) {
-	/* 719px: below config.$oneColLayoutDottedList, the same line where the
-	   listing drops its dotted layout. Between there and the two-column
-	   breakpoint the card renders as a row under the title bar, as it always did. */
-	/* At phone width the card sat above every page's title and pushed the post
-	   below the fold. It joins the menu: present in the DOM on every page (so
-	   rel=author still resolves to it), shown when the menu opens. Lives here,
-	   not in _navigation.scss: _theme-chrome.scss's own `.rail .h-card` rule is
-	   imported after navigation and won at equal specificity. This layer is
-	   imported last. */
+@media (max-width: config.$oneColLayoutMaxWidth) {
+	/* Wherever the nav is behind the hamburger, so is the card: present in the
+	   DOM on every page (rel=author still resolves to it), shown when the menu
+	   opens. On two columns it stays in the rail. Lives here, not in
+	   _navigation.scss: _theme-chrome.scss's own `.rail .h-card` rule is imported
+	   after navigation and won at equal specificity; this layer is imported last. */
 	.rail .h-card {
 		display: none;
 	}
