@@ -61,7 +61,15 @@ $_steps: (50: 97%, 100: 94%, 200: 86%, 300: 78%, 400: 65%, 500: 55%,
 	$out: ();
 	@each $key, $lightness in $_steps {
 		$l: math.div($lightness, 100%);
-		$taper: if($l < 0.5, $l * 1.8, (1 - $l) * 1.8);
+		// @if/@else rather than the if() function: the function form is deprecated
+		// in current Sass, and its replacement syntax is too new to depend on in a
+		// theme other people install.
+		$taper: 0;
+		@if $l < 0.5 {
+			$taper: $l * 1.8;
+		} @else {
+			$taper: (1 - $l) * 1.8;
+		}
 		$c: math.min($chroma * $taper, $chroma);
 		$step: color.change($base, $lightness: $lightness, $chroma: $c, $space: oklch);
 		// Mandatory: raw OKLCH is frequently outside sRGB and serialises as

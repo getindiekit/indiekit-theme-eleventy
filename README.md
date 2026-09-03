@@ -127,6 +127,28 @@ build cannot render one identity in the markup and another in the feed.
 The fixture deliberately does not override `site.url`: the webmention fixture's
 targets are absolute, so changing the origin would silently zero every count.
 
+### Previewing a different palette
+
+The colour inputs are environment variables, and `npm run demo` passes the
+environment through, so any palette can be previewed without editing anything:
+
+```sh
+INDIEKIT_COLOR_PRIMARY="#0d7d7d" INDIEKIT_COLOR_SURFACE="#fdf6ec" npm run demo
+npm run demo    # back to the committed default (Indiekit purple on white)
+```
+
+Every surface follows from those two values — links, the site title, borders,
+the dotted leader, muted text, focus rings, the active nav pill and the h-card.
+Contrast is enforced while it happens: a primary too pale to read is darkened
+until it meets 4.5:1 rather than shipped as configured, so no combination
+produces an unreadable site.
+
+Two things deliberately do NOT follow the brand, because their colours carry
+information rather than identity: the syntax-highlighting palette (which encodes
+language grammar) and the social-count pill (whose three segments distinguish
+boosts, likes and replies). Deriving either from one hue would render those
+distinctions in a single colour.
+
 ```sh
 npm run demo:serve      # then open /articles/fixture-article/
 ```
