@@ -5,7 +5,17 @@
   "theme": {
     "primary": "#9435f4",
     "secondary": "#f0a000",
-    "surface": "#ffffff"
+    "surface": "#ffffff",
+    "scheme": "auto",
+    "fonts": {
+      "heading": "Hex Franklin Tight",
+      "body": "Lato",
+      "mono": "Consolas, Monaco, monospace"
+    },
+    "shape": "sharp",
+    "rail": { "side": "end", "width": "14rem" },
+    "measure": "31em",
+    "signature": { "spectrum": true, "leader": true, "anchors": true }
   },
   "author": {
     "name": "",

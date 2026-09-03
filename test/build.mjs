@@ -4797,6 +4797,72 @@ check("the space and type scales exist, are used, and do not swallow type-relati
 });
 
 
+// --- theme configuration --------------------------------------------------
+
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { loadSiteConfig, validateTheme, THEME_DEFAULTS } from "../_11ty/siteConfig.js";
+
+check("every theme key has a shipped default and site.json states it", () => {
+  const shipped = JSON.parse(readFileSync("_data/site.json", "utf8")).theme;
+  assert.deepEqual(shipped, THEME_DEFAULTS, "_data/site.json theme differs from THEME_DEFAULTS");
+  const loaded = loadSiteConfig().theme;
+  for (const key of ["primary", "secondary", "surface", "scheme", "shape", "measure"]) {
+    assert.ok(loaded[key], `theme.${key} missing after load`);
+  }
+  for (const key of ["heading", "body", "mono"]) assert.ok(loaded.fonts[key], `theme.fonts.${key} missing`);
+  for (const key of ["side", "width"]) assert.ok(loaded.rail[key], `theme.rail.${key} missing`);
+  for (const key of ["spectrum", "leader", "anchors"]) {
+    assert.equal(typeof loaded.signature[key], "boolean", `theme.signature.${key} is not boolean`);
+  }
+});
+
+check("an invalid theme value throws naming the key", () => {
+  const bad = [
+    [{ primary: "purple" }, "theme.primary"],
+    [{ surface: "#fff" }, "theme.surface"],
+    [{ scheme: "dim" }, "theme.scheme"],
+    [{ fonts: { heading: "" } }, "theme.fonts.heading"],
+    [{ fonts: { body: "Lato; color: red" } }, "theme.fonts.body"],
+    [{ shape: "round" }, "theme.shape"],
+    [{ rail: { side: "middle" } }, "theme.rail.side"],
+    [{ rail: { width: "wide" } }, "theme.rail.width"],
+    [{ measure: "50%" }, "theme.measure"],
+    [{ signature: { spectrum: "yes" } }, "theme.signature.spectrum"],
+  ];
+  for (const [overlay, key] of bad) {
+    const merged = structuredClone(THEME_DEFAULTS);
+    for (const [k, v] of Object.entries(overlay)) {
+      merged[k] = typeof v === "object" ? { ...merged[k], ...v } : v;
+    }
+    assert.throws(() => validateTheme(merged), (e) => e.message.startsWith(`site.json ${key}:`),
+      `${key} did not throw with a message naming it`);
+  }
+  assert.doesNotThrow(() => validateTheme(THEME_DEFAULTS), "the shipped defaults do not validate");
+});
+
+check("a bad theme value fails the build with the key in the message", () => {
+  const fixture = join(tmpdir(), `theme-bad-${process.pid}.json`);
+  writeFileSync(fixture, JSON.stringify({ theme: { scheme: "dim" } }));
+  const outDir = "_site-badtheme-check";
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    let stderr = "";
+    try {
+      execFileSync(process.execPath, ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe", env: { ...process.env, SITE_FIXTURE: fixture, NPM_DOWNLOADS_OFFLINE: "1" } });
+      assert.fail("the build succeeded with theme.scheme = dim");
+    } catch (error) {
+      stderr = String(error.stderr || error.message);
+    }
+    assert.ok(stderr.includes("theme.scheme"), `build error does not name theme.scheme:\n${stderr.slice(0, 400)}`);
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+    rmSync(fixture, { force: true });
+  }
+});
+
+
 const failed = checks.filter((c) => !c).length;
 const passed = checks.length - failed;
 const skipNote = skipped ? `, ${skipped} skipped` : "";
