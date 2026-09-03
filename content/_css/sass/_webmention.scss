@@ -79,3 +79,10 @@
     margin-left: .25em;
     width: 12em;
 }
+/* Facepiles read as their own surface. --card-bg rather than a literal, and set
+   here rather than in the design layer: this file compiles into the deferred
+   bundle, which loads after critical, so an override from there could not win. */
+.webmentions__facepile {
+	background-color: var(--card-bg);
+	padding: var(--space-s);
+}

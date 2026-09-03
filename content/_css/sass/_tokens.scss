@@ -171,50 +171,21 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 	// 3:1 non-text threshold as a foreground. A light step gives the fill, a dark
 	// step of the same hue gives the text on it, so the pair is legible by
 	// construction whatever secondary is configured to.
-	--c-accent-fill: var(--secondary-100);
-	--c-accent-fill-fg: var(--secondary-900);
+	--c-accent-fill: transparent;
+	--c-accent-fill-fg: var(--c-fg-muted);
 
-	// The social-count pill encodes three DIFFERENT things — boosts, likes,
-	// replies — so its colours carry information rather than brand. Deriving them
-	// from one primary would render all three the same hue and destroy the
-	// distinction at a glance, the same reason the syntax-highlighting palette is
-	// out of scope. They are tokens rather than literals so a site can still
-	// restyle them, and so a dark variant has somewhere to go.
-	--c-social-boost: #006000;
-	--c-social-boost-bg: #e4f7e4;
-	--c-social-like: #880808;
-	--c-social-like-bg: #ffeded;
-	--c-social-reply: #535100;
-	--c-social-reply-bg: #edf1e4;
+	// The social-count pill is neutral. Its icons already distinguish boosts,
+	// likes and replies; three saturated hues for three counts was decoration
+	// competing with the rest of the page.
+	--c-social-fg: var(--c-fg-muted);
+	--c-social-bg: transparent;
 
-	// Inverted field (the rail). These deliberately reference RAMP steps rather
-	// than semantic tokens: the rail rebinds --c-link and friends inside its own
-	// scope, and a custom property is substituted at its USE site, so consuming
-	// --c-link on the same element that rebinds it resolves to the new value —
-	// the rail painted itself in its own text colour. Ramp steps are never
-	// rebound, so they are safe to read from inside an inverted scope.
-	--c-field: var(--accent-500);
-	--c-field-fg: var(--surface-50);
-
-	// POST-TYPE MARKERS. The logo is four solids in four hues; the theme has six
-	// post types. Rather than invent two more colours, the sixth distinction is
-	// filled versus outline — originals are filled, responses are outlined in the
-	// same hue. A marker conveys which kind of post this is, so WCAG's 3:1
-	// non-text threshold applies to it, and each hue goes through the same
-	// pick-step clamp as everything else: raw amber is 2.16:1 and would be
-	// decorative rather than legible.
-	// 4.5 rather than the 3 a marker strictly needs: pick-step returns the
-	// LIGHTEST passing step, and at 3 the hues come back washed (#b58542 for
-	// amber) — fine for a link, wrong for a solid block. Asking for the text
-	// ratio yields the deeper, richer end of each hue, which reads as the logo's
-	// saturated solids rather than pastels, and clears the marker threshold with
-	// room to spare.
-	--c-type-article: #{pick-step(ramp(#9435f4), $_bg, 4.5)};
-	--c-type-note: #{pick-step(ramp(#f0a000), $_bg, 4.5)};
-	--c-type-photo: #{pick-step(ramp(#f06f00), $_bg, 4.5)};
-	--c-type-like: #{pick-step(ramp(#ff2f0f), $_bg, 4.5)};
-	--c-type-reply: var(--c-type-article);
-	--c-type-bookmark: var(--c-type-photo);
+	// POST-TYPE MARKERS. One colour, six SHAPES — square, triangle, circle,
+	// diamond, half-round, hollow — echoing the logo's four solids. Colour was
+	// the wrong tool here: four marker hues plus a saturated rail plus a
+	// three-colour social pill put thirteen hues on one page and nothing
+	// receded. Shape distinguishes without competing.
+	--c-marker: var(--c-fg-muted);
 
 	// COMPONENT LAYER. The third tier of primitive -> semantic -> component.
 	// The inverted surfaces previously only rebound global semantics inside their
@@ -222,10 +193,18 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 	// rail existed, so restyling it meant reading the stylesheet to discover that
 	// it redefines --c-link. These name the seam. Rebinding still happens — it is
 	// what makes descendants follow — but it is no longer the only door in.
-	--rail-bg: var(--c-field);
-	--rail-fg: var(--c-field-fg);
-	--footer-bg: var(--surface-900);
-	--footer-fg: var(--surface-100);
+	// Large areas stay quiet. A full-saturation rail forces every other accent
+	// to fight it; a tint with an accent edge reads as chrome without shouting.
+	--rail-bg: var(--surface-100);
+	--rail-fg: var(--c-fg);
+	--rail-edge: var(--c-link);
+	--footer-bg: var(--surface-100);
+	--footer-fg: var(--c-fg);
+	// Cards: the raised-but-flat blocks — the rail h-card, the prev/next panel,
+	// the webmention facepiles. A tint rather than a border, because the design
+	// has no shadows to separate them with.
+	--card-bg: var(--surface-100);
+	--card-border: var(--c-border);
 
 	--c-danger: #{pick-step(ramp(#ff2f0f), $_bg, 4.5)};
 }

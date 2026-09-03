@@ -218,41 +218,24 @@ a[href]:is(:focus, :hover) .project_img {
 .tags .tag-social:has(svg) {
 	border-width: 0;
 }
-.tags .tag-social > * {
+\.tags .tag-social > * {
 	display: inline-flex;
-	height: 1.5625rem; /* 25px /16 */
-	justify-content: center;
 	align-items: center;
-	gap: 0;
-	padding: 0.25em 0.5em;
-	border: 1px solid;
-	border-radius: 0;
-}
-.tags .tag-social > :first-child {
-	border-top-left-radius: 0.5em;
-	border-bottom-left-radius: 0.5em;
-}
-.tags .tag-social > :last-child {
-	border-top-right-radius: 0.5em;
-	border-bottom-right-radius: 0.5em;
-}
-.tags .tag-social > :not(:first-child) {
-	border-inline-start: none;
-}
-.tags .tag-social > :not(:last-child) {
-	border-inline-end: none;
+	gap: 0.15em;
+	padding: 0 0.35em 0 0;
+	border: 0;
 }
 .tag-social--boost {
-	color: var(--c-social-boost);
-	background-color: var(--c-social-boost-bg);
+	color: var(--c-social-fg);
+	background-color: var(--c-social-bg);
 }
 .tag-social--like {
-	color: var(--c-social-like);
-	background-color: var(--c-social-like-bg);
+	color: var(--c-social-fg);
+	background-color: var(--c-social-bg);
 }
 .tag-social--reply {
-	color: var(--c-social-reply);
-	background-color: var(--c-social-reply-bg);
+	color: var(--c-social-fg);
+	background-color: var(--c-social-bg);
 }
 .posts .deprecated,
 .posts .deprecated :link,

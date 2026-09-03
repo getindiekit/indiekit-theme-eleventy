@@ -29,9 +29,14 @@
 @use "sass/layout";
 @use "sass/navigation";
 @use "sass/skiplink";
-// The design layer, last so it wins over the ported component rules it
-// deliberately overrides (radii, shadows, the rail's inherited colours).
-@use "sass/geometric";
 @use "sass/avatars";
 @use "sass/webmention-initial";
 @use "sass/theme-chrome";
+
+// The design layer, GENUINELY last. It was previously placed mid-list with a
+// comment claiming it was last, and three ported partials were imported after
+// it — so at equal specificity those won. The rail and footer survived only
+// because their selectors are unique; `.tags .tag` collided with
+// sass/theme-chrome and the category pill silently kept the ported colour.
+// Anything this layer deliberately overrides depends on it being last.
+@use "sass/geometric";
