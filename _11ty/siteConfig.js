@@ -46,6 +46,7 @@ export const THEME_DEFAULTS = Object.freeze({
 	secondary: "#f0a000",
 	surface: "#ffffff",
 	scheme: "auto",
+	schemeToggle: true,
 	fonts: {
 		heading: "Hex Franklin Tight",
 		body: "Lato",
@@ -71,6 +72,7 @@ export function validateTheme(theme) {
 		if (!HEX.test(theme[key])) fail(key, `expected a six-digit hex colour like #9435f4, got ${JSON.stringify(theme[key])}`);
 	}
 	if (!["light", "dark", "auto"].includes(theme.scheme)) fail("scheme", `expected light, dark or auto, got ${JSON.stringify(theme.scheme)}`);
+	if (typeof theme.schemeToggle !== "boolean") fail("schemeToggle", `expected true or false, got ${JSON.stringify(theme.schemeToggle)}`);
 	for (const key of ["heading", "body", "mono"]) {
 		const value = theme.fonts?.[key];
 		if (typeof value !== "string" || value.trim() === "" || /[;}]/.test(value)) {

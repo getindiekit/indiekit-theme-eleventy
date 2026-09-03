@@ -67,6 +67,7 @@ Every key:
 | `timezone` | An IANA timezone name (e.g. `Europe/Brussels`). All dates render in this zone, regardless of what timezone the build machine is in, so a build is reproducible no matter where it runs. Falls back to UTC if unset. |
 | `theme.primary`, `theme.secondary`, `theme.surface` | Six-digit hex. Every colour on the site is derived from these three; contrast is enforced, so a pale primary is darkened until links pass 4.5:1. Also settable as `INDIEKIT_COLOR_PRIMARY` / `_SECONDARY` / `_SURFACE`. |
 | `theme.scheme` | `auto` (follows the visitor's OS), `light`, or `dark`. Dark is derived from the same three colours. |
+| `theme.schemeToggle` | `true` shows a light/dark toggle beside the site title. A visitor's choice is remembered in their browser and wins over `theme.scheme`; choosing what the site would show anyway clears it. |
 | `theme.fonts.heading`, `.body`, `.mono` | Font-family lists. Defaults are the shipped Hex Franklin Tight and Lato; the shipped system fallbacks are appended automatically. A heading font other than the default also turns off the uppercase and variable-font treatment that belongs to Hex Franklin. |
 | `theme.shape` | `sharp` (no radii, the logo's hard edges) or `rounded`. |
 | `theme.rail.side`, `theme.rail.width` | `end` (right in LTR, the default) or `start`; a CSS length for the rail column. |

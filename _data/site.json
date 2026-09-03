@@ -7,6 +7,7 @@
     "secondary": "#f0a000",
     "surface": "#ffffff",
     "scheme": "auto",
+    "schemeToggle": true,
     "fonts": {
       "heading": "Hex Franklin Tight",
       "body": "Lato",

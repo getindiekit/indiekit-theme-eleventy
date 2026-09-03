@@ -4904,6 +4904,7 @@ check("an invalid theme value throws naming the key", () => {
     [{ signature: { spectrum: "yes" } }, "theme.signature.spectrum"],
     [{ raill: { side: "start" } }, "theme.raill"],
     [{ signature: { spectrun: true } }, "theme.signature.spectrun"],
+    [{ schemeToggle: "yes" }, "theme.schemeToggle"],
   ];
   for (const [overlay, key] of bad) {
     const merged = structuredClone(THEME_DEFAULTS);
@@ -5154,6 +5155,23 @@ check("every emitted token is read somewhere, and every ramp and scale is used",
   for (const g of ["accent", "surface", "secondary", "space", "text"]) {
     assert.ok([...referenced].some((n) => n.startsWith(`--${g}-`)), `the --${g}-* ramp/scale is emitted but never referenced`);
   }
+});
+
+check("the scheme toggle renders by default, is absent when theme.schemeToggle is false, and applies a stored choice before first paint", () => {
+  assert.ok(knobs, "knob build failed");
+  assert.match(defaults.html, /<button type="button" class="scheme-toggle" aria-pressed="false" aria-label="Switch to dark scheme">/, "no toggle button in the default build");
+  assert.match(defaults.html, /class="scheme-toggle-to-dark"[^>]*>[\s\S]*?#far-fa-moon/, "moon icon missing from the toggle");
+  assert.match(defaults.html, /class="scheme-toggle-to-light"[^>]*>[\s\S]*?#far-fa-sun/, "sun icon missing from the toggle");
+  assert.match(defaults.html, /<html[^>]* data-scheme-default="auto"/, "no data-scheme-default on <html>");
+  const script = defaults.html.indexOf('localStorage.getItem("scheme")');
+  const style = defaults.html.indexOf("<style>");
+  assert.ok(script > -1, "no stored-scheme head script");
+  assert.ok(style > -1 && script < style, "the stored-scheme script does not precede the critical <style>");
+  assert.ok(!/scheme-toggle/.test(knobs.html), "schemeToggle=false still renders the toggle");
+  assert.ok(!/localStorage\.getItem\("scheme"\)/.test(knobs.html), "schemeToggle=false still emits the head script");
+  const css = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(css, /html\[data-scheme=dark\] \.scheme-toggle-to-light\s*\{[^}]*display:\s*inline/, "no dark-scheme icon swap rule");
+  assert.match(css, /html\[data-scheme=auto\] \.scheme-toggle-to-light\s*\{[^}]*display:\s*inline/, "no auto+OS-dark icon swap rule");
 });
 
 rmSync(KNOBS_OUT, { recursive: true, force: true });

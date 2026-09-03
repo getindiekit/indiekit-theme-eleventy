@@ -30,6 +30,7 @@ export default function(eleventyConfig, pluginOptions = {}) {
 		`$measure: ${theme.measure};`,
 		`$leader: ${theme.signature.leader};`,
 		`$spectrum: ${theme.signature.spectrum};`,
+		`$scheme-toggle: ${theme.schemeToggle};`,
 	].join("\n");
 
 	const themeConfigImporter = {

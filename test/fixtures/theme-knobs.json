@@ -1,6 +1,7 @@
 {
   "theme": {
     "scheme": "dark",
+    "schemeToggle": false,
     "fonts": { "heading": "Georgia", "body": "Verdana", "mono": "Courier New" },
     "shape": "rounded",
     "rail": { "side": "start", "width": "18rem" },
