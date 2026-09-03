@@ -86,12 +86,12 @@ pre > code {
 }
 @media (min-width: 40.625em) { /* 650px */
 	:where(.tmpl-page) pre {
-		border-radius: var(--radius); /* 8px /16 */
+		border-radius: var(--radius);
 	}
 }
 @media (min-width: 56.25em) { /* 900px */
 	pre {
-		border-radius: var(--radius); /* 8px /16 */
+		border-radius: var(--radius);
 	}
 	.livedemo pre {
 		border-radius: 0;

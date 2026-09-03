@@ -47,7 +47,10 @@ del, s {
 	opacity: .8;
 }
 input,
-button {
+button,
+select,
+textarea {
 	font-size: 1em;
 	font-family: inherit;
+	border-radius: var(--radius);
 }

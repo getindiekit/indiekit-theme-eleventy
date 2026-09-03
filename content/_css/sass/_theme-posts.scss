@@ -118,7 +118,7 @@ a[href]:is(:focus, :hover) .project_img {
   linear-gradient(
     to bottom,
     config.$primaryColor,
-    var(--accent-800),
+    var(--c-link-visited),
   );
 }
 .layout-list p + ol.posts {

@@ -20,6 +20,7 @@
 // than an unreadable one: amber (#f0a000, 2.16:1 on white) walks down to a step
 // that passes, while purple (5.15:1) is used essentially as given.
 @use "sass:color";
+@use "sass:list";
 @use "sass:map";
 @use "sass:math";
 @use "theme-config" as cfg;
@@ -97,6 +98,7 @@ $surface: ramp(cfg.$surface);
 }
 
 $_bg: map.get($surface, 50);
+$_link: pick-step($accent, $_bg, 4.5);
 
 // Dark counterpart: walks DARK to light and returns the first passing step, so
 // a link keeps its saturation instead of washing to the palest passing tint.
@@ -111,6 +113,21 @@ $_bg: map.get($surface, 50);
 }
 
 $_bg-dark: map.get($surface, 950);
+$_link-dark: pick-step-dark($accent, $_bg-dark, 4.5);
+
+// The highlight sits UNDER link text, so it is clamped against the link, not
+// the page: the lightest secondary step (light scheme) or darkest (dark) that
+// keeps the already-clamped link at 4.5:1. The default lands on the same
+// step as before, so nothing changes visually until a config needs it.
+@function pick-highlight($ramp, $on, $steps) {
+	@each $key in $steps {
+		$candidate: map.get($ramp, $key);
+		@if contrast($candidate, $on) >= 4.5 {
+			@return $candidate;
+		}
+	}
+	@return map.get($ramp, list.nth($steps, -1));
+}
 
 // Every role token rebound against the dark surface. Same ramps, same clamp,
 // so a site gets a readable dark variant from the same two inputs.
@@ -121,7 +138,7 @@ $_bg-dark: map.get($surface, 950);
 	--c-heading: var(--surface-50);
 	--c-border: var(--surface-800);
 
-	--c-link: #{pick-step-dark($accent, $_bg-dark, 4.5)};
+	--c-link: #{$_link-dark};
 	--c-link-hover: var(--accent-300);
 	--c-link-visited: var(--accent-200);
 	--c-focus: #{pick-step-dark($accent, $_bg-dark, 3)};
@@ -129,7 +146,7 @@ $_bg-dark: map.get($surface, 950);
 
 	--c-accent-fill: var(--secondary-900);
 	--c-accent-fill-fg: var(--secondary-100);
-	--c-highlight: var(--secondary-900);
+	--c-highlight: #{pick-highlight($secondary, $_link-dark, (900, 950))};
 
 	--c-social-fg: var(--c-fg-muted);
 	--c-marker: var(--c-fg-muted);
@@ -219,7 +236,7 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 	--c-border: var(--surface-200);
 
 	// Interactive. 4.5:1 for text, 3:1 for non-text UI, per WCAG.
-	--c-link: #{pick-step($accent, $_bg, 4.5)};
+	--c-link: #{$_link};
 	--c-link-hover: var(--accent-700);
 	// Visited is a real distinction in the port source (:link and :visited were
 	// different greens), so it keeps its own token rather than collapsing into
@@ -244,7 +261,8 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 	--c-accent-fill-fg: var(--secondary-900);
 	// Text highlight (the homepage description's links). The secondary's second
 	// job: a tint of the same hue as the pills, so the two read as one family.
-	--c-highlight: var(--secondary-100);
+	// Clamped against --c-link (the text sitting on it), not against the page.
+	--c-highlight: #{pick-highlight($secondary, $_link, (100, 50))};
 
 	// The social-count pill is neutral. Its icons already distinguish boosts,
 	// likes and replies; three saturated hues for three counts was decoration
@@ -252,11 +270,9 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 	--c-social-fg: var(--c-fg-muted);
 	--c-social-bg: transparent;
 
-	// POST-TYPE MARKERS. One colour, six SHAPES — square, triangle, circle,
-	// diamond, half-round, hollow — echoing the logo's four solids. Colour was
-	// the wrong tool here: four marker hues plus a saturated rail plus a
-	// three-colour social pill put thirteen hues on one page and nothing
-	// receded. Shape distinguishes without competing.
+	// POST-TYPE MARKERS. One muted colour for the per-type icon on listing rows
+	// (partials/post-type-icon.liquid). Colour and shape were both tried and
+	// rejected; the icon distinguishes without competing.
 	--c-marker: var(--c-fg-muted);
 
 	// COMPONENT LAYER. The third tier of primitive -> semantic -> component.
@@ -287,4 +303,8 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 }
 html[data-scheme="dark"] {
 	@include dark-tokens;
+	color-scheme: dark;
+}
+html[data-scheme="light"] {
+	color-scheme: light;
 }

@@ -152,6 +152,8 @@ SITE_FIXTURE=test/fixtures/theme-knobs.json npm run demo   # every knob at its n
 
 Every surface follows from the three colour values — links, the site title, borders,
 the dotted leader, muted text, focus rings, the active nav pill and the h-card.
+The surface value tints the neutral ramp; its lightness is normalised, so a dark
+surface does not make a dark page. Use theme.scheme for that.
 Contrast is enforced while it happens: a primary too pale to read is darkened
 until it meets 4.5:1 rather than shipped as configured, so no combination
 produces an unreadable site.

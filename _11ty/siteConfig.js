@@ -84,6 +84,22 @@ export function validateTheme(theme) {
 	for (const key of ["spectrum", "leader", "anchors"]) {
 		if (typeof theme.signature?.[key] !== "boolean") fail(`signature.${key}`, `expected true or false, got ${JSON.stringify(theme.signature?.[key])}`);
 	}
+
+	// Unknown keys are typos otherwise silently ignored — a misspelled
+	// `theme.raill` would just fall back to the default rail with no warning.
+	for (const key of Object.keys(theme)) {
+		if (!(key in THEME_DEFAULTS)) fail(key, `unknown key; valid keys are ${Object.keys(THEME_DEFAULTS).join(", ")}`);
+	}
+	for (const key of Object.keys(theme.fonts || {})) {
+		if (!(key in THEME_DEFAULTS.fonts)) fail(`fonts.${key}`, `unknown key; valid keys are ${Object.keys(THEME_DEFAULTS.fonts).join(", ")}`);
+	}
+	for (const key of Object.keys(theme.rail || {})) {
+		if (!(key in THEME_DEFAULTS.rail)) fail(`rail.${key}`, `unknown key; valid keys are ${Object.keys(THEME_DEFAULTS.rail).join(", ")}`);
+	}
+	for (const key of Object.keys(theme.signature || {})) {
+		if (!(key in THEME_DEFAULTS.signature)) fail(`signature.${key}`, `unknown key; valid keys are ${Object.keys(THEME_DEFAULTS.signature).join(", ")}`);
+	}
+
 	return theme;
 }
 
@@ -96,7 +112,7 @@ export function loadSiteConfig() {
 	const base = JSON.parse(
 		readFileSync(new URL("../_data/site.json", import.meta.url), "utf8"),
 	);
-	cached = process.env.SITE_FIXTURE
+	let config = process.env.SITE_FIXTURE
 		? merge(base, JSON.parse(readFileSync(process.env.SITE_FIXTURE, "utf8")))
 		: base;
 
@@ -112,13 +128,18 @@ export function loadSiteConfig() {
 	};
 	for (const [key, value] of Object.entries(envColors)) {
 		if (value) {
-			cached = merge(cached, { theme: { [key]: value } });
+			config = merge(config, { theme: { [key]: value } });
 		}
 	}
 
-	cached = merge(cached, { theme: merge(THEME_DEFAULTS, cached.theme || {}) });
-	validateTheme(cached.theme);
+	config = merge(config, { theme: merge(THEME_DEFAULTS, config.theme || {}) });
+	validateTheme(config.theme);
 
+	// Only cache once validation has passed, so a throw here does not poison a
+	// later call — with `cached` set before validating, a second
+	// loadSiteConfig() after a failed build would return the invalid config
+	// instead of re-validating and throwing again.
+	cached = config;
 	return cached;
 }
 

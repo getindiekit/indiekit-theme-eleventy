@@ -4659,6 +4659,14 @@ check("every text token meets WCAG AA and every UI token meets 3:1, recomputed f
     wcagContrast(onFill, fill) >= 4.5,
     `--c-accent-fill-fg is ${wcagContrast(onFill, fill).toFixed(2)}:1 on --c-accent-fill`,
   );
+
+  // --c-highlight sits UNDER link text (.about-description :any-link), so the
+  // link must stay readable ON it, not just on --c-bg.
+  const highlightRatio = wcagContrast(parseColor(t["--c-link"]), parseColor(t["--c-highlight"]));
+  assert.ok(
+    highlightRatio >= 4.5,
+    `--c-link on --c-highlight is ${highlightRatio.toFixed(2)}:1, below the 4.5:1 floor`,
+  );
 });
 
 check("a primary that fails contrast on its own is clamped to a step that passes", () => {
@@ -4681,6 +4689,27 @@ check("a primary that fails contrast on its own is clamped to a step that passes
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }
+  }
+});
+
+check("a legal primary/secondary pair that would put an unreadable link on the highlight is clamped", () => {
+  // #7b3fa0 (primary) on white is a fine 4.31:1+ link on its own, and #1020cc
+  // (secondary) is a fine highlight fill on its own — but the link on the
+  // highlight, which is what a reader actually sees, is only 4.31:1... on the
+  // page background, and worse on the un-clamped highlight. --c-highlight
+  // must be clamped against --c-link, not against --c-bg.
+  const outDir = "_site-highlight-check";
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(process.execPath,
+      ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe", env: { ...process.env, INDIEKIT_COLOR_PRIMARY: "#7b3fa0", INDIEKIT_COLOR_SECONDARY: "#1020cc", NPM_DOWNLOADS_OFFLINE: "1" } });
+
+    const t = readTokens(`${outDir}/_css/initial.css`);
+    const ratio = wcagContrast(parseColor(t["--c-link"]), parseColor(t["--c-highlight"]));
+    assert.ok(ratio >= 4.5, `--c-link on --c-highlight is only ${ratio.toFixed(2)}:1 for this primary/secondary pair`);
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
   }
 });
 
@@ -4776,6 +4805,18 @@ check("every component colour resolves through a token at runtime", () => {
       !name.startsWith("--pagefind"),
   );
   assert.deepEqual(dangling, [], `var() references with no declaration: ${dangling.join(", ")}`);
+
+  // A component reading a raw ramp step directly (var(--surface-100) instead
+  // of var(--c-border)) is invisible to the dark scheme: the two dark blocks
+  // rebind role tokens, not ramp steps, so a raw read stays stuck on its light
+  // value forever. Only :root and the two dark blocks are allowed to name a
+  // ramp step; strip them and nothing outside should reference one.
+  const rest = css
+    .replace(/:root\s*\{[^}]*\}/g, "")
+    .replace(/html\[data-scheme=auto\]\s*\{[^}]*\}/g, "")
+    .replace(/html\[data-scheme=dark\]\s*\{[^}]*\}/g, "");
+  const rawRampRefs = [...rest.matchAll(/var\(--(?:surface|accent|secondary)-\d+/g)].map((m) => m[0]);
+  assert.deepEqual(rawRampRefs, [], `raw ramp step(s) read outside the token layer, invisible to the dark scheme: ${rawRampRefs.join(", ")}`);
 });
 
 
@@ -4855,6 +4896,8 @@ check("an invalid theme value throws naming the key", () => {
     [{ rail: { width: "wide" } }, "theme.rail.width"],
     [{ measure: "50%" }, "theme.measure"],
     [{ signature: { spectrum: "yes" } }, "theme.signature.spectrum"],
+    [{ raill: { side: "start" } }, "theme.raill"],
+    [{ signature: { spectrun: true } }, "theme.signature.spectrun"],
   ];
   for (const [overlay, key] of bad) {
     const merged = structuredClone(THEME_DEFAULTS);
@@ -4977,6 +5020,10 @@ check("every border-radius reads a radius token", () => {
     });
   }
   assert.deepEqual(offenders, [], `border-radius literals bypass theme.shape:\n  ${offenders.join("\n  ")}`);
+  // Native form controls (the search box, webmention comment forms) must
+  // follow theme.shape too, not the browser's default radius.
+  const initialCss = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(initialCss, /button[^{]*\{[^}]*border-radius:\s*var\(--radius\)/, "input/button/select/textarea does not read --radius");
   // And the reset is gone: a rounded site must actually round.
   const css = readFileSync(`${KNOBS_OUT}/_css/initial.css`, "utf8") + readFileSync(`${KNOBS_OUT}/_css/defer.css`, "utf8");
   assert.ok(!/body :not\(\[class\*="pagefind"\]\)/.test(css), "the global border-radius:0 reset is still emitted");
@@ -5009,6 +5056,10 @@ check("the dark scheme is emitted for auto and forced, and every dark token meet
   const css = readFileSync("_site/_css/initial.css", "utf8");
   assert.match(css, /@media \(prefers-color-scheme: dark\)\s*\{\s*html\[data-scheme=auto\]/, "no auto dark block");
   assert.match(css, /color-scheme:\s*light dark/, ":root does not declare color-scheme");
+  // color-scheme is only "light dark" (both allowed) for auto — a forced
+  // scheme must declare just the one it forces, or the UA still offers both.
+  assert.match(css, /html\[data-scheme=light\]\s*\{[^}]*color-scheme:\s*light;/, "html[data-scheme=light] does not force color-scheme: light");
+  assert.match(css, /html\[data-scheme=dark\]\s*\{[^}]*color-scheme:\s*dark;/, "html[data-scheme=dark] does not force color-scheme: dark");
 
   const t = readTokens("_site/_css/initial.css", 'html[data-scheme=dark]');
   const bg = parseColor(t["--c-bg"]);
@@ -5027,6 +5078,11 @@ check("the dark scheme is emitted for auto and forced, and every dark token meet
   for (const token of ["--rail-bg", "--footer-bg", "--card-bg", "--c-highlight", "--c-border", "--c-on-accent"]) {
     assert.ok(parseColor(t[token]), `dark ${token} missing or not a colour: ${t[token]}`);
   }
+  const darkHighlightRatio = wcagContrast(parseColor(t["--c-link"]), parseColor(t["--c-highlight"]));
+  assert.ok(
+    darkHighlightRatio >= 4.5,
+    `dark --c-link on --c-highlight is ${darkHighlightRatio.toFixed(2)}:1, below the 4.5:1 floor`,
+  );
 });
 
 check("theme.signature.spectrum and .anchors gate their markup; leader and heading case follow their tokens", () => {
@@ -5046,6 +5102,9 @@ check("theme.signature.spectrum and .anchors gate their markup; leader and headi
 
 check("IndieWeb stats share one muted family and the phone h-card lives in the menu", () => {
   const defer = readFileSync("_site/_css/defer.css", "utf8");
+  // The offline build has no webmention data, so these two assert the
+  // selector text itself, checked by hand against
+  // _includes/webmentionlist.liquid lines 9 and 61 rather than rendered output.
   assert.match(defer, /\.webmentions \.webmentions__facepile > h3[\s\S]*?\{[^}]*color:\s*var\(--c-fg-muted\)/, "facepile heading is not muted");
   assert.match(defer, /\.webmentions \.webmentions__facepile > h3[\s\S]*?\{[^}]*font-size:\s*var\(--text-sm\)/, "facepile heading is not --text-sm");
   assert.match(defer, /\.webmentions \.webmentions__facepile > h3[\s\S]*?\{[^}]*text-transform:\s*none/, "facepile heading is not un-uppercased — it ties the critical bundle's :is() rule but loses at equal specificity");

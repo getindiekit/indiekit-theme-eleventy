@@ -151,7 +151,7 @@ dl.nextprev-text dt span {
 }
 
 dl.nextprev dd:empty {
-	background-color: var(--surface-100);
+	background-color: var(--c-border);
 	border-radius: var(--radius);
 	cursor: not-allowed;
 }

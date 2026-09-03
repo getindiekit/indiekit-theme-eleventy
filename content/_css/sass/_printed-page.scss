@@ -3,7 +3,7 @@
 /* Printed Pages */
 .printed-page {
 	border: 1px solid var(--c-border);
-	box-shadow: 4px 4px 0 var(--surface-200);
+	box-shadow: 4px 4px 0 var(--c-border);
 	padding: 3em;
 	font-size: 14px
 }
