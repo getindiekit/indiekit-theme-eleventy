@@ -5044,6 +5044,29 @@ check("theme.signature.spectrum and .anchors gate their markup; leader and headi
   assert.ok(!/font-variation-settings/.test(unscoped), "a font-variation-settings rule is still unscoped");
 });
 
+check("IndieWeb stats share one muted family and the phone h-card lives in the menu", () => {
+  const defer = readFileSync("_site/_css/defer.css", "utf8");
+  assert.match(defer, /\.webmentions__facepile > h3\s*\{[^}]*color:\s*var\(--c-fg-muted\)/, "facepile heading is not muted");
+  assert.match(defer, /\.webmentions__facepile > h3\s*\{[^}]*font-size:\s*var\(--text-sm\)/, "facepile heading is not --text-sm");
+  assert.match(defer, /\.webmentions summary\.hed-h3\s*\{[^}]*color:\s*var\(--c-fg-muted\)/, "comments summary is not muted");
+  const initial = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(initial, /\.rail \.h-card\s*\{\s*display:\s*none/, "the rail h-card is not hidden at one-column width");
+  assert.match(initial, /\.rail-sticky:has\(\.navigation-toggle\[aria-expanded=true\]\) \.h-card/, "no rule shows the h-card when the menu opens");
+});
+
+check("every emitted token is read somewhere, and every ramp and scale is used", () => {
+  const css = globSync("_site/_css/*.css").map((f) => readFileSync(f, "utf8")).join("\n");
+  const root = /:root\s*\{([\s\S]*?)\}/.exec(readFileSync("_site/_css/initial.css", "utf8"))[1];
+  const declared = [...root.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]);
+  const referenced = new Set([...css.matchAll(/var\((--[\w-]+)/g)].map((m) => m[1]));
+  const group = (name) => /^--(accent|surface|secondary|space|text)-/.exec(name)?.[1];
+  const unused = declared.filter((name) => !group(name) && !referenced.has(name));
+  assert.deepEqual(unused, [], `tokens emitted but never read: ${unused.join(", ")}`);
+  for (const g of ["accent", "surface", "secondary", "space", "text"]) {
+    assert.ok([...referenced].some((n) => n.startsWith(`--${g}-`)), `the --${g}-* ramp/scale is emitted but never referenced`);
+  }
+});
+
 rmSync(KNOBS_OUT, { recursive: true, force: true });
 
 const failed = checks.filter((c) => !c).length;

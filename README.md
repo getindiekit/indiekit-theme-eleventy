@@ -65,8 +65,17 @@ Every key:
 | `description` | Default site/page description, used as a fallback for OG/Twitter meta. |
 | `author.name`, `author.url` | Site owner identity. `author.url` also renders a `rel="me"` link for IndieAuth. |
 | `timezone` | An IANA timezone name (e.g. `Europe/Brussels`). All dates render in this zone, regardless of what timezone the build machine is in, so a build is reproducible no matter where it runs. Falls back to UTC if unset. |
+| `theme.primary`, `theme.secondary`, `theme.surface` | Six-digit hex. Every colour on the site is derived from these three; contrast is enforced, so a pale primary is darkened until links pass 4.5:1. Also settable as `INDIEKIT_COLOR_PRIMARY` / `_SECONDARY` / `_SURFACE`. |
+| `theme.scheme` | `auto` (follows the visitor's OS), `light`, or `dark`. Dark is derived from the same three colours. |
+| `theme.fonts.heading`, `.body`, `.mono` | Font-family lists. Defaults are the shipped Hex Franklin Tight and Lato; the shipped system fallbacks are appended automatically. A heading font other than the default also turns off the uppercase and variable-font treatment that belongs to Hex Franklin. |
+| `theme.shape` | `sharp` (no radii, the logo's hard edges) or `rounded`. |
+| `theme.rail.side`, `theme.rail.width` | `end` (right in LTR, the default) or `start`; a CSS length for the rail column. |
+| `theme.measure` | Content column width, a CSS length. |
+| `theme.signature.spectrum`, `.leader`, `.anchors` | The ported site's signatures: the rainbow edge strip, the dotted leader on listing rows, the `#` heading anchors. All on by default. |
 | `speedlify.enabled` | Turns the `<speedlify2-score>` Lighthouse-score widget on or off, site-wide. |
 | `speedlify.url` | Base URL of the Speedlify instance to query, e.g. `https://www.speedlify.dev/`. |
+
+A bad value fails the build with a message naming the key, e.g. `site.json theme.scheme: expected light, dark or auto, got "dim"`.
 
 A Speedlify instance is not a public submission service — it is a self-hosted
 Eleventy project that measures a URL list its owner configures, published at
@@ -137,7 +146,11 @@ INDIEKIT_COLOR_PRIMARY="#0d7d7d" INDIEKIT_COLOR_SURFACE="#fdf6ec" npm run demo
 npm run demo    # back to the committed default (Indiekit purple on white)
 ```
 
-Every surface follows from those two values — links, the site title, borders,
+```sh
+SITE_FIXTURE=test/fixtures/theme-knobs.json npm run demo   # every knob at its non-default: dark, rounded, rail on the left, no signatures
+```
+
+Every surface follows from the three colour values — links, the site title, borders,
 the dotted leader, muted text, focus rings, the active nav pill and the h-card.
 Contrast is enforced while it happens: a primary too pale to read is darkened
 until it meets 4.5:1 rather than shipped as configured, so no combination

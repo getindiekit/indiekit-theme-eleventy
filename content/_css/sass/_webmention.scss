@@ -86,3 +86,20 @@
 	background-color: var(--card-bg);
 	padding: var(--space-s);
 }
+
+/* The stats read as one family: the same muted colour and small size as the
+   listing-row counts and the collections hub, never a heading voice. */
+.webmentions__facepile > h3 {
+	color: var(--c-fg-muted);
+	font-size: var(--text-sm);
+	font-family: var(--font-body);
+	font-weight: 700;
+	text-transform: none;
+}
+.webmentions summary.hed-h3 {
+	color: var(--c-fg-muted);
+	font-size: var(--text-sm);
+	font-family: var(--font-body);
+	font-weight: 700;
+	text-transform: none;
+}

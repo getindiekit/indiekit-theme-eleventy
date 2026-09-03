@@ -275,7 +275,6 @@ $_text: (xs: 0.8125rem, sm: 0.875rem, base: 1rem, lg: 1.25rem, xl: 2rem);
 	// the webmention facepiles. A tint rather than a border, because the design
 	// has no shadows to separate them with.
 	--card-bg: var(--surface-100);
-	--card-border: var(--c-border);
 
 	--c-danger: #{pick-step(ramp(#ff2f0f), $_bg, 4.5)};
 }
