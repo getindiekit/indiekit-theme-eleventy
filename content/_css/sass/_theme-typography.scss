@@ -60,7 +60,7 @@ body {
 		margin-block: 7.36842em max(9em, 20vh); /* 140px /19 */
 	}
 	.about-description :any-link {
-		--highlight-color: rgba(0,0,0,.06);
+		--highlight-color: var(--c-highlight);
 		background-color: var(--highlight-color);
 		text-decoration-color: inherit;
 		border-radius: 0.0625em; /* 1px /16 */

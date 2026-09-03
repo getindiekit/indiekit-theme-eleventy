@@ -218,7 +218,7 @@ a[href]:is(:focus, :hover) .project_img {
 .tags .tag-social:has(svg) {
 	border-width: 0;
 }
-\.tags .tag-social > * {
+.tags .tag-social > * {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.15em;

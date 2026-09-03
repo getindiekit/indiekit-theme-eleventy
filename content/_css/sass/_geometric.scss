@@ -60,8 +60,9 @@ body :not([class*="pagefind"]):not([class*="pagefind"] *) {
 }
 
 /* The active nav item reverses out of the field instead of filling with it. */
-\.rail .tags-rail-links :any-link.active {
+.rail .tags-rail-links :any-link.active {
 	color: var(--c-link);
+	background-color: transparent;
 	font-weight: 700;
 }
 
@@ -129,7 +130,6 @@ body :not([class*="pagefind"]):not([class*="pagefind"] *) {
 	background-color: var(--c-accent-fill);
 	color: var(--c-accent-fill-fg);
 	border: 0;
-	padding: 0;
 	padding: 0.15em 0.5em;
 }
 
