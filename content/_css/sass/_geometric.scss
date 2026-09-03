@@ -50,51 +50,21 @@ html[data-rail="start"] .rail {
 	font-weight: 700;
 }
 
-/* --- Post-type markers -------------------------------------------------- */
+/* --- Post-type icons ---------------------------------------------------- */
 
-/* Six shapes, one colour, echoing the logo's solids. Shape distinguishes
-   without adding hues — the previous four-colour version put the page's accent
-   budget into a 12px square. Sizes are set on ::after so no markup changes. */
-.posts li[data-post-type] {
-	position: relative;
-	padding-left: var(--space-m);
+/* One muted icon per row, first in the flex row above the dotted-list
+   breakpoint and inline before the link below it. Sized to the social-count
+   icons so the two ends of a row match. */
+.post-type-icon {
+	flex: 0 0 auto;
+	color: var(--c-marker);
+	line-height: 1;
 }
-.posts li[data-post-type]::after {
-	content: "";
-	position: absolute;
-	left: 0;
-	top: 0.55em;
-	width: 0.5rem;
-	height: 0.5rem;
-	background-color: var(--c-marker);
-}
-/* article — cube: a plain square, the default above. */
-/* photo — cylinder: rounded on one end. A shape, not a corner treatment, which
-   is why it is exempt from this layer's radius reset. */
-.posts li[data-post-type="photo"]::after {
-	border-radius: 0 50% 50% 0;
-}
-/* like — sphere. */
-.posts li[data-post-type="like"]::after {
-	border-radius: 50%;
-}
-/* note — pyramid, drawn with the border triangle trick. */
-.posts li[data-post-type="note"]::after {
-	background-color: transparent;
-	width: 0;
-	height: 0;
-	border-left: 0.25rem solid transparent;
-	border-right: 0.25rem solid transparent;
-	border-bottom: 0.5rem solid var(--c-marker);
-}
-/* reply — a turned square, distinct at a glance from article's. */
-.posts li[data-post-type="reply"]::after {
-	transform: rotate(45deg);
-}
-/* bookmark — hollow: kept, not authored. */
-.posts li[data-post-type="bookmark"]::after {
-	background-color: transparent;
-	border: 2px solid var(--c-marker);
+.post-type-icon .z-icon {
+	width: 1em;
+	height: 1em;
+	margin: 0 0.15em 0 0;
+	vertical-align: -0.1em;
 }
 
 /* --- Footer as a band --------------------------------------------------- */

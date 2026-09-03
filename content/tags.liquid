@@ -18,16 +18,17 @@ eleventyImport:
    without them the internal-link guard fails, by design. {% endcomment -%}
 <ol class="posts h-feed">
 {%- for post in tag.posts %}
-  {%- comment %} The social counts are captured HERE, before the `page: post`
-     override below, on purpose. @11ty/font-awesome registers each icon's
-     sprite symbol against `this.page.url` (plugin.js:51). Rendered inside the
-     override, every {{ "{% icon %}" }} filed its symbol under the POST's url while the
-     listing page emitted a <use href="#..."> for a symbol that was never in
-     its own bundle — the icon painted nothing. Capturing outside the override
-     files the symbol against this listing page, where {{ "{% getBundle %}" }} outputs it.
-     The override itself stays: date filters must read each post's own front
-     matter (see post-list-entry.liquid). {% endcomment -%}
+  {%- comment %} The social counts, and the post-type icon, are captured HERE,
+     before the `page: post` override below, on purpose. @11ty/font-awesome
+     registers each icon's sprite symbol against `this.page.url` (plugin.js:51).
+     Rendered inside the override, every {{ "{% icon %}" }} filed its symbol under the
+     POST's url while the listing page emitted a <use href="#..."> for a symbol
+     that was never in its own bundle — the icon painted nothing. Capturing
+     outside the override files the symbol against this listing page, where
+     {{ "{% getBundle %}" }} outputs it. The override itself stays: date filters must
+     read each post's own front matter (see post-list-entry.liquid). {% endcomment -%}
   {%- capture socialHtml %}{% include "partials/post-social-counts.liquid", post: post %}{% endcapture -%}
-  {%- include "partials/post-list-entry.liquid", post: post, page: post, socialHtml: socialHtml -%}
+  {%- capture postTypeIconHtml %}{% include "partials/post-type-icon.liquid", post: post %}{% endcapture -%}
+  {%- include "partials/post-list-entry.liquid", post: post, page: post, socialHtml: socialHtml, postTypeIconHtml: postTypeIconHtml -%}
 {%- endfor %}
 </ol>

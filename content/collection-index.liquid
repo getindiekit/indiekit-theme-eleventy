@@ -19,7 +19,11 @@ eleventyImport:
 {% endcomment -%}
 <ol class="posts h-feed">
 {%- for post in group.posts %}
+  {%- comment %} socialHtml and postTypeIconHtml must be captured HERE, before
+     the `page: post` override below — see post-list-entry.liquid's header
+     comment and post-type-icon.liquid's. {% endcomment -%}
   {%- capture socialHtml %}{% include "partials/post-social-counts.liquid", post: post %}{% endcapture -%}
-  {%- include "partials/post-list-entry.liquid", post: post, page: post, socialHtml: socialHtml -%}
+  {%- capture postTypeIconHtml %}{% include "partials/post-type-icon.liquid", post: post %}{% endcapture -%}
+  {%- include "partials/post-list-entry.liquid", post: post, page: post, socialHtml: socialHtml, postTypeIconHtml: postTypeIconHtml -%}
 {%- endfor %}
 </ol>

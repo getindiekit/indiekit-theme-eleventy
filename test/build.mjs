@@ -3926,6 +3926,22 @@ check("every SVG <use> reference resolves to a <symbol> defined on the same page
   }
 });
 
+check("every listing row carries one post-type icon with a text label", () => {
+  const html = readFileSync("_site/index.html", "utf8");
+  const rows = [...html.matchAll(/<li class="h-entry" data-post-type="(\w+)">([\s\S]*?)<\/li>/g)];
+  assert.ok(rows.length >= 5, `only ${rows.length} listing rows found`);
+  const expected = { article: "file-lines", note: "comment", photo: "image", like: "heart", reply: "reply", bookmark: "bookmark" };
+  for (const [, type, body] of rows) {
+    assert.match(body, /<span class="post-type-icon" aria-hidden="true">/, `${type}: no icon wrapper`);
+    assert.ok(body.includes(`fa-${expected[type]}`) || body.includes(`#fa${expected[type].replace(/(^|-)(\w)/g, (_, __, c) => c.toUpperCase())}`),
+      `${type}: icon is not ${expected[type]}`);
+    assert.match(body, new RegExp(`<span class="sr-only">${type[0].toUpperCase()}${type.slice(1)}</span>`), `${type}: no sr-only label`);
+  }
+  const css = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(css, /\.post-type-icon/, "no rule for .post-type-icon");
+  assert.ok(!/data-post-type[^{]*::after/.test(css), "the CSS shape markers are still emitted");
+});
+
 check("listing rows use the short date format; permalinks keep the long one", () => {
   // "30 August 2026" is 14 characters and wrapped to two and three lines in the
   // row's reserved column, landing at a different x on every row — the reported
@@ -4949,10 +4965,7 @@ check("no font-family is hard-coded outside the token layer", () => {
 });
 
 check("every border-radius reads a radius token", () => {
-  const files = globSync("content/_css/sass/*.scss")
-    .filter((f) => !f.endsWith("_tokens.scss"))
-    // _geometric.scss: post-type marker shapes, replaced by icons in the next task
-    .filter((f) => !f.endsWith("_geometric.scss"));
+  const files = globSync("content/_css/sass/*.scss").filter((f) => !f.endsWith("_tokens.scss"));
   const offenders = [];
   for (const file of files) {
     readFileSync(file, "utf8").split("\n").forEach((line, i) => {
