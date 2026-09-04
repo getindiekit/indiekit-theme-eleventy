@@ -22,7 +22,14 @@ modules:
 				<span class="hed-h1">{{ site.name }}</span>
 			</a>
 {%- if site.theme.schemeToggle %}
-			<button type="button" class="scheme-toggle" aria-pressed="false" aria-label="Switch to dark scheme">
+			{%- comment %} Server-rendered state matches the configured default so
+			   there is no flash of a wrong label/pressed-state before the client
+			   script (below) corrects it. `auto` has no dark default to reflect
+			   here — it renders as light, same as before, and the script resolves
+			   it against the OS at load. {% endcomment -%}
+			{%- assign toggleDark = false -%}
+			{%- if site.theme.scheme == "dark" -%}{%- assign toggleDark = true -%}{%- endif -%}
+			<button type="button" class="scheme-toggle" aria-pressed="{{ toggleDark }}" aria-label="{% if toggleDark %}Switch to light scheme{% else %}Switch to dark scheme{% endif %}">
 				{%- comment %} One half-filled circle for both states: the contrast symbol.
 				   A sun/moon pair was tried; Font Awesome's sun reads as a cog at icon
 				   size. The button's label says which way it switches. {% endcomment -%}

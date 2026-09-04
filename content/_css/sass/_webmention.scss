@@ -89,9 +89,11 @@
 
 /* The stats read as one family: the same muted colour and small size as the
    listing-row counts and the collections hub, never a heading voice. The
-   facepile selector carries `.webmentions` so it reaches (0,2,1) and ties the
-   critical bundle's scoped heading rule, which :is(.hed-h3) lifts to a class
-   term; at a tie this sheet loads later and wins. */
+   heading uppercase rule is now gated in Sass on theme.fonts.heading
+   (cfg.$heading-font-default in _theme-typography.scss) and unscoped — a
+   plain `h3` selector at (0,0,1) — so this rule no longer needs the
+   `.webmentions` prefix to win; kept anyway, harmlessly, as a defensive
+   margin rather than the load-order tiebreak it used to be. */
 .webmentions .webmentions__facepile > h3,
 .webmentions summary.hed-h3 {
 	color: var(--c-fg-muted);

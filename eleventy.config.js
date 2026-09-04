@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { DateTime } from "luxon";
@@ -36,6 +36,13 @@ const JS_ENABLED = true;
 function resolveModule(name) {
   return fileURLToPath(import.meta.resolve(name));
 }
+
+// Once per process, not once per output directory: an existsSync check on
+// the output dir survives a dev-server restart (the index file is still
+// there from before), so a rebuild after content changed would never
+// re-index. A module-level flag instead only ever indexes once per running
+// process; restarting the server re-indexes, because the flag resets with it.
+let pagefindIndexed = false;
 
 export default function (eleventyConfig) {
   // The real output directory for this run.
@@ -97,12 +104,13 @@ export default function (eleventyConfig) {
   eleventyConfig.on("eleventy.after", async (hookArgs) => {
     const { runMode } = hookArgs;
     const outputDir = outputDirOf(hookArgs);
-    // Dev mode: index once, not on every incremental rebuild. The search page
-    // destroys its own fallback form before importing /pagefind/pagefind-ui.js,
-    // so a dev server with no index shows an empty page and a console error.
-    // Content edited during a serve session is not re-indexed until the next
-    // full build; restart the server to refresh it.
-    if ((runMode === "serve" || runMode === "watch") && existsSync(`${outputDir}/pagefind/pagefind.js`)) return;
+    // Dev mode: index once per process, not on every incremental rebuild. The
+    // search page destroys its own fallback form before importing
+    // /pagefind/pagefind-ui.js, so a dev server with no index shows an empty
+    // page and a console error. Content edited during a serve session is not
+    // re-indexed until the next full build; restarting the server re-indexes
+    // (a fresh process resets `pagefindIndexed`).
+    if ((runMode === "serve" || runMode === "watch") && pagefindIndexed) return;
     const { createIndex } = await import("pagefind");
     const { index } = await createIndex();
     await index.addDirectory({
@@ -114,6 +122,7 @@ export default function (eleventyConfig) {
       glob: "{articles,bookmarks,likes,notes,photos,replies}/*/*.html",
     });
     await index.writeFiles({ outputPath: `${outputDir}/pagefind` });
+    pagefindIndexed = true;
   });
 
   eleventyConfig.addPreprocessor("real-title", "*", (data) => {

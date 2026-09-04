@@ -1,5 +1,6 @@
 import * as sass from 'sass'
 import path from "node:path";
+import { THEME_DEFAULTS } from "./siteConfig.js";
 
 // Memoised result of the one-off critical-CSS compile below (module scope,
 // so it survives across the many calls the "inlineCriticalCss" shortcode
@@ -17,13 +18,38 @@ export default function(eleventyConfig, pluginOptions = {}) {
 	// JSON.stringify, which yields a valid Sass quoted string.
 	const theme = pluginOptions.theme;
 	const rounded = theme.shape === "rounded";
+
+	// CSS generic font-family keywords must stay unquoted — quoting one of
+	// these turns it into a (nonexistent) named family instead of the generic
+	// fallback. Everything else is a family name and needs quoting: unquoted,
+	// a multi-word name like "Source Sans 3" compiles as three bare idents
+	// separated by commas — not the same thing, and invalid where it isn't.
+	const GENERIC_FAMILIES = new Set([
+		"serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui",
+		"ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded", "emoji",
+		"math", "fangsong",
+	]);
+	function quoteFamilies(stack) {
+		return stack
+			.split(",")
+			.map((part) => part.trim())
+			.map((family) => {
+				if (GENERIC_FAMILIES.has(family) || family.startsWith('"') || family.startsWith("'")) {
+					return family;
+				}
+				return `"${family.replace(/"/g, '\\"')}"`;
+			})
+			.join(", ");
+	}
+
 	const themeConfigSource = [
 		`$primary: ${theme.primary};`,
 		`$secondary: ${theme.secondary};`,
 		`$surface: ${theme.surface};`,
-		`$font-heading: ${JSON.stringify(theme.fonts.heading)};`,
-		`$font-body: ${JSON.stringify(theme.fonts.body)};`,
-		`$font-mono: ${JSON.stringify(theme.fonts.mono)};`,
+		`$heading-font-default: ${theme.fonts.heading === THEME_DEFAULTS.fonts.heading};`,
+		`$font-heading: ${JSON.stringify(quoteFamilies(theme.fonts.heading))};`,
+		`$font-body: ${JSON.stringify(quoteFamilies(theme.fonts.body))};`,
+		`$font-mono: ${JSON.stringify(quoteFamilies(theme.fonts.mono))};`,
 		`$radius: ${rounded ? "0.35em" : "0"};`,
 		`$radius-avatar: ${rounded ? "50%" : "0"};`,
 		`$rail-width: ${theme.rail.width};`,

@@ -1107,6 +1107,32 @@ await checkAsync(
         existsSync(`${outDir}/pagefind/pagefind.js`),
         "a serve-mode build wrote no Pagefind index, so the search page would be empty on a dev server",
       );
+
+      // F4: the index-once gate used to be `existsSync(pagefind.js)`, which
+      // survives a dev-server restart — a stale index from before a content
+      // change would never be refreshed. It's now a module-level flag, so it
+      // only ever indexes once per running PROCESS. Prove that here: delete
+      // the index and call .write() again on the SAME Eleventy instance/
+      // process — the flag is already set, so the hook must skip and the
+      // directory must stay gone.
+      rmSync(`${outDir}/pagefind`, { recursive: true, force: true });
+      await elev.write();
+      assert.ok(
+        !existsSync(`${outDir}/pagefind`),
+        "a second .write() in the same process re-indexed — the once-per-process gate is not working",
+      );
+
+      // A fresh process is not cheap to spawn here, so the "restart
+      // re-indexes" half is instead proven by reading the source: the gate
+      // must be the module-level flag (which resets on every new process),
+      // not the old existsSync check against the output directory (which
+      // survives a restart).
+      const configSource = readFileSync("eleventy.config.js", "utf8");
+      assert.match(configSource, /let pagefindIndexed = false/, "eleventy.config.js has no module-level pagefindIndexed flag");
+      assert.ok(
+        !/existsSync\(`\$\{outputDir\}\/pagefind/.test(configSource),
+        "eleventy.config.js still gates on existsSync(`${outputDir}/pagefind...`), which survives a server restart",
+      );
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }
@@ -4162,6 +4188,15 @@ check("the demo builds to its own output directory, never the one the suite read
       `"${name}" is missing a demo fixture, so it would not show the populated state`,
     );
   }
+  // F7: SITE_FIXTURE=test/fixtures/site-demo.json (no default fallback) shadowed
+  // a caller-supplied SITE_FIXTURE outright — the README's documented override
+  // (`SITE_FIXTURE=... npm run demo`) never reached the build. `${SITE_FIXTURE:-
+  // ...}` (npm runs scripts through sh) makes the committed fixture only the
+  // fallback.
+  assert.ok(
+    scripts.demo.includes("${SITE_FIXTURE:-"),
+    "\"demo\" does not fall back with ${SITE_FIXTURE:-...} — a caller-supplied SITE_FIXTURE would be ignored",
+  );
 });
 
 
@@ -4672,6 +4707,21 @@ check("every text token meets WCAG AA and every UI token meets 3:1, recomputed f
     highlightRatio >= 4.5,
     `--c-link on --c-highlight is ${highlightRatio.toFixed(2)}:1, below the 4.5:1 floor`,
   );
+
+  // F2: --c-link/--c-fg-muted/--c-focus are painted on tinted surfaces too
+  // (the rail, the footer, cards), not just --c-bg — they must pass there as
+  // well, not only against the page background they happen to be clamped
+  // against.
+  for (const surfaceToken of ["--rail-bg", "--footer-bg", "--card-bg"]) {
+    const surfaceBg = parseColor(t[surfaceToken]);
+    assert.ok(surfaceBg, `${surfaceToken} is not a colour`);
+    const linkRatio = wcagContrast(parseColor(t["--c-link"]), surfaceBg);
+    assert.ok(linkRatio >= 4.5, `--c-link is ${linkRatio.toFixed(2)}:1 on ${surfaceToken}, below 4.5:1`);
+    const mutedRatio = wcagContrast(parseColor(t["--c-fg-muted"]), surfaceBg);
+    assert.ok(mutedRatio >= 4.5, `--c-fg-muted is ${mutedRatio.toFixed(2)}:1 on ${surfaceToken}, below 4.5:1`);
+    const focusRatio = wcagContrast(parseColor(t["--c-focus"]), surfaceBg);
+    assert.ok(focusRatio >= 3, `--c-focus is ${focusRatio.toFixed(2)}:1 on ${surfaceToken}, below 3:1`);
+  }
 });
 
 check("a primary that fails contrast on its own is clamped to a step that passes", () => {
@@ -4691,6 +4741,12 @@ check("a primary that fails contrast on its own is clamped to a step that passes
       const focus = wcagContrast(parseColor(t["--c-focus"]), bg);
       assert.ok(link >= 4.5, `primary ${primary}: --c-link is only ${link.toFixed(2)}:1`);
       assert.ok(focus >= 3, `primary ${primary}: --c-focus is only ${focus.toFixed(2)}:1`);
+
+      // F2: the clamp has to hold on the tinted surfaces the link actually
+      // gets painted on (the rail), not only the page background.
+      const railBg = parseColor(t["--rail-bg"]);
+      const linkOnRail = wcagContrast(parseColor(t["--c-link"]), railBg);
+      assert.ok(linkOnRail >= 4.5, `primary ${primary}: --c-link is only ${linkOnRail.toFixed(2)}:1 on --rail-bg`);
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }
@@ -4897,10 +4953,17 @@ check("an invalid theme value throws naming the key", () => {
     [{ scheme: "dim" }, "theme.scheme"],
     [{ fonts: { heading: "" } }, "theme.fonts.heading"],
     [{ fonts: { body: "Lato; color: red" } }, "theme.fonts.body"],
+    // F3: a `/*` in a font name truncates the inlined :root block once
+    // interpolated into the compiled CSS — rejected the same as `;`/`}`.
+    [{ fonts: { body: "Lato /* x" } }, "theme.fonts.body"],
     [{ shape: "round" }, "theme.shape"],
     [{ rail: { side: "middle" } }, "theme.rail.side"],
     [{ rail: { width: "wide" } }, "theme.rail.width"],
-    [{ measure: "50%" }, "theme.measure"],
+    // F9: LENGTH now also accepts a bare `%` and vw/vh/svw/dvw units (and
+    // clamp/min/max/calc, asserted as valid cases below) — "50%" is legal
+    // now, so "wide" (not a length at all, in any unit) is what still proves
+    // the measure key rejects garbage.
+    [{ measure: "wide" }, "theme.measure"],
     [{ signature: { spectrum: "yes" } }, "theme.signature.spectrum"],
     [{ raill: { side: "start" } }, "theme.raill"],
     [{ signature: { spectrun: true } }, "theme.signature.spectrun"],
@@ -4915,6 +4978,14 @@ check("an invalid theme value throws naming the key", () => {
       `${key} did not throw with a message naming it`);
   }
   assert.doesNotThrow(() => validateTheme(THEME_DEFAULTS), "the shipped defaults do not validate");
+
+  // F9: clamp()/min()/max()/calc() expressions and the newly accepted
+  // viewport units are legal lengths, matching the README's documented set.
+  const clampMerged = { ...structuredClone(THEME_DEFAULTS), measure: "clamp(28em, 60vw, 40em)" };
+  assert.doesNotThrow(() => validateTheme(clampMerged), "a clamp() measure was rejected");
+  const vwMerged = structuredClone(THEME_DEFAULTS);
+  vwMerged.rail = { ...vwMerged.rail, width: "20vw" };
+  assert.doesNotThrow(() => validateTheme(vwMerged), "a vw rail.width was rejected");
 });
 
 check("a bad theme value fails the build with the key in the message", () => {
@@ -4935,6 +5006,29 @@ check("a bad theme value fails the build with the key in the message", () => {
   } finally {
     rmSync(outDir, { recursive: true, force: true });
     rmSync(fixture, { force: true });
+  }
+});
+
+// F10: when a bad colour comes from the environment rather than site.json,
+// the error should name the env var, not blame a file that was never wrong.
+check("an invalid theme value from the environment names the env var, not site.json", () => {
+  const outDir = "_site-badenv-check";
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    let stderr = "";
+    try {
+      execFileSync(process.execPath, ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe", env: { ...process.env, INDIEKIT_COLOR_PRIMARY: "0d7d7d", NPM_DOWNLOADS_OFFLINE: "1" } });
+      assert.fail("the build succeeded with an INDIEKIT_COLOR_PRIMARY missing its #");
+    } catch (error) {
+      stderr = String(error.stderr || error.message);
+    }
+    assert.ok(
+      stderr.includes("INDIEKIT_COLOR_PRIMARY theme.primary:"),
+      `build error does not name INDIEKIT_COLOR_PRIMARY:\n${stderr.slice(0, 400)}`,
+    );
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
   }
 });
 
@@ -4964,13 +5058,21 @@ try {
 }
 const defaults = { tokens: readTokens("_site/_css/initial.css"), html: readFileSync("_site/index.html", "utf8") };
 
-check("theme.fonts.* reach the font tokens, with the shipped fallbacks after them", () => {
+check("theme.fonts.* reach the font tokens, quoted, with the shipped fallbacks after them", () => {
   assert.ok(knobs, "knob build failed");
-  assert.match(knobs.tokens["--font-heading"], /^Georgia, /, `--font-heading: ${knobs.tokens["--font-heading"]}`);
-  assert.match(knobs.tokens["--font-body"], /^Verdana, /, `--font-body: ${knobs.tokens["--font-body"]}`);
-  assert.match(knobs.tokens["--font-mono"], /^Courier New, /, `--font-mono: ${knobs.tokens["--font-mono"]}`);
-  assert.match(defaults.tokens["--font-heading"], /^Hex Franklin Tight, /);
-  assert.match(defaults.tokens["--font-body"], /^Lato, /);
+  // F3: #{cfg.$font-heading} used to unquote, so a multi-word family (e.g.
+  // "Source Sans 3") compiled as bare, invalid CSS. quoteFamilies
+  // (_11ty/sassPlugin.js) wraps every non-generic family in double quotes —
+  // every token below is quoted, not just the ones with spaces in them.
+  assert.match(knobs.tokens["--font-heading"], /^"Source Sans 3", /, `--font-heading: ${knobs.tokens["--font-heading"]}`);
+  assert.match(knobs.tokens["--font-body"], /^"Verdana", /, `--font-body: ${knobs.tokens["--font-body"]}`);
+  assert.match(knobs.tokens["--font-mono"], /^"Courier New", /, `--font-mono: ${knobs.tokens["--font-mono"]}`);
+  assert.match(defaults.tokens["--font-heading"], /^"Hex Franklin Tight", /);
+  assert.match(defaults.tokens["--font-body"], /^"Lato", /);
+  // The shipped mono default dropped its own redundant ", monospace" (the
+  // token appends the generic fallback unconditionally), so it no longer
+  // reads "monospace, monospace".
+  assert.equal(defaults.tokens["--font-mono"], '"Consolas", "Monaco", monospace');
 });
 
 check("theme.shape sets the radius tokens", () => {
@@ -5036,14 +5138,46 @@ check("every border-radius reads a radius token", () => {
   assert.ok(!/body :not\(\[class\*="pagefind"\]\)/.test(css), "the global border-radius:0 reset is still emitted");
 });
 
-check("theme.rail.side, theme.scheme and the heading-font state are written on <html>", () => {
+// F5: Pagefind's own UI follows theme.shape too, not just this theme's chrome.
+check("Pagefind's UI border radius follows theme.shape", () => {
+  const css = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(css, /--pagefind-ui-border-radius:\s*var\(--radius\)/, "--pagefind-ui-border-radius does not read --radius");
+});
+
+// F8: the hamburger toggle on the rail must actually be visible there — the
+// rail is a tinted surface, and --c-border is only 1.28:1 against it.
+check("the hamburger toggle has a visible border on the rail", () => {
+  const css = readFileSync("_site/_css/initial.css", "utf8");
+  assert.match(
+    css,
+    /\.navigation-toggle\s*\{[^}]*border:\s*1px solid var\(--c-fg-muted\)/,
+    "the .navigation-toggle border does not read --c-fg-muted",
+  );
+});
+
+// F11: the design layer carries no shadows — the two depth box-shadows that
+// were actually live (the open nav-menu panel, and the project-image
+// hover/nextprev thumbnails) are deleted at the source. The focus-ring
+// composite shadow on the hovered/focused project image is not depth and
+// must survive.
+check("no depth box-shadow ships, and the focus-ring shadow survives", () => {
+  const css = readFileSync("_site/_css/initial.css", "utf8") + readFileSync("_site/_css/defer.css", "utf8");
+  const depthShadows = [...css.matchAll(/box-shadow:\s*[^;]*rgba\(0, 0, 0[^;]*;/g)].map((m) => m[0]);
+  assert.deepEqual(depthShadows, [], `depth box-shadow(s) still ship:\n  ${depthShadows.join("\n  ")}`);
+  assert.match(css, /box-shadow:\s*0 0 0 6px var\(--c-focus\);/, "the focus-ring shadow on the hovered/focused project image is gone");
+});
+
+check("theme.rail.side and theme.scheme are written on <html>", () => {
   assert.ok(knobs, "knob build failed");
   assert.match(defaults.html, /<html[^>]* data-rail="end"/);
   assert.match(defaults.html, /<html[^>]* data-scheme="auto"/);
-  assert.match(defaults.html, /<html[^>]* data-heading-font="default"/);
   assert.match(knobs.html, /<html[^>]* data-rail="start"/);
   assert.match(knobs.html, /<html[^>]* data-scheme="dark"/);
-  assert.match(knobs.html, /<html[^>]* data-heading-font="custom"/);
+  // F1: the heading-font state used to be a data attribute read by the CSS
+  // (data-heading-font). It is now gated in Sass on theme.fonts.heading
+  // itself (cfg.$heading-font-default) and no longer reaches the DOM at all.
+  assert.ok(!/data-heading-font/.test(defaults.html), "data-heading-font still emitted on <html>");
+  assert.ok(!/data-heading-font/.test(knobs.html), "data-heading-font still emitted on <html>");
 });
 
 check("the grid reads --rail-width and --measure, and rail=start swaps the columns", () => {
@@ -5090,6 +5224,18 @@ check("the dark scheme is emitted for auto and forced, and every dark token meet
     darkHighlightRatio >= 4.5,
     `dark --c-link on --c-highlight is ${darkHighlightRatio.toFixed(2)}:1, below the 4.5:1 floor`,
   );
+
+  // F2, dark counterpart: same tokens, painted on the same tinted surfaces.
+  for (const surfaceToken of ["--rail-bg", "--footer-bg", "--card-bg"]) {
+    const surfaceBg = parseColor(t[surfaceToken]);
+    assert.ok(surfaceBg, `dark ${surfaceToken} is not a colour`);
+    const linkRatio = wcagContrast(parseColor(t["--c-link"]), surfaceBg);
+    assert.ok(linkRatio >= 4.5, `dark --c-link is ${linkRatio.toFixed(2)}:1 on ${surfaceToken}, below 4.5:1`);
+    const mutedRatio = wcagContrast(parseColor(t["--c-fg-muted"]), surfaceBg);
+    assert.ok(mutedRatio >= 4.5, `dark --c-fg-muted is ${mutedRatio.toFixed(2)}:1 on ${surfaceToken}, below 4.5:1`);
+    const focusRatio = wcagContrast(parseColor(t["--c-focus"]), surfaceBg);
+    assert.ok(focusRatio >= 3, `dark --c-focus is ${focusRatio.toFixed(2)}:1 on ${surfaceToken}, below 3:1`);
+  }
 });
 
 check("theme.signature.spectrum and .anchors gate their markup; leader and heading case follow their tokens", () => {
@@ -5101,10 +5247,34 @@ check("theme.signature.spectrum and .anchors gate their markup; leader and headi
 
   const css = readFileSync("_site/_css/initial.css", "utf8");
   assert.match(css, /border-bottom:\s*var\(--leader-border\)/, "the leader does not read --leader-border");
-  assert.match(css, /html\[data-heading-font=default\][^{]*\{[^}]*text-transform:\s*uppercase/, "heading uppercase is not scoped to the default font");
-  assert.match(css, /html\[data-heading-font=default\][^{]*\{[^}]*font-variation-settings/, "variation axes are not scoped to the default font");
-  const unscoped = css.replace(/html\[data-heading-font=default\][^{]*\{[^}]*\}/g, "");
-  assert.ok(!/font-variation-settings/.test(unscoped), "a font-variation-settings rule is still unscoped");
+
+  // F1: the heading-font gate moved from a data-attribute selector to Sass
+  // (@if cfg.$heading-font-default), so it's no longer visible in the CSS as
+  // an attribute selector at all — it's an absence/presence of the rule
+  // entirely, decided at compile time per build.
+  const headingUpperRe = /(^|\n)h1, h2, h3,\s*\.hed-h1, \.hed-h2, \.hed-h3\s*\{[^}]*text-transform:\s*uppercase/;
+  assert.match(css, headingUpperRe, "default build does not emit the unscoped heading uppercase rule");
+
+  const knobsCss = readFileSync(`${KNOBS_OUT}/_css/initial.css`, "utf8");
+  assert.ok(!/font-variation-settings/.test(knobsCss), "a custom heading font still emits font-variation-settings");
+  assert.ok(
+    !/(?:^|\n)(?:h1|h2|h3|\.hed-[\w-]+)[^{]*\{[^}]*text-transform:\s*uppercase/.test(knobsCss),
+    "a custom heading font still uppercases a heading selector",
+  );
+
+  // .cased (0,1,0) must still beat a plain h3 match (0,0,1) on a comment
+  // title (_includes/webmention.liquid, _includes/comment-entry.html). That
+  // only holds if the heading uppercase rule's own selector list carries no
+  // attribute selector and no class beyond .hed-* (the once-live regression:
+  // an attribute-scoped selector reached (0,2,1) and beat .cased outright).
+  // Proven here from the compiled cascade rather than by rendering a comment:
+  // .cased must appear later in the sheet than the heading rule (a tie in
+  // specificity is broken by source order), and the heading rule's selector
+  // must be exactly the plain, unscoped list asserted above.
+  const casedIndex = css.indexOf(".cased {");
+  const headingIndex = css.search(headingUpperRe);
+  assert.ok(casedIndex > -1 && headingIndex > -1, "could not locate both .cased and the heading uppercase rule");
+  assert.ok(casedIndex > headingIndex, ".cased does not come after the heading uppercase rule in the cascade");
 });
 
 check("IndieWeb stats share one muted family and the phone h-card lives in the menu", () => {
@@ -5171,6 +5341,24 @@ check("the scheme toggle renders by default, is absent when theme.schemeToggle i
   const css = readFileSync("_site/_css/initial.css", "utf8");
   assert.match(css, /\.scheme-toggle-icon\s*\{[^}]*display:/, "no rule for the toggle's icon wrapper");
   assert.ok(!/scheme-toggle-to-(light|dark)/.test(css), "the sun/moon swap rules were removed with the pair; a survivor is dead CSS");
+});
+
+// F6: the toggle's server-rendered aria-pressed/aria-label must match a
+// configured dark default — otherwise a dark-by-default site flashes
+// "Switch to dark scheme"/aria-pressed="false" until the client script
+// (which runs after first paint) corrects it.
+check("the scheme toggle's server-rendered state matches a dark default", () => {
+  const outDir = "_site-darktoggle-check";
+  try {
+    const built = buildWithFixture("test/fixtures/theme-dark.json", outDir);
+    assert.match(
+      built.html,
+      /<button type="button" class="scheme-toggle" aria-pressed="true" aria-label="Switch to light scheme">/,
+      "theme.scheme=dark does not render aria-pressed=true / \"Switch to light scheme\" server-side",
+    );
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
 });
 
 check("SITE_FIXTURE accepts a comma-separated list, merged left to right", () => {

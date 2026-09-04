@@ -1,4 +1,5 @@
 @use "config";
+@use "theme-config" as cfg;
 
 // Ported verbatim from the port source's static/sass/_theme.scss:1190-1207.
 // .footer-badge is skipped — that styles his "built with Eleventy" GIF badge,
@@ -70,6 +71,7 @@ html:root {
 	--pagefind-ui-primary: var(--c-link);
 	--pagefind-ui-border: var(--c-border);
 	--pagefind-ui-tag: var(--card-bg);
+	--pagefind-ui-border-radius: var(--radius);
 }
 .content-main .pagefind-ui ol {
 	padding-left: 0;
@@ -141,7 +143,9 @@ svg.z-icon {
 	line-height: 1;
 	color: var(--c-link);
 }
-html[data-heading-font="default"] .rail .hed-h1 { text-transform: uppercase; }
+@if cfg.$heading-font-default {
+	.rail .hed-h1 { text-transform: uppercase; }
+}
 
 /* Current-page nav state — port source _theme.scss:1421-1425. This theme's nav
    emits `.active` on the current link (default.liquid) and it had no styling,

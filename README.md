@@ -70,8 +70,8 @@ Every key:
 | `theme.schemeToggle` | `true` shows a light/dark toggle beside the site title. A visitor's choice is remembered in their browser and wins over `theme.scheme`; choosing what the site would show anyway clears it. |
 | `theme.fonts.heading`, `.body`, `.mono` | Font-family lists. Defaults are the shipped Hex Franklin Tight and Lato; the shipped system fallbacks are appended automatically. A heading font other than the default also turns off the uppercase and variable-font treatment that belongs to Hex Franklin. |
 | `theme.shape` | `sharp` (no radii, the logo's hard edges) or `rounded`. |
-| `theme.rail.side`, `theme.rail.width` | `end` (right in LTR, the default) or `start`; a CSS length for the rail column. |
-| `theme.measure` | Content column width, a CSS length. |
+| `theme.rail.side`, `theme.rail.width` | `end` (right in LTR, the default) or `start`; a CSS length (rem, em, px, ch, vw, vh, %) or a clamp/min/max/calc expression for the rail column. |
+| `theme.measure` | Content column width — a CSS length (rem, em, px, ch, vw, vh, %) or a clamp/min/max/calc expression. |
 | `theme.signature.spectrum`, `.leader`, `.anchors` | The ported site's signatures: the rainbow edge strip, the dotted leader on listing rows, the `#` heading anchors. All on by default. |
 | `speedlify.enabled` | Turns the `<speedlify2-score>` Lighthouse-score widget on or off, site-wide. |
 | `speedlify.url` | Base URL of the Speedlify instance to query, e.g. `https://www.speedlify.dev/`. |
@@ -148,7 +148,7 @@ npm run demo    # back to the committed default (Indiekit purple on white)
 ```
 
 ```sh
-SITE_FIXTURE=test/fixtures/theme-knobs.json npm run demo   # every knob at its non-default: dark, rounded, rail on the left, no signatures
+SITE_FIXTURE=test/fixtures/site-demo.json,test/fixtures/theme-knobs.json npm run demo   # every knob at its non-default, with the demo identity
 ```
 
 Every surface follows from the three colour values — links, the site title, borders,

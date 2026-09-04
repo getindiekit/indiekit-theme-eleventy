@@ -80,9 +80,13 @@
 		width: 2.75rem;
 		height: 2.75rem;
 		padding: 0;
-		border: 1px solid config.$borderColor;
+		/* --c-border is only 1.28:1 on the rail (--rail-bg) — invisible there.
+		   --c-fg-muted is clamped for exactly this: readable text/UI on every
+		   tinted surface the rail/footer/card tokens paint, this button
+		   included. */
+		border: 1px solid var(--c-fg-muted);
 		border-radius: var(--radius);
-		background-color: var(--c-bg);
+		background-color: transparent;
 		color: config.$textColor;
 		font: inherit;
 		cursor: pointer;
@@ -151,8 +155,5 @@
 		border: 1px solid config.$borderColor;
 		border-radius: var(--radius);
 		background-color: var(--c-bg);
-		/* Shadow, not colour: a translucent black is depth in every palette.
-		   Tinting it with the brand hue would make the menu look coloured. */
-		box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
 	}
 }
