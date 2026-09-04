@@ -15,7 +15,9 @@
 // CONTRAST IS ENFORCED, not assumed. `pick-step` computes real WCAG relative
 // luminance (the sRGB transfer function via math.pow, verified to four decimal
 // places against an independent implementation) and returns the LIGHTEST ramp
-// step that meets the required ratio against the page background. So a site
+// step that meets the required ratio against the darkest surface it is
+// actually painted on (surface-100 light, surface-900 dark — see $_bg/
+// $_bg-dark below), not just the page background. So a site
 // configured with a pale primary gets a darker link colour automatically rather
 // than an unreadable one: amber (#f0a000, 2.16:1 on white) walks down to a step
 // that passes, while purple (5.15:1) is used essentially as given.
@@ -97,7 +99,12 @@ $surface: ramp(cfg.$surface);
 	@return map.get($ramp, 950);
 }
 
-$_bg: map.get($surface, 50);
+// Clamped against surface-100, not surface-50: --c-link/--c-fg-muted/--c-focus/
+// --c-danger are painted on tinted surfaces too (--rail-bg, --footer-bg,
+// --card-bg all resolve to surface-100), and surface-100 is the DARKER of the
+// two — a step that passes there passes surface-50 by construction, but the
+// reverse is not true.
+$_bg: map.get($surface, 100);
 $_link: pick-step($accent, $_bg, 4.5);
 
 // Dark counterpart: walks DARK to light and returns the first passing step, so
@@ -112,7 +119,11 @@ $_link: pick-step($accent, $_bg, 4.5);
 	@return map.get($ramp, 50);
 }
 
-$_bg-dark: map.get($surface, 950);
+// Same reasoning, dark scheme: --rail-bg/--footer-bg/--card-bg resolve to
+// surface-900 there, the LIGHTER of the two dark surfaces, so clamping
+// against it (rather than surface-950) is what makes the same tokens pass on
+// every dark surface they actually paint onto.
+$_bg-dark: map.get($surface, 900);
 $_link-dark: pick-step-dark($accent, $_bg-dark, 4.5);
 
 // The highlight sits UNDER link text, so it is clamped against the link, not

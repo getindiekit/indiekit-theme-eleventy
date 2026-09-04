@@ -89,7 +89,6 @@ dl.nextprev dd {
 }
 dl.nextprev .project_img {
 	border: 1px solid var(--c-border);
-	box-shadow: 0 2px 12px 0px rgba(0, 0, 0, 0.2);
 }
 dl.nextprev a[href]:not(:active, :focus) .project_img:not(:hover) {
 	opacity: .85;

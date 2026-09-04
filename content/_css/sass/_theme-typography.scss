@@ -1,5 +1,6 @@
 @use "mixins";
 @use "config";
+@use "theme-config" as cfg;
 
 // Ported verbatim from the source's _theme.scss:433-438 ("App specific").
 // The `webfont` mixin (_mixins.scss:29-34) sets font-family/font-weight but
@@ -99,10 +100,16 @@ h4, h5 {
 	margin-top: 1.4em;
 }
 /* Caps and the variable axes belong to Hex Franklin. A custom heading font
-   renders in its own case and weight. */
-html[data-heading-font="default"] :is(h1, h2, h3, .hed-h1, .hed-h2, .hed-h3) {
-	text-transform: uppercase;
-	font-variation-settings: "wdth" 60, "TYTE" -50, "NOTC" 0;
+   renders in its own case and weight. Gated in Sass on theme.fonts.heading
+   itself (cfg.$heading-font-default), not a data attribute — a plain
+   selector list here keeps this at (0,0,1)/(0,1,0), the same specificity as
+   any other heading rule, so a `.cased` override (0,1,0) still wins over an
+   `h3` match instead of losing to an attribute-scoped selector. */
+@if cfg.$heading-font-default {
+	h1, h2, h3, .hed-h1, .hed-h2, .hed-h3 {
+		text-transform: uppercase;
+		font-variation-settings: "wdth" 60, "TYTE" -50, "NOTC" 0;
+	}
 }
 .cased {
 	text-transform: none;
@@ -155,8 +162,10 @@ h3,
 .hed-h3 {
 	font-size: 1.368421052632em; /* 26px /19 */
 }
-html[data-heading-font="default"] :is(h3, .hed-h3) {
-	font-variation-settings: "wdth" 65, "TYTE" 0, "NOTC" 0;
+@if cfg.$heading-font-default {
+	h3, .hed-h3 {
+		font-variation-settings: "wdth" 65, "TYTE" 0, "NOTC" 0;
+	}
 }
 h3 {
 	margin-top: 2em;
@@ -183,8 +192,10 @@ h5 {
 	margin: 0 0 .5em;
 	text-wrap: balance;
 }
-html[data-heading-font="default"] .primary-title {
-	font-variation-settings: "wdth" 96, "TYTE" -50, "NOTC" 1;
+@if cfg.$heading-font-default {
+	.primary-title {
+		font-variation-settings: "wdth" 96, "TYTE" -50, "NOTC" 1;
+	}
 }
 .primary-title code {
 	font-family: inherit;

@@ -50,7 +50,10 @@ export const THEME_DEFAULTS = Object.freeze({
 	fonts: {
 		heading: "Hex Franklin Tight",
 		body: "Lato",
-		mono: "Consolas, Monaco, monospace",
+		// No trailing ", monospace" here — _tokens.scss's --font-mono token
+		// appends the generic fallback unconditionally, so including it in the
+		// default too produced "monospace, monospace" in the shipped CSS.
+		mono: "Consolas, Monaco",
 	},
 	shape: "sharp",
 	rail: { side: "end", width: "14rem" },
@@ -59,30 +62,39 @@ export const THEME_DEFAULTS = Object.freeze({
 });
 
 const HEX = /^#[0-9a-f]{6}$/i;
-const LENGTH = /^\d+(\.\d+)?(rem|em|px|ch)$/;
+// A plain length, or a clamp()/min()/max()/calc() expression — matches the
+// README's "a CSS length (rem, em, px, ch, vw, vh, %) or a clamp/min/max/calc
+// expression". The bare-argument branch deliberately excludes `;`/`}` so a
+// malformed expression can't smuggle extra declarations into the emitted
+// :root block the way an unescaped font name once could.
+const LENGTH = /^(0|\d+(\.\d+)?(rem|em|px|ch|vw|vh|svw|dvw|%)|(clamp|min|max|calc)\([^;}]+\))$/;
 
-function fail(key, reason) {
-	throw new Error(`site.json theme.${key}: ${reason}`);
+function fail(key, reason, source) {
+	throw new Error(`${source ?? "site.json"} theme.${key}: ${reason}`);
 }
 
 // Fail the build, name the key. The audience edits JSON and never CSS, so a
 // silent fallback would hide the one mistake they can actually fix.
-export function validateTheme(theme) {
+// `sources` names, per key, the environment variable a value actually came
+// from (INDIEKIT_COLOR_PRIMARY etc.) — set by loadSiteConfig — so the error
+// points at the place a deployer would actually go fix it rather than always
+// blaming site.json even when site.json was never involved.
+export function validateTheme(theme, sources = {}) {
 	for (const key of ["primary", "secondary", "surface"]) {
-		if (!HEX.test(theme[key])) fail(key, `expected a six-digit hex colour like #9435f4, got ${JSON.stringify(theme[key])}`);
+		if (!HEX.test(theme[key])) fail(key, `expected a six-digit hex colour like #9435f4, got ${JSON.stringify(theme[key])}`, sources[key]);
 	}
 	if (!["light", "dark", "auto"].includes(theme.scheme)) fail("scheme", `expected light, dark or auto, got ${JSON.stringify(theme.scheme)}`);
 	if (typeof theme.schemeToggle !== "boolean") fail("schemeToggle", `expected true or false, got ${JSON.stringify(theme.schemeToggle)}`);
 	for (const key of ["heading", "body", "mono"]) {
 		const value = theme.fonts?.[key];
-		if (typeof value !== "string" || value.trim() === "" || /[;}]/.test(value)) {
-			fail(`fonts.${key}`, `expected a font-family list without ; or }, got ${JSON.stringify(value)}`);
+		if (typeof value !== "string" || value.trim() === "" || /[;}]|\/\*|\*\//.test(value)) {
+			fail(`fonts.${key}`, `expected a font-family list without ; or } or /* or */, got ${JSON.stringify(value)}`);
 		}
 	}
 	if (!["sharp", "rounded"].includes(theme.shape)) fail("shape", `expected sharp or rounded, got ${JSON.stringify(theme.shape)}`);
 	if (!["start", "end"].includes(theme.rail?.side)) fail("rail.side", `expected start or end, got ${JSON.stringify(theme.rail?.side)}`);
-	if (!LENGTH.test(theme.rail?.width)) fail("rail.width", `expected a length like 14rem, got ${JSON.stringify(theme.rail?.width)}`);
-	if (!LENGTH.test(theme.measure)) fail("measure", `expected a length like 31em, got ${JSON.stringify(theme.measure)}`);
+	if (!LENGTH.test(theme.rail?.width)) fail("rail.width", `expected a CSS length like 14rem or clamp(28em, 60vw, 40em), got ${JSON.stringify(theme.rail?.width)}`);
+	if (!LENGTH.test(theme.measure)) fail("measure", `expected a CSS length like 14rem or clamp(28em, 60vw, 40em), got ${JSON.stringify(theme.measure)}`);
 	for (const key of ["spectrum", "leader", "anchors"]) {
 		if (typeof theme.signature?.[key] !== "boolean") fail(`signature.${key}`, `expected true or false, got ${JSON.stringify(theme.signature?.[key])}`);
 	}
@@ -129,18 +141,23 @@ export function loadSiteConfig() {
 	// overlays it. Only these two are read — every other token is derived, so
 	// there is nothing else to override.
 	const envColors = {
-		primary: process.env.INDIEKIT_COLOR_PRIMARY,
-		secondary: process.env.INDIEKIT_COLOR_SECONDARY,
-		surface: process.env.INDIEKIT_COLOR_SURFACE,
+		primary: "INDIEKIT_COLOR_PRIMARY",
+		secondary: "INDIEKIT_COLOR_SECONDARY",
+		surface: "INDIEKIT_COLOR_SURFACE",
 	};
-	for (const [key, value] of Object.entries(envColors)) {
+	// Which env var (if any) actually supplied each colour, so a validation
+	// error can name it instead of always blaming site.json.
+	const sources = {};
+	for (const [key, envVarName] of Object.entries(envColors)) {
+		const value = process.env[envVarName];
 		if (value) {
 			config = merge(config, { theme: { [key]: value } });
+			sources[key] = envVarName;
 		}
 	}
 
 	config = merge(config, { theme: merge(THEME_DEFAULTS, config.theme || {}) });
-	validateTheme(config.theme);
+	validateTheme(config.theme, sources);
 
 	// Only cache once validation has passed, so a throw here does not poison a
 	// later call — with `cached` set before validating, a second

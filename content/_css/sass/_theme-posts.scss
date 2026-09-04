@@ -1,5 +1,6 @@
 @use "config";
 @use "mixins";
+@use "theme-config" as cfg;
 
 // Task S4 (audit §2.2, plan step 4): source _theme.scss:878-1064 (the
 // ".posts" system) plus :1706-1734 (".spark", coupled to it via the
@@ -48,13 +49,17 @@
 	gap: 1em;
 	align-items: center;
 }
-html[data-heading-font="default"] .posts .subhed { text-transform: uppercase; }
+@if cfg.$heading-font-default {
+	.posts .subhed { text-transform: uppercase; }
+}
 .subhed-year {
 	font-family: var(--font-heading);
 	font-size: 2.315789473684em; /* 44px /19 */
 }
-html[data-heading-font="default"] .subhed-year {
-	font-variation-settings: "wdth" 65, "TYTE" 0, "NOTC" 0;
+@if cfg.$heading-font-default {
+	.subhed-year {
+		font-variation-settings: "wdth" 65, "TYTE" 0, "NOTC" 0;
+	}
 }
 .subhed-count {
 	color: var(--c-fg-muted);
@@ -85,8 +90,6 @@ html[data-heading-font="default"] .subhed-year {
 	border: 1px solid var(--c-border);
 	border-radius: var(--radius);
 	transition: .25s box-shadow, .25s border-color;
-	/* Shadow, not colour — translucent black is depth in any palette. */
-	box-shadow: 0 6px 12px 0px rgba(0, 0, 0, .1);
 }
 .project_img {
 	transition: .3s cubic-bezier(0.19, 1, 0.22, 1);
@@ -94,7 +97,8 @@ html[data-heading-font="default"] .subhed-year {
 a[href]:is(:focus, :hover) .project_img {
 	transform: scale(1.04);
 	border-color: var(--c-bg);
-	box-shadow: 0 0 0 6px var(--c-focus), 0 6px 40px 4px rgba(0, 0, 0, .25);
+	/* Focus ring only — not depth. The design layer carries no shadows. */
+	box-shadow: 0 0 0 6px var(--c-focus);
 }
 .posts .project_img,
 .posts .project_video {
