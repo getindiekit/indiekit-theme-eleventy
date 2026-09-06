@@ -109,6 +109,8 @@ the site owner's to populate as spam/abuse shows up.
 npm install
 npm run build      # one-off production build to _site/
 npm start           # eleventy --serve --incremental, dev server on :8090
+                    # (incremental: a post's prev/next links can go stale when a
+                    # neighbouring post changes, until the next full build)
 npm run demo        # build with sample webmentions (see below)
 npm run demo:serve  # same, with the dev server on :8090
 npm test            # runs test/build.mjs against a real build

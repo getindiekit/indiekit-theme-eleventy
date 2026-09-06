@@ -884,18 +884,26 @@ check("templates reading collections declare eleventyImport where it can take ef
   // existing post's prev/next links can go stale until the next full
   // build. Accepted, not silently dropped: this exemption exists so a
   // *different*, new offender doesn't hide behind it unnoticed.
-  const KNOWN_UNDECLARABLE = new Set(["_includes/layouts/entry.liquid"]);
+  // The exemption is scoped to post pages (those rendered through
+  // entry.liquid) and to the two readers a post page cannot declare for:
+  // entry.liquid (prev/next) and base.liquid (og:description reads the
+  // page's own collections.post entry). Every reader in a page's render set
+  // is checked, not just the first found, so a third reader would surface.
+  const KNOWN_UNDECLARABLE = new Set(["_includes/layouts/entry.liquid", "_includes/layouts/base.liquid"]);
+  const POST_LAYOUT = "_includes/layouts/entry.liquid";
 
   const offenders = [];
   const reached = new Set();
   for (const page of pages) {
     const renderSet = renderSetOf(page);
     for (const f of renderSet) reached.add(f);
-    const readerFile = [...renderSet].find((f) => readsCollections(src(f)));
-    if (!readerFile) continue;
-    if (KNOWN_UNDECLARABLE.has(readerFile)) continue;
+    const readers = [...renderSet].filter((f) => readsCollections(src(f)));
+    const isPost = [...renderSet].includes(POST_LAYOUT);
+    const unexempt = isPost ? readers.filter((f) => !KNOWN_UNDECLARABLE.has(f)) : readers;
+    if (unexempt.length === 0) continue;
     const declares = declarationSourcesOf(page).some((f) => declaresImport(src(f)));
     if (!declares) {
+      const readerFile = unexempt[0];
       offenders.push(readerFile === page ? page : `${page} (reads collections.* via ${readerFile})`);
     }
   }

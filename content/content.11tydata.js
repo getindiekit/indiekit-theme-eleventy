@@ -52,6 +52,18 @@
 // alternative (computed tags/postType so post directories can hold only
 // posts) is the entire point of this file.
 //
+// LOAD-BEARING, in the other direction too: that same literal-only lookup is
+// what keeps collections.post from building empty. With `tags` computed, a
+// post publishes no collection edge when the dependency graph is built, and
+// it is ordered correctly only because it consumes nothing either. A post
+// that consumes any collection — a literal `layout` re-merging
+// base.liquid's own eleventyImport, an eleventyImport or pagination in a
+// post's front matter, or an Eleventy that starts merging layout front
+// matter for a computed layout — empties collections.post and takes the
+// homepage, archive, feeds and tag pages with it. @11ty/eleventy is pinned
+// exactly for this reason, and the suite goes loudly red if it happens.
+// No post may ever consume a collection.
+//
 // TYPES sits on the default export rather than a second named export: a
 // directory-data module with any named export alongside `default` stopped
 // feeding tags into Eleventy's tag-based collections at all (verified —
@@ -76,6 +88,8 @@ const dirOf = (data) => {
 export default {
 	TYPES,
 	eleventyComputed: {
+		// `||`, not `??`: Eleventy's computed-data proxy seeds unset computed keys
+		// with "" while it discovers dependencies, and `??` would keep that.
 		postType: (data) => data.postType || TYPES[dirOf(data)],
 		layout: (data) => {
 			if (data.layout === false) return false;
@@ -94,7 +108,7 @@ export default {
 			return [...new Set([...(data.tags || []), "post", type])];
 		},
 		permalink: (data) => {
-			if (data.permalink) return data.permalink;
+			if (data.permalink !== undefined) return data.permalink;
 			const dir = dirOf(data);
 			return TYPES[dir] ? `/${dir}/${data.page.fileSlug}/` : undefined;
 		},

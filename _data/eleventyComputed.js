@@ -5,7 +5,7 @@
 //
 // Give every post-type page a fallback title without inventing a fake
 // headline that misrepresents a note as an article: "<Post type> · <date>".
-// Only applies when a page sets `postType` (content/*/​*.11tydata.js) and has
+// Only applies when a page sets `postType` (content/content.11tydata.js) and has
 // no literal `title` of its own — articles already have one.
 //
 // Bookmarks get their own fallback (the bookmarked URL) instead of the
