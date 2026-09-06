@@ -195,8 +195,12 @@ export default function(eleventyConfig) {
 	});
 
 	if(process.env.ELEVENTY_RUN_MODE === "build") {
-		// copy .cache to output folder
+		// copy .cache to output folder. The cache only exists once an image has
+		// been transformed; a site with no images yet (a fresh install, or the
+		// sample posts switched off) has none, and cpSync on a missing source
+		// throws ENOENT and fails the whole build.
 		eleventyConfig.on("eleventy.after", () => {
+			if (!fs.existsSync(TEMP_DIR)) return;
 			fs.cpSync(TEMP_DIR, IMAGE_OUTPUT_DIR, { recursive: true });
 		});
 	}
