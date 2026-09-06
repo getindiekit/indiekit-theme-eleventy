@@ -115,7 +115,12 @@ file-system store writing to `content/`, and one post type per directory the
 theme renders. It names no `@rmdes` package and installs nothing itself. Run it
 with the official image (`ghcr.io/getindiekit/indiekit`) or any Indiekit
 install that mounts the file at its working directory alongside `content/`,
-with `PUBLICATION_URL`, `MONGO_URL`, `SECRET` and `PASSWORD_SECRET` set.
+with `PUBLICATION_URL`, `MONGO_URL`, `SECRET` and `PASSWORD_SECRET` set as
+environment variables. The config also reads a `.env` file when one exists in
+its working directory, which in a container means mounting it beside the config;
+plain environment variables are the simpler path there. Run the container as
+your own user (`user: "<uid>:<gid>"` in compose) so posts written to `content/`
+belong to you.
 
 The sample posts under `content/*/fixture-*.md` are there for the demo and the
 test suite. On a live site either delete them or build with
