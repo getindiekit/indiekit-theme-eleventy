@@ -108,6 +108,25 @@ npm test            # runs test/build.mjs against a real build
 # (the search index is built automatically as part of every build)
 ```
 
+### Going live
+
+The theme ships `indiekit.config.js`: the upstream Eleventy preset, the
+file-system store writing to `content/`, and one post type per directory the
+theme renders. It names no `@rmdes` package and installs nothing itself. Run it
+with the official image (`ghcr.io/getindiekit/indiekit`) or any Indiekit
+install that mounts the file at its working directory alongside `content/`,
+with `PUBLICATION_URL`, `MONGO_URL`, `SECRET` and `PASSWORD_SECRET` set as
+environment variables. The config also reads a `.env` file when one exists in
+its working directory, which in a container means mounting it beside the config;
+plain environment variables are the simpler path there. Run the container as
+your own user (`user: "<uid>:<gid>"` in compose) so posts written to `content/`
+belong to you.
+
+The sample posts under `content/*/fixture-*.md` are there for the demo and the
+test suite. On a live site either delete them or build with
+`THEME_SAMPLE_POSTS=0`, which leaves the files in place and renders none of
+them. Uploads land in `content/media/` and are served at `/media/`.
+
 ### Previewing the populated state — `npm run demo`
 
 A fresh checkout has no webmentions, so the parts of the theme that only appear
