@@ -62,6 +62,7 @@ Every key:
 |---|---|
 | `name` | Site name, used in the page `<title>`, feed title, and OG meta. |
 | `url` | The site's canonical, publicly reachable URL (no trailing slash). Used for feed links, canonical URLs, and to decide whether OG screenshot cards can run (see below). |
+| `indiekit` | URL of your Indiekit server, no trailing slash (e.g. `https://indiekit.example.com`, or your site's own URL when Indiekit is proxied under it). When set, the homepage advertises the Micropub, authorization and token endpoints so clients can find it. Also settable as `INDIEKIT_URL`. Empty by default. |
 | `description` | Default site/page description, used as a fallback for OG/Twitter meta. |
 | `author.name`, `author.url` | Site owner identity. `author.url` also renders a `rel="me"` link for IndieAuth. |
 | `timezone` | An IANA timezone name (e.g. `Europe/Brussels`). All dates render in this zone, regardless of what timezone the build machine is in, so a build is reproducible no matter where it runs. Falls back to UTC if unset. |
@@ -120,7 +121,8 @@ environment variables. The config also reads a `.env` file when one exists in
 its working directory, which in a container means mounting it beside the config;
 plain environment variables are the simpler path there. Run the container as
 your own user (`user: "<uid>:<gid>"` in compose) so posts written to `content/`
-belong to you.
+belong to you. Set `indiekit` (or `INDIEKIT_URL`) to the server's URL so Micropub
+clients can discover it.
 
 The sample posts under `content/*/fixture-*.md` are there for the demo and the
 test suite. On a live site either delete them or build with

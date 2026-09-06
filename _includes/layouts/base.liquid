@@ -70,6 +70,15 @@ through to site.description below — not an error case. {% endcomment -%}
 
 		<title>{{ docTitle }}</title>
 
+		{%- comment %} Micropub discovery. A client reads these three from the
+		   homepage to find the server; Indiekit's welcome page lists the same
+		   three. Driven by site.indiekit (or INDIEKIT_URL), empty by default so
+		   the neutral theme advertises nothing. {% endcomment -%}
+		{%- if site.indiekit %}
+		<link rel="micropub" href="{{ site.indiekit }}/micropub">
+		<link rel="authorization_endpoint" href="{{ site.indiekit }}/auth">
+		<link rel="token_endpoint" href="{{ site.indiekit }}/auth/token">
+		{%- endif %}
 		{%- comment %} Webmention discovery. Without these a sender cannot find
 		   where to deliver, so the site can receive nothing — the receiving half
 		   of webmentions is these two lines, not the comment list.
