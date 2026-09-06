@@ -126,9 +126,15 @@ export default function (eleventyConfig) {
   });
 
   eleventyConfig.addPreprocessor("real-title", "*", (data) => {
-    data.title_isReal =
-      Boolean(data.title) ||
-      (data.postType === "bookmark" && Boolean(data.bookmarkOf));
+    // Runs on raw front matter, before eleventyComputed (see the comment
+    // above the next preprocessor) — so it cannot read data.postType, which
+    // content/content.11tydata.js now derives via eleventyComputed rather
+    // than setting as a plain per-directory value. bookmarkOf is set by
+    // Indiekit only from the bookmark-of JF2 property (never like-of or
+    // in-reply-to, which land in likeOf/inReplyTo instead — see this file's
+    // jsonLdData()), so its presence already implies a bookmark; no
+    // postType check is needed to scope it.
+    data.title_isReal = Boolean(data.title) || Boolean(data.bookmarkOf);
   });
 
   eleventyConfig.addPreprocessor("drafts", "*", (data) => {

@@ -57,6 +57,17 @@ export default {
   // keywords. sharedContent expects a CreativeWork, which is what a reply,
   // like or bookmark target is.
   jsonLdData(data) {
+    // Eleventy's automatic dependency detection for computed data (a trial
+    // run with placeholder values — @11ty/eleventy/src/Data/
+    // ComputedDataProxy.js) walks this function once to see which keys it
+    // reads, so it can order `title` (also computed, below) before this one.
+    // With `postType` now itself computed (content/content.11tydata.js),
+    // that trial run's placeholder makes `!data.postType` true, and the
+    // function returns before ever reaching `data.title` — hiding the
+    // dependency, so `title` could run after this and headline would use
+    // its raw (often absent) value instead of the resolved one. Touching it
+    // unconditionally, before the guard, keeps it visible regardless.
+    void data.title;
     if (!data.postType) {
       return null;
     }

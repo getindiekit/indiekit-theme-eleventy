@@ -50,6 +50,12 @@ post type:
 | `content/photos/` | photo |
 | `content/replies/` | reply |
 
+Posts are typed by the directory they sit in, not by anything in the
+directory itself — `content/content.11tydata.js` derives layout, post type,
+tags and permalink from a post's own directory — so the six post
+directories hold nothing but posts, and a deployment can mount a content
+store over each one without hiding any of the theme's own files.
+
 Eleventy's input directory is `content/`; the built site is written to
 `_site/`.
 
