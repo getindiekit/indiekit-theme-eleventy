@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { existsSync, readFileSync, writeFileSync, rmSync, globSync, statSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, rmSync, renameSync, globSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { gunzipSync } from "node:zlib";
 import Eleventy from "@11ty/eleventy";
@@ -5425,6 +5425,27 @@ check("the Micropub endpoint links are emitted only when site.indiekit is set, a
     assert.ok(stderr.includes("INDIEKIT_URL indiekit:"), `bad value not rejected naming the env var:\n${stderr.slice(0, 300)}`);
   } finally {
     rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+check("a site with no images yet builds: the image cache copy tolerates a missing cache", () => {
+  // The image plugin copies .cache/@11ty/img/ into the output after a build.
+  // A fresh install has transformed no image, so the directory does not exist;
+  // the copy must skip, not throw. Reproduced by hiding the cache and building
+  // with the sample posts (the only pages carrying images) switched off.
+  const cache = ".cache/@11ty/img";
+  const hidden = ".cache/@11ty/img.hidden-by-test";
+  const outDir = "_site-noimages-check";
+  const had = existsSync(cache);
+  try {
+    if (had) renameSync(cache, hidden);
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(process.execPath, ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe", env: { ...process.env, THEME_SAMPLE_POSTS: "0", NPM_DOWNLOADS_OFFLINE: "1" } });
+    assert.ok(existsSync(`${outDir}/index.html`), "the build without images produced no homepage");
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+    if (had && existsSync(hidden)) { rmSync(cache, { recursive: true, force: true }); renameSync(hidden, cache); }
   }
 });
 
