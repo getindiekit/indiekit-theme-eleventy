@@ -168,6 +168,12 @@ export default function (eleventyConfig) {
     eleventyConfig.ignores.add(OG_CARD_TEMPLATE);
   }
 
+  // A live site keeps the fixture posts for the test suite but must not render
+  // them. Delete content/*/fixture-*.md, or set THEME_SAMPLE_POSTS=0 at build.
+  if (process.env.THEME_SAMPLE_POSTS === "0") {
+    eleventyConfig.ignores.add("content/*/fixture-*.md");
+  }
+
   // content/static/defer.js.liquid `{% include %}`s a dependency out of
   // node_modules (see that file's own comment for why it lives under
   // content/static/ rather than the source's project-root static/). Confirmed
@@ -424,6 +430,10 @@ export default function (eleventyConfig) {
   // Without this the photo post's <img> 404s: the src was correct and the
   // file was simply never copied into the build.
   eleventyConfig.addPassthroughCopy({ "content/_fixtures": "/media" });
+  // Uploads: the file-system store (indiekit.config.js) writes media under
+  // content/media/<type>/, and posts reference them at /media/… — the same URL
+  // prefix the fixture media uses above.
+  eleventyConfig.addPassthroughCopy({ "content/media": "/media" });
   // Finding 13: _components/ (toggle-button.webc + its .css/.js, and
   // health-score.js) and the passthrough that published them to the site root
   // were deleted. Nothing referenced them: the component's only consumer was

@@ -5374,6 +5374,34 @@ check("SITE_FIXTURE accepts a comma-separated list, merged left to right", () =>
   }
 });
 
+await checkAsync("indiekit.config.js declares one post type per rendered directory, with URLs the permalinks agree on", async () => {
+  const config = (await import("../indiekit.config.js")).default;
+  assert.deepEqual(config.plugins, ["@indiekit/preset-eleventy", "@indiekit/store-file-system"]);
+  assert.equal(config["@indiekit/store-file-system"].directory, "./content");
+  const dirs = globSync("content/*/*.11tydata.js").map((f) => f.split("/")[1]).sort();
+  const types = Object.entries(config.publication.postTypes);
+  assert.deepEqual(types.map(([, t]) => t.post.url.split("/")[0]).sort(), dirs, "post-type collections differ from the rendered directories");
+  for (const [type, t] of types) {
+    assert.equal(t.post.path, `${t.post.url.split("/")[0]}/{slug}.md`, `${type}: path and url disagree`);
+    assert.match(t.post.url, /\/\{slug\}$/, `${type}: url must end in /{slug} to match the theme's permalink`);
+  }
+  assert.match(readFileSync("eleventy.config.js", "utf8"), /"content\/media":\s*"\/media"/, "uploads are not passthrough-copied to /media");
+});
+
+check("THEME_SAMPLE_POSTS=0 builds without the fixture posts, and the default build keeps them", () => {
+  const outDir = "_site-nosamples-check";
+  try {
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(process.execPath, ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe", env: { ...process.env, THEME_SAMPLE_POSTS: "0", NPM_DOWNLOADS_OFFLINE: "1" } });
+    assert.equal(globSync(`${outDir}/*/fixture-*/index.html`).length, 0, "fixture pages were still built");
+    assert.ok(existsSync(`${outDir}/index.html`), "the homepage was not built");
+    assert.ok(globSync("_site/*/fixture-*/index.html").length >= 5, "the default build lost its fixture pages");
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
 rmSync(KNOBS_OUT, { recursive: true, force: true });
 
 const failed = checks.filter((c) => !c).length;
