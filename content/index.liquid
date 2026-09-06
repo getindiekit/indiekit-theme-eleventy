@@ -1,5 +1,8 @@
 ---
-title: Indiekit reference theme
+# The homepage is titled after the site, whatever the site is called: the
+# base layout then emits <title> as the bare site name instead of doubling it.
+eleventyComputed:
+  title: "{{ site.name }}"
 titleScreenReaderOnly: true
 layout: layouts/pagealign.liquid
 eleventyImport:
