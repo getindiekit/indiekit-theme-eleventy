@@ -36,11 +36,16 @@ check("builds an index page", () => {
   assert.ok(existsSync("_site/index.html"), "_site/index.html missing");
 });
 
-check("index carries its title", () => {
+check("index is titled after the site, not after the theme", () => {
   const html = readFileSync("_site/index.html", "utf8");
+  const site = JSON.parse(readFileSync("_data/site.json", "utf8"));
   assert.ok(
-    html.includes("Indiekit reference theme"),
-    "title text not found in output",
+    html.includes(`<title>${site.name}</title>`),
+    "homepage <title> is not the bare site name",
+  );
+  assert.ok(
+    !html.includes("Indiekit reference theme—"),
+    "homepage title still carries the theme name",
   );
 });
 
