@@ -73,6 +73,14 @@ function fail(key, reason, source) {
 	throw new Error(`${source ?? "site.json"} theme.${key}: ${reason}`);
 }
 
+// Same shape as fail(), for a top-level config key rather than a theme.* one
+// — the message must read "site.json indiekit:", not "site.json theme.indiekit:".
+function failTopLevel(key, reason, source) {
+	throw new Error(`${source ?? "site.json"} ${key}: ${reason}`);
+}
+
+const SERVER_URL = /^https?:\/\/[^\s/]+$/;
+
 // Fail the build, name the key. The audience edits JSON and never CSS, so a
 // silent fallback would hide the one mistake they can actually fix.
 // `sources` names, per key, the environment variable a value actually came
@@ -156,8 +164,24 @@ export function loadSiteConfig() {
 		}
 	}
 
+	// The Indiekit server URL may likewise come from the environment — same
+	// file-first, env-on-top precedence as the colours above.
+	let indiekitSource;
+	if (process.env.INDIEKIT_URL) {
+		config = merge(config, { indiekit: process.env.INDIEKIT_URL });
+		indiekitSource = "INDIEKIT_URL";
+	}
+
 	config = merge(config, { theme: merge(THEME_DEFAULTS, config.theme || {}) });
 	validateTheme(config.theme, sources);
+
+	if (config.indiekit && !SERVER_URL.test(config.indiekit)) {
+		failTopLevel(
+			"indiekit",
+			`expected the Indiekit server URL without a path or trailing slash, like https://indiekit.example.com, got ${JSON.stringify(config.indiekit)}`,
+			indiekitSource,
+		);
+	}
 
 	// Only cache once validation has passed, so a throw here does not poison a
 	// later call — with `cached` set before validating, a second

@@ -5402,6 +5402,32 @@ check("THEME_SAMPLE_POSTS=0 builds without the fixture posts, and the default bu
   }
 });
 
+check("the Micropub endpoint links are emitted only when site.indiekit is set, and INDIEKIT_URL overrides it", () => {
+  assert.ok(!/rel="micropub"/.test(defaults.html), "the neutral default advertises a micropub endpoint");
+  const outDir = "_site-endpoints-check";
+  try {
+    const demo = buildWithFixture("test/fixtures/site-demo.json", outDir);
+    for (const [rel, path] of [["micropub", "/micropub"], ["authorization_endpoint", "/auth"], ["token_endpoint", "/auth/token"]]) {
+      assert.ok(demo.html.includes(`<link rel="${rel}" href="http://localhost:3000${path}">`), `${rel} link missing or wrong`);
+    }
+    rmSync(outDir, { recursive: true, force: true });
+    execFileSync(process.execPath, ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe", env: { ...process.env, INDIEKIT_URL: "https://indiekit.example.test", NPM_DOWNLOADS_OFFLINE: "1" } });
+    const html = readFileSync(`${outDir}/index.html`, "utf8");
+    assert.ok(html.includes('<link rel="micropub" href="https://indiekit.example.test/micropub">'), "INDIEKIT_URL did not override");
+    rmSync(outDir, { recursive: true, force: true });
+    let stderr = "";
+    try {
+      execFileSync(process.execPath, ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe", env: { ...process.env, INDIEKIT_URL: "https://indiekit.example.test/", NPM_DOWNLOADS_OFFLINE: "1" } });
+      assert.fail("a trailing slash was accepted");
+    } catch (error) { stderr = String(error.stderr || error.message); }
+    assert.ok(stderr.includes("INDIEKIT_URL indiekit:"), `bad value not rejected naming the env var:\n${stderr.slice(0, 300)}`);
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
 rmSync(KNOBS_OUT, { recursive: true, force: true });
 
 const failed = checks.filter((c) => !c).length;

@@ -1,4 +1,5 @@
 {
+  "indiekit": "http://localhost:3000",
   "author": {
     "name": "Ada Lovelace",
     "url": "http://localhost:8080/",

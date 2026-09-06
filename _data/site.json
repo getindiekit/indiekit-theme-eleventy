@@ -1,6 +1,7 @@
 {
   "name": "Indiekit reference theme",
   "url": "http://localhost:8080",
+  "indiekit": "",
   "description": "A reference Eleventy theme for Indiekit.",
   "theme": {
     "primary": "#9435f4",
