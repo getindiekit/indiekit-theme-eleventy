@@ -4,6 +4,9 @@ An [Eleventy](https://www.11ty.dev/) theme built to be consumed by
 [Indiekit](https://getindiekit.com/): Indiekit's Micropub endpoint writes
 Markdown files into `content/`, and this theme turns them into a website.
 
+<img width="1600" height="996" alt="Image" src="https://github.com/user-attachments/assets/44888098-0b21-4cc2-8553-4d69b1310002" />
+<img width="1584" height="999" alt="Image" src="https://github.com/user-attachments/assets/b9b53d09-5e1e-4fc8-acae-7ee6ab947736" />
+
 It is a **port of [zachleat.com](https://github.com/zachleat/zachleat.com)**
 — Zach Leatherman's personal site — adapted into a general-purpose Indiekit
 theme. The source repo declares `"license": "MIT"` in its `package.json` but
