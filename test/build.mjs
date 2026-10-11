@@ -1339,6 +1339,12 @@ const mf2 = {
   likes: ["h-entry", "u-like-of"],
   replies: ["h-entry", "u-in-reply-to"],
   photos: ["h-entry", "u-photo"],
+  audio: ["h-entry", "u-audio"],
+  videos: ["h-entry", "u-video"],
+  events: ["h-event", "p-name", "dt-start"],
+  jams: ["h-entry", "u-jam-of"],
+  reposts: ["h-entry", "u-repost-of"],
+  rsvps: ["h-entry", "u-in-reply-to", "p-rsvp"],
 };
 
 for (const [type, classes] of Object.entries(mf2)) {
@@ -1366,6 +1372,55 @@ for (const [type, classes] of Object.entries(mf2)) {
   });
 }
 
+check("audio and video permalinks embed the media element with controls", () => {
+  const audio = readFileSync("_site/audio/fixture-audio/index.html", "utf8");
+  assert.match(audio, /<audio controls class="u-audio" src="\/media\/sample\.mp3"/, "no <audio controls class=u-audio src=…>");
+  const video = readFileSync("_site/videos/fixture-video/index.html", "utf8");
+  assert.match(video, /<video controls class="u-video" src="\/media\/sample\.mp4" poster="\/media\/sample\.png"/, "no <video controls class=u-video src poster>");
+  assert.ok(existsSync("_site/media/sample.mp3") && existsSync("_site/media/sample.mp4"), "sample media not passthrough-copied");
+});
+
+check("an event is an h-event on its permalink and in its listing row, never an h-entry", () => {
+  const page = readFileSync("_site/events/fixture-event/index.html", "utf8");
+  assert.match(page, /<article class="h-event">/, "the permalink wrapper is not h-event");
+  assert.ok(!/<article class="h-entry"/.test(page), "the event permalink is also an h-entry");
+  assert.match(page, /<h1 class="p-name /, "no p-name heading");
+  assert.match(page, /<time class="dt-start" datetime="2026-09-02T18:00:00\+02:00"/, "dt-start is not the declared start");
+  assert.match(page, /<time class="dt-end" datetime="2026-09-02T20:00:00\+02:00"/, "dt-end is not the declared end");
+  assert.match(page, /<p class="p-location">[^<]*Brussels/, "no p-location");
+  assert.match(page, /<a class="u-url" href="https:\/\/events\.indieweb\.org\/example"/, "the event url is not a u-url");
+  const row = extractHEntryBlocks(readFileSync("_site/events/index.html", "utf8"), "li");
+  assert.equal(row.length, 1, "the events index does not list the event as one h-event row");
+  assert.match(row[0], /^<li class="h-event"/, "the listing row is not h-event");
+});
+
+check("jam, repost and rsvp carry their target and verb microformats", () => {
+  const jam = readFileSync("_site/jams/fixture-jam/index.html", "utf8");
+  assert.match(jam, /Listening to <a class="u-jam-of"[^>]*href="https:\/\/example\.com\/music\/track"/, "jam: no u-jam-of link");
+  const repost = readFileSync("_site/reposts/fixture-repost/index.html", "utf8");
+  assert.match(repost, /Reposted/, "repost: no verb");
+  assert.match(repost, /class="u-repost-of h-cite"/, "repost: no u-repost-of h-cite");
+  const rsvp = readFileSync("_site/rsvps/fixture-rsvp/index.html", "utf8");
+  assert.match(rsvp, /<data class="p-rsvp" value="yes">Going<\/data>/, "rsvp: no p-rsvp data element");
+  assert.match(rsvp, /class="u-in-reply-to h-cite"/, "rsvp: no u-in-reply-to h-cite");
+});
+
+check("the event's JSON-LD carries its start and end", () => {
+  const html = readFileSync("_site/events/fixture-event/index.html", "utf8");
+  const ld = JSON.parse(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html)[1]);
+  assert.equal(ld["@type"], "Event");
+  assert.equal(Date.parse(ld.startDate), Date.parse("2026-09-02T18:00:00+02:00"));
+  assert.equal(Date.parse(ld.endDate), Date.parse("2026-09-02T20:00:00+02:00"));
+});
+
+check("titleless new types get a synthetic feed title with their own label", () => {
+  const xml = readFileSync("_site/feed.xml", "utf8");
+  for (const label of ["Audio", "Video", "Jam", "Repost", "RSVP"]) {
+    assert.ok(xml.includes(`<title>${label} · 30 Aug 2026</title>`) || xml.includes(`<title>${label} · 31 Aug 2026</title>`), `no "${label} · <date>" feed title`);
+  }
+  assert.ok(xml.includes("<title>Homebrew Website Club</title>"), "the event's own title is not in the feed");
+});
+
 check("the archive is an h-feed listing every post", () => {
   // Task 12a: found during Task 12 — the theme built 8 pages and the
   // homepage linked to none of them. This asserts every post type is
@@ -1374,7 +1429,7 @@ check("the archive is an h-feed listing every post", () => {
   // fails, not just a listing that shows articles alone.
   const html = readFileSync("_site/archive/index.html", "utf8");
   assert.ok(/class="[^"]*\bh-feed\b/.test(html), "homepage is not marked up as an h-feed");
-  for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos"]) {
+  for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos", "audio", "videos", "events", "jams", "reposts", "rsvps"]) {
     assert.ok(
       new RegExp(`href="/${type}/[^"]+/"`).test(html),
       `homepage h-feed has no entry linking into /${type}/`,
@@ -1385,11 +1440,11 @@ check("the archive is an h-feed listing every post", () => {
 check("archive h-feed entries carry h-entry, not bare links", () => {
   // The check above would also pass if the listing were a plain <a> list
   // with no microformats at all — assert each entry is itself a valid
-  // h-entry, one per post-tagged fixture (8: see the feed entry-count
+  // h-entry, one per post-tagged fixture (14: see the feed entry-count
   // check above for why it's 8, not 6).
   const html = readFileSync("_site/archive/index.html", "utf8");
   const entryCount = (html.match(/class="h-entry"/g) || []).length;
-  assert.equal(entryCount, 8, `expected 8 h-entry listing entries, found ${entryCount}`);
+  assert.equal(entryCount, 14, `expected 14 h-entry listing entries, found ${entryCount}`);
 });
 
 check("archive h-feed lists posts newest first", () => {
@@ -1404,9 +1459,9 @@ check("archive h-feed lists posts newest first", () => {
   // u-url per entry to resolve (see task-s4-report.md). A bare `href="..."`
   // scan would double-count that entry; anchor on the class every entry's
   // *one* real permalink link always carries instead.
-  const hrefs = [...feedSection.matchAll(/<a\s+class="[^"]*\bu-url\b[^"]*"\s+href="(\/(?:articles|notes|bookmarks|likes|replies|photos)\/[^"]+\/)"/g)]
+  const hrefs = [...feedSection.matchAll(/<a\s+class="[^"]*\bu-url\b[^"]*"\s+href="(\/(?:articles|notes|bookmarks|likes|replies|photos|audio|videos|events|jams|reposts|rsvps)\/[^"]+\/)"/g)]
     .map((m) => m[1]);
-  assert.equal(hrefs.length, 8, `expected 8 entry links inside the h-feed, found ${hrefs.length}`);
+  assert.equal(hrefs.length, 14, `expected 14 entry links inside the h-feed, found ${hrefs.length}`);
 
   const fixtures = [
     ["articles", "fixture-article"],
@@ -1417,6 +1472,12 @@ check("archive h-feed lists posts newest first", () => {
     ["replies", "fixture-reply"],
     ["photos", "fixture-photo"],
     ["photos", "fixture-gallery"],
+    ["audio", "fixture-audio"],
+    ["videos", "fixture-video"],
+    ["events", "fixture-event"],
+    ["jams", "fixture-jam"],
+    ["reposts", "fixture-repost"],
+    ["rsvps", "fixture-rsvp"],
   ];
   const byHref = new Map(
     fixtures.map(([type, slug]) => [
@@ -1451,6 +1512,12 @@ check("archive h-feed entry dates match the same instant as the post's own page"
     ["replies", "fixture-reply"],
     ["photos", "fixture-photo"],
     ["photos", "fixture-gallery"],
+    ["audio", "fixture-audio"],
+    ["videos", "fixture-video"],
+    ["events", "fixture-event"],
+    ["jams", "fixture-jam"],
+    ["reposts", "fixture-repost"],
+    ["rsvps", "fixture-rsvp"],
   ];
   for (const [type, slug] of fixtures) {
     const pageHtml = readFileSync(`_site/${type}/${slug}/index.html`, "utf8");
@@ -1558,7 +1625,7 @@ function extractHEntryBlocks(html, tagName = "article") {
       depth--;
       if (depth === 0 && openStart !== -1) {
         const block = html.slice(openStart, match.index + match[0].length);
-        if (new RegExp(`^<${tagName} class="h-entry"`).test(block)) {
+        if (new RegExp(`^<${tagName} class="h-(?:entry|event)"`).test(block)) {
           blocks.push(block);
         }
         openStart = -1;
@@ -1585,7 +1652,7 @@ check("every h-entry in the archive listing carries its own u-url", () => {
   // array. Pin the count to the known fixture total (see "h-feed entries
   // carry h-entry" above for why it's 8) so a broken extractor fails loudly
   // instead of silently checking nothing.
-  assert.equal(blocks.length, 8, `expected 8 h-entry blocks, found ${blocks.length}`);
+  assert.equal(blocks.length, 14, `expected 14 h-entry blocks, found ${blocks.length}`);
 
   const missing = blocks
     .map((block, i) => ({ i, hasUrl: /\bu-url\b/.test(block) }))
@@ -1608,7 +1675,7 @@ check("every post permalink carries tmpl-page and has exactly one <h1>; the home
   // legitimately carries neither tmpl-page nor this <h1> convention —
   // excluded by construction below (the per-type globs never reach it),
   // matching the established exemption used elsewhere in this suite.
-  const types = ["articles", "notes", "bookmarks", "likes", "replies", "photos"];
+  const types = ["articles", "notes", "bookmarks", "likes", "replies", "photos", "audio", "videos", "events", "jams", "reposts", "rsvps"];
   let checkedPages = 0;
   for (const type of types) {
     // One directory deep: post permalinks are /<type>/<slug>/, while
@@ -1643,7 +1710,7 @@ check("every post's content wrapper carries both content-grid and e-content", ()
   // applied to a real post. "like" has no e-content div at all (its body is
   // just a URL — see "heading-anchors wraps..." above) and is excluded
   // here for the same reason, not missed.
-  const types = ["articles", "notes", "bookmarks", "replies", "photos"];
+  const types = ["articles", "notes", "bookmarks", "replies", "photos", "audio", "videos", "events", "reposts", "rsvps"];
   let checkedPages = 0;
   for (const type of types) {
     // One directory deep: post permalinks are /<type>/<slug>/, while
@@ -1681,10 +1748,10 @@ check("p-name marks titled post types only — titleless types must not carry on
   //   notes, likes, replies, photos -> titleless, MUST NOT carry p-name
   // Every h-entry, both kinds, must still carry u-url — that is what makes the
   // entry addressable, and it is the guard the old check was really providing.
-  const TITLED = new Set(["articles", "bookmarks"]);
+  const TITLED = new Set(["articles", "bookmarks", "events"]);
 
   const rows = extractHEntryBlocks(readFileSync("_site/archive/index.html", "utf8"), "li");
-  assert.equal(rows.length, 8, `expected 8 h-entry blocks in the feed, found ${rows.length}`);
+  assert.equal(rows.length, 14, `expected 14 h-entry blocks in the feed, found ${rows.length}`);
   for (const row of rows) {
     const href = /href="\/([a-z]+)\//.exec(row);
     assert.ok(href, `listing row has no typed permalink href: ${row.slice(0, 120)}`);
@@ -1708,7 +1775,7 @@ check("p-name marks titled post types only — titleless types must not carry on
     }
   }
 
-  for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos"]) {
+  for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos", "audio", "videos", "events", "jams", "reposts", "rsvps"]) {
     // One directory deep: post permalinks are /<type>/<slug>/, while
     // /<type>/index.html is that type's listing page (content/
     // collection-index.liquid). `**` would hand this check a listing and
@@ -1762,7 +1829,7 @@ check("the archive listing never embeds a full post body — no content-grid/e-c
   // e-content wrapper).
   const html = readFileSync("_site/archive/index.html", "utf8");
   const blocks = extractHEntryBlocks(html, "li");
-  assert.equal(blocks.length, 8, `expected 8 h-entry <li> blocks, found ${blocks.length}`);
+  assert.equal(blocks.length, 14, `expected 14 h-entry <li> blocks, found ${blocks.length}`);
   const withBody = blocks
     .map((block, i) => ({ i, hasBody: /\bcontent-grid\b/.test(block) || /\be-content\b/.test(block) }))
     .filter((b) => b.hasBody);
@@ -2059,8 +2126,8 @@ check("feed contains every post-tagged fixture, not just any entry", () => {
   // titleless-bookmark fallback.
   const xml = readFileSync("_site/feed.xml", "utf8");
   const entryCount = (xml.match(/<entry>/g) || []).length;
-  assert.equal(entryCount, 8, `expected 8 feed entries (one per post-type fixture, plus the untitled-bookmark fixture), got ${entryCount}`);
-  for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos"]) {
+  assert.equal(entryCount, 14, `expected 14 feed entries (one per post-type fixture, plus the untitled-bookmark fixture), got ${entryCount}`);
+  for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos", "audio", "videos", "events", "jams", "reposts", "rsvps"]) {
     assert.ok(
       xml.includes(`http://localhost:8080/${type}/`),
       `feed missing an entry linking into /${type}/`,
@@ -2109,7 +2176,7 @@ check("every feed entry has a non-empty title", () => {
     .map((m) => m[1].trim())
     // the feed's own <title> (site name) is not an entry title
     .slice(1);
-  assert.equal(titles.length, 8, `expected 8 entry titles, found ${titles.length}`);
+  assert.equal(titles.length, 14, `expected 14 entry titles, found ${titles.length}`);
   for (const title of titles) {
     assert.ok(title.length > 0, "a feed entry has an empty <title>");
   }
@@ -2159,6 +2226,12 @@ check("feed and page timestamps round-trip to the exact source instant, not just
     ["replies", "fixture-reply"],
     ["photos", "fixture-photo"],
     ["photos", "fixture-gallery"],
+    ["audio", "fixture-audio"],
+    ["videos", "fixture-video"],
+    ["events", "fixture-event"],
+    ["jams", "fixture-jam"],
+    ["reposts", "fixture-repost"],
+    ["rsvps", "fixture-rsvp"],
   ];
 
   const xml = readFileSync("_site/feed.xml", "utf8");
@@ -3149,7 +3222,7 @@ await checkAsync(
       // glob string itself, which would make this circular) — every
       // index.html actually built under one of the six post-type
       // directories, converted to the same clean-URL shape Pagefind reports.
-      const expectedUrls = globSync("_site/{articles,bookmarks,likes,notes,photos,replies}/*/index.html")
+      const expectedUrls = globSync("_site/{articles,audio,bookmarks,events,jams,likes,notes,photos,replies,reposts,rsvps,videos}/*/index.html")
         .map((f) => `/${f.replace(/^_site\//, "").replace(/index\.html$/, "")}`)
         .sort();
 
@@ -3276,7 +3349,7 @@ check("OG card pages build one per built post, at the permalink adapted to conte
   // real built post pages (not from the front-matter permalink string
   // itself, which would make this circular) — the same approach the
   // pagefind check above uses for its own expected set.
-  const postPages = globSync("_site/{articles,bookmarks,likes,notes,photos,replies}/*/index.html");
+  const postPages = globSync("_site/{articles,audio,bookmarks,events,jams,likes,notes,photos,replies,reposts,rsvps,videos}/*/index.html");
   assert.ok(postPages.length > 0, "no built post pages found under _site — this check would be vacuous");
   for (const postPage of postPages) {
     const permalink = postPage.replace(/^_site/, "").replace(/index\.html$/, "");
@@ -3327,7 +3400,7 @@ await checkAsync(
       // Independently derived expected count: every post actually built
       // under build mode (the draft is already excluded from this set by
       // the drafts preprocessor, not by this check).
-      const builtPosts = globSync(`${buildOutDir}/{articles,bookmarks,likes,notes,photos,replies}/*/index.html`);
+      const builtPosts = globSync(`${buildOutDir}/{articles,audio,bookmarks,events,jams,likes,notes,photos,replies,reposts,rsvps,videos}/*/index.html`);
       assert.ok(builtPosts.length > 0, "no posts built under build mode — this check would be vacuous");
 
       assert.equal(
@@ -3404,6 +3477,26 @@ check("each post type's OG card carries its own type-appropriate content, not an
     `reply card's heading shows the parent's URL instead of the reply's own content: ${reply}`,
   );
 
+  // The six types added for the rest of Indiekit's post types. Each card
+  // names its type in the kicker and carries the post's own words or target.
+  const audio = card("/audio/fixture-audio/");
+  assert.ok(audio.includes("Audio ·"), `audio card missing its kicker: ${audio}`);
+  assert.ok(audio.includes("Field recording"), `audio card does not show its own words: ${audio}`);
+  const video = card("/videos/fixture-video/");
+  assert.ok(video.includes("Video ·"), `video card missing its kicker: ${video}`);
+  assert.ok(video.includes("Two seconds of test pattern"), `video card does not show its own words: ${video}`);
+  const event = card("/events/fixture-event/");
+  assert.ok(event.includes("Homebrew Website Club"), `event card missing its name: ${event}`);
+  assert.ok(event.includes("Event ·"), `event card missing its kicker: ${event}`);
+  const jam = card("/jams/fixture-jam/");
+  assert.ok(jam.includes("Listening to · example.com"), `jam card missing its kicker: ${jam}`);
+  assert.ok(!/<h1/.test(jam), `jam card invented a headline: ${jam}`);
+  const repost = card("/reposts/fixture-repost/");
+  assert.ok(repost.includes("Reposted · example.com"), `repost card missing its kicker: ${repost}`);
+  assert.ok(repost.includes("worth passing on"), `repost card does not show its own words: ${repost}`);
+  const rsvp = card("/rsvps/fixture-rsvp/");
+  assert.ok(rsvp.includes("RSVP yes · example"), `rsvp card missing its kicker: ${rsvp}`);
+
   // photo: still gets a card (archive consistency), captioned from its own
   // alt text, with the photo as the card's own background.
   const photo = card("/photos/fixture-photo/");
@@ -3424,7 +3517,7 @@ check("og:image on every built post/homepage page is the right mechanism and nev
   // uses its own photo. Neither is ever "" (contrast the port source,
   // imagePlugin.js:219 — see content/opengraph-images.liquid's front-matter
   // comment for why that isn't ported).
-  const pages = globSync("_site/{index,articles/*/index,notes/*/index,bookmarks/*/index,likes/*/index,replies/*/index,photos/*/index}.html");
+  const pages = globSync("_site/{index,articles/*/index,notes/*/index,bookmarks/*/index,likes/*/index,replies/*/index,photos/*/index,audio/*/index,videos/*/index,events/*/index,jams/*/index,reposts/*/index,rsvps/*/index}.html");
   assert.ok(pages.length > 0, "no pages found — this check would be vacuous");
 
   for (const file of pages) {
@@ -4071,12 +4164,12 @@ check("every listing row carries one post-type icon with a text label", () => {
   const html = readFileSync("_site/index.html", "utf8");
   const rows = [...html.matchAll(/<li class="h-entry" data-post-type="(\w+)">([\s\S]*?)<\/li>/g)];
   assert.ok(rows.length >= 5, `only ${rows.length} listing rows found`);
-  const expected = { article: "file-lines", note: "comment", photo: "image", like: "heart", reply: "reply", bookmark: "bookmark" };
+  const expected = { article: "file-lines", note: "comment", photo: "image", like: "heart", reply: "reply", bookmark: "bookmark", audio: "music", video: "video", event: "calendar", jam: "headphones", repost: "retweet", rsvp: "calendar-check" };
   for (const [, type, body] of rows) {
     assert.match(body, /<span class="post-type-icon" aria-hidden="true">/, `${type}: no icon wrapper`);
     assert.ok(body.includes(`fa-${expected[type]}`) || body.includes(`#fa${expected[type].replace(/(^|-)(\w)/g, (_, __, c) => c.toUpperCase())}`),
       `${type}: icon is not ${expected[type]}`);
-    assert.match(body, new RegExp(`<span class="sr-only">${type[0].toUpperCase()}${type.slice(1)}</span>`), `${type}: no sr-only label`);
+    assert.match(body, new RegExp(`<span class="sr-only">${type === "rsvp" ? "RSVP" : type[0].toUpperCase() + type.slice(1)}</span>`), `${type}: no sr-only label`);
   }
   const css = readFileSync("_site/_css/initial.css", "utf8");
   assert.match(css, /\.post-type-icon/, "no rule for .post-type-icon");
@@ -4207,6 +4300,8 @@ check("response posts cite their target as an h-cite, and never invent a citatio
     ["likes/fixture-like", "u-like-of"],
     ["bookmarks/fixture-bookmark", "u-bookmark-of"],
     ["bookmarks/fixture-untitled-bookmark", "u-bookmark-of"],
+    ["reposts/fixture-repost", "u-repost-of"],
+    ["rsvps/fixture-rsvp", "u-in-reply-to"],
   ];
   for (const [slug, property] of cases) {
     const html = readFileSync(`_site/${slug}/index.html`, "utf8");
@@ -4338,7 +4433,7 @@ check("every post type has an index listing only its own posts, and the hub coun
       continue;
     }
 
-    const entries = (html.match(/class="h-entry"/g) || []).length;
+    const entries = (html.match(/class="h-(?:entry|event)"/g) || []).length;
     assert.equal(
       entries,
       Number(claimed),
@@ -4662,6 +4757,12 @@ check("JSON-LD uses a type that fits each post, and invents no headlines", () =>
     "likes/fixture-like": { type: "SocialMediaPosting", headline: false, shared: true, body: false },
     "bookmarks/fixture-bookmark": { type: "SocialMediaPosting", headline: true, shared: true, body: true },
     "photos/fixture-photo": { type: "ImageObject", headline: false, shared: false, body: false },
+    "audio/fixture-audio": { type: "SocialMediaPosting", headline: false, shared: false, body: true },
+    "videos/fixture-video": { type: "SocialMediaPosting", headline: false, shared: false, body: true },
+    "events/fixture-event": { type: "Event", headline: true, shared: false, body: true },
+    "jams/fixture-jam": { type: "SocialMediaPosting", headline: false, shared: true, body: false },
+    "reposts/fixture-repost": { type: "SocialMediaPosting", headline: false, shared: true, body: true },
+    "rsvps/fixture-rsvp": { type: "SocialMediaPosting", headline: false, shared: true, body: true },
   };
 
   for (const [slug, want] of Object.entries(expected)) {
@@ -5496,7 +5597,26 @@ check("SITE_FIXTURE accepts a comma-separated list, merged left to right", () =>
 
 await checkAsync("indiekit.config.js declares one post type per rendered directory, with URLs the permalinks agree on", async () => {
   const config = (await import("../indiekit.config.js")).default;
-  assert.deepEqual(config.plugins, ["@indiekit/preset-eleventy", "@indiekit/post-type-page", "@indiekit/store-file-system"]);
+  // Indiekit deep-merges this array onto its defaults by concatenation and
+  // instantiates every entry, so the six post types it already loads are NOT
+  // listed again (they would be installed twice). Syndicators are absent here
+  // because their credentials are absent from the test environment.
+  assert.deepEqual(config.plugins, [
+    "@indiekit/preset-eleventy",
+    "@indiekit/store-file-system",
+    "@indiekit/post-type-repost",
+    "@indiekit/post-type-rsvp",
+    "@indiekit/post-type-event",
+    "@indiekit/post-type-jam",
+    "@indiekit/post-type-audio",
+    "@indiekit/post-type-video",
+    "@indiekit/post-type-page",
+    "@indiekit/endpoint-microsub",
+    "@indiekit/endpoint-webmention-io",
+  ]);
+  for (const name of ["audio", "event", "jam", "repost", "rsvp", "video"]) {
+    assert.ok(config.publication.postTypes[name], `no publication.postTypes.${name}`);
+  }
   assert.equal(config["@indiekit/store-file-system"].directory, "./content");
   // Post-type directories are no longer marked by a per-directory data
   // file (content/content.11tydata.js replaced the six); TYPES on that
@@ -5509,6 +5629,7 @@ await checkAsync("indiekit.config.js declares one post type per rendered directo
   // The page type is the exception: its file lives in pages/ (the content
   // root is the theme's source) but its URL is the slug alone (/about).
   assert.ok(config.plugins.includes("@indiekit/post-type-page"), "the page post type plugin is not loaded");
+  assert.equal(new Set(config.plugins).size, config.plugins.length, "a plugin is listed twice");
   assert.deepEqual(config.publication.postTypes.page.post, { path: "pages/{slug}.md", url: "{slug}" });
   assert.equal(contentDirectoryData.PAGES_DIR, "pages");
   for (const [type, t] of types) {
