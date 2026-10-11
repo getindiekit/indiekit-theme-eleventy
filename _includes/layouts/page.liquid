@@ -1,18 +1,18 @@
 ---
 layout: layouts/default.liquid
 tmpl: page
-disableComments: true
 ---
-<article class="h-entry">
-	<h1 class="p-name primary-title{% if removeTitle %} sr-only{% endif %}{% if smalltitle %} primary-title-smalltitle{% endif %}{% if primaryTitleExemptWidth %} primary-title-exempt{% endif %}">{{ title }}</h1>
-	<div class="content-grid e-content">
+{%- comment %} A page: Indiekit's page post type (/about, /now, /uses). A
+   titled, dateless document that is not a post — no h-entry, no date, no
+   author card, no webmentions, no prev/next. Every file under content/pages/
+   is routed here by content/content.11tydata.js, which also recomputes this
+   layout's own front matter (tmpl) because a computed layout never merges it;
+   see that file. {% endcomment -%}
+<article>
+	<h1 class="primary-title primary-title-smalltitle">{{ title }}</h1>
+	<div class="content-grid">
 		<heading-anchors selector="h2,h3">
 			{{ content }}
 		</heading-anchors>
 	</div>
 </article>
-
-{% unless disableComments %}
-	{%- capture absoluteUrl -%}{{ site.url }}{{ page.url }}{%- endcapture -%}
-	{% include "webmentionlist.liquid", absoluteUrl: absoluteUrl %}
-{% endunless %}

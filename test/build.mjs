@@ -961,6 +961,50 @@ check("post directories hold only posts — no per-directory 11tydata.js left, o
   assert.ok(existsSync("content/content.11tydata.js"), "content/content.11tydata.js is missing");
 });
 
+check("a page builds at the root, dateless, and stays out of posts, feeds and the archive", () => {
+  // Indiekit's page post type (beta 30) is /about, /now, /uses: a titled,
+  // dateless document that is not a post. The file lives in content/pages/
+  // (the store is mounted one directory at a time, and the content root is
+  // the theme's own source) but the URL is the slug alone.
+  const file = "_site/fixture-about/index.html";
+  assert.ok(existsSync(file), "content/pages/fixture-about.md did not build at /fixture-about/");
+  const html = readFileSync(file, "utf8");
+  assert.match(html, /<h1[^>]*>About this site<\/h1>/, "the page heading is not the page's title");
+  assert.ok(!/class="[^"]*\bh-entry\b/.test(html), "a page is not a post and must not be an h-entry");
+  assert.ok(!/dt-published/.test(html), "a page has no publication date");
+  assert.ok(/<meta name="description" content="A page about this site/.test(html), "the page's summary is not its meta description");
+  assert.ok(!existsSync("_site/pages"), "pages must not build under a /pages/ prefix or get a /pages/ index");
+  for (const [what, f] of [["homepage", "_site/index.html"], ["archive", "_site/archive/index.html"], ["feed", "_site/feed.xml"], ["JSON feed", "_site/feed.json"], ["collections hub", "_site/collections/index.html"]]) {
+    assert.ok(!readFileSync(f, "utf8").includes("/fixture-about/"), `the ${what} lists the page as a post`);
+  }
+  assert.ok(readFileSync("_site/sitemap.xml", "utf8").includes("/fixture-about/"), "the sitemap omits the page");
+});
+
+check("a page whose slug is a route the theme already serves fails the build loudly", () => {
+  // Eleventy refuses two templates writing one output file, which covers
+  // archive, collections, search and tags; passthrough directories (media,
+  // pagefind, js, …) are not templates, so the data file refuses those itself.
+  const outDir = "_site-page-collision-check";
+  for (const slug of ["archive", "media"]) {
+    const page = `content/pages/${slug}.md`;
+    writeFileSync(page, "---\ntitle: Collides\n---\n\nThis page must not build.\n");
+    let failed = false;
+    let stderr = "";
+    try {
+      execFileSync(process.execPath, ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe", env: { ...process.env, NPM_DOWNLOADS_OFFLINE: "1" } });
+    } catch (error) {
+      failed = true;
+      stderr = String(error.stderr);
+    } finally {
+      rmSync(page, { force: true });
+      rmSync(outDir, { recursive: true, force: true });
+    }
+    assert.ok(failed, `a page at /${slug}/ built instead of failing`);
+    assert.match(stderr, new RegExp(slug), `the failure for /${slug}/ does not name the slug`);
+  }
+});
+
 await checkAsync(
   "a page declaring eleventyImport is actually rebuilt incrementally; one that doesn't stays stale",
   async () => {
@@ -5429,7 +5473,7 @@ check("SITE_FIXTURE accepts a comma-separated list, merged left to right", () =>
 
 await checkAsync("indiekit.config.js declares one post type per rendered directory, with URLs the permalinks agree on", async () => {
   const config = (await import("../indiekit.config.js")).default;
-  assert.deepEqual(config.plugins, ["@indiekit/preset-eleventy", "@indiekit/store-file-system"]);
+  assert.deepEqual(config.plugins, ["@indiekit/preset-eleventy", "@indiekit/post-type-page", "@indiekit/store-file-system"]);
   assert.equal(config["@indiekit/store-file-system"].directory, "./content");
   // Post-type directories are no longer marked by a per-directory data
   // file (content/content.11tydata.js replaced the six); TYPES on that
@@ -5437,8 +5481,13 @@ await checkAsync("indiekit.config.js declares one post type per rendered directo
   // export, which stops Eleventy's tag-based collections dead (see the
   // comment above TYPES in content/content.11tydata.js).
   const dirs = Object.keys(contentDirectoryData.TYPES).sort();
-  const types = Object.entries(config.publication.postTypes);
+  const types = Object.entries(config.publication.postTypes).filter(([type]) => type !== "page");
   assert.deepEqual(types.map(([, t]) => t.post.url.split("/")[0]).sort(), dirs, "post-type collections differ from the rendered directories");
+  // The page type is the exception: its file lives in pages/ (the content
+  // root is the theme's source) but its URL is the slug alone (/about).
+  assert.ok(config.plugins.includes("@indiekit/post-type-page"), "the page post type plugin is not loaded");
+  assert.deepEqual(config.publication.postTypes.page.post, { path: "pages/{slug}.md", url: "{slug}" });
+  assert.equal(contentDirectoryData.PAGES_DIR, "pages");
   for (const [type, t] of types) {
     assert.equal(t.post.path, `${t.post.url.split("/")[0]}/{slug}.md`, `${type}: path and url disagree`);
     assert.match(t.post.url, /\/\{slug\}$/, `${type}: url must end in /{slug} to match the theme's permalink`);

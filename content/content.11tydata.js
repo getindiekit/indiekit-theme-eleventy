@@ -79,14 +79,34 @@ const TYPES = {
 	replies: "reply",
 };
 
+// Pages — Indiekit's page post type (/about, /now, /uses): a titled,
+// dateless document that is not a post. It takes no part in the post
+// collection, the feeds, the archive or the type indexes. The file sits in
+// content/pages/ for the same reason posts sit in theirs (a deployment mounts
+// the store one directory at a time, and the content root is the theme's own
+// source), but the URL is the slug alone.
+const PAGES_DIR = "pages";
+
+// Root paths the theme serves from passthrough copies or writes after the
+// build. Eleventy refuses two templates writing one output file, which already
+// covers archive, collections, search and tags; these are not templates, so a
+// page claiming one of them has to be refused here.
+const RESERVED_SLUGS = new Set([
+	"media", "pagefind", "img", "js", "fonts", "web", "_css", "static",
+	"opengraph", "feed.xml", "feed.json", "sitemap.xml", "robots.txt",
+]);
+
 const dirOf = (data) => {
 	const parts = (data.page.inputPath || "").split("/");
 	const i = parts.indexOf("content");
 	return i >= 0 && parts.length > i + 2 ? parts[i + 1] : undefined;
 };
 
+const isPage = (data) => dirOf(data) === PAGES_DIR;
+
 export default {
 	TYPES,
+	PAGES_DIR,
 	eleventyComputed: {
 		// `||`, not `??`: Eleventy's computed-data proxy seeds unset computed keys
 		// with "" while it discovers dependencies, and `??` would keep that.
@@ -94,21 +114,44 @@ export default {
 		layout: (data) => {
 			if (data.layout === false) return false;
 			if (data.layout) return data.layout;
+			if (isPage(data)) return "layouts/page.liquid";
 			return TYPES[dirOf(data)] ? "layouts/entry.liquid" : undefined;
 		},
 		// entry.liquid's own front matter — see the comment above.
-		tmpl: (data) => data.tmpl || (TYPES[dirOf(data)] ? "page" : undefined),
+		tmpl: (data) => data.tmpl || (TYPES[dirOf(data)] || isPage(data) ? "page" : undefined),
 		// default.liquid's own front matter — see the comment above.
-		classes: (data) => data.classes || (TYPES[dirOf(data)] ? { body: "body-grid" } : undefined),
-		modules: (data) =>
-			data.modules || (TYPES[dirOf(data)] ? ["/heading-anchors.js", "/js/time-difference.js"] : undefined),
+		classes: (data) => data.classes || (TYPES[dirOf(data)] || isPage(data) ? { body: "body-grid" } : undefined),
+		modules: (data) => {
+			if (data.modules) return data.modules;
+			if (isPage(data)) return ["/heading-anchors.js"];
+			return TYPES[dirOf(data)] ? ["/heading-anchors.js", "/js/time-difference.js"] : undefined;
+		},
+		// base.liquid's meta description chain starts at an explicit
+		// `description`; a page's summary (Indiekit's `summary` property) is that.
+		description: (data) => data.description || (isPage(data) ? data.summary : undefined),
 		tags: (data) => {
 			const type = TYPES[dirOf(data)];
 			if (!type) return data.tags;
 			return [...new Set([...(data.tags || []), "post", type])];
 		},
 		permalink: (data) => {
-			if (data.permalink !== undefined) return data.permalink;
+			// `false` (render, write nothing) and any real value stand; "" does not:
+			// Eleventy's computed-data proxy writes "" into the data for every
+			// unset computed key before the function runs (ComputedDataProxy
+			// .getProxyData, "WARNING: SIDE EFFECTS"), so "" here means unset.
+			// With `!== undefined` the "" was returned, Eleventy fell back to its
+			// default permalink, and nobody noticed because for a post the default
+			// (/<dir>/<slug>/) is the intended URL. A page's default is not.
+			if (data.permalink === false || data.permalink) return data.permalink;
+			if (isPage(data)) {
+				const slug = data.page.fileSlug;
+				if (RESERVED_SLUGS.has(slug)) {
+					throw new Error(
+						`${data.page.inputPath}: "/${slug}/" is a path this theme already serves; give the page another slug.`,
+					);
+				}
+				return `/${slug}/`;
+			}
 			const dir = dirOf(data);
 			return TYPES[dir] ? `/${dir}/${data.page.fileSlug}/` : undefined;
 		},

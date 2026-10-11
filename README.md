@@ -59,6 +59,18 @@ tags and permalink from a post's own directory — so the six post
 directories hold nothing but posts, and a deployment can mount a content
 store over each one without hiding any of the theme's own files.
 
+### Pages
+
+Indiekit's page post type (`@indiekit/post-type-page`, beta 30) is for
+`/about`, `/now`, `/uses`: a titled, dateless document that is not a post.
+Indiekit writes one to `content/pages/<slug>.md` and the theme serves it at
+`/<slug>/`, through `_includes/layouts/page.liquid`: no `h-entry`, no date,
+no author card, no webmentions, and no place in the post collection, the
+feeds, the archive or the type indexes. It is in the sitemap and the search
+index, and its `summary` becomes the page's meta description. A slug the
+theme already serves (`archive`, `search`, `media`, …) fails the build with a
+message naming the page.
+
 Eleventy's input directory is `content/`; the built site is written to
 `_site/`.
 
