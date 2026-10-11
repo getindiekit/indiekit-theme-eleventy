@@ -973,11 +973,24 @@ check("a page builds at the root, dateless, and stays out of posts, feeds and th
   assert.ok(!/class="[^"]*\bh-entry\b/.test(html), "a page is not a post and must not be an h-entry");
   assert.ok(!/dt-published/.test(html), "a page has no publication date");
   assert.ok(/<meta name="description" content="A page about this site/.test(html), "the page's summary is not its meta description");
-  assert.ok(!existsSync("_site/pages"), "pages must not build under a /pages/ prefix or get a /pages/ index");
+  assert.ok(!existsSync("_site/pages/fixture-about"), "pages must not build under a /pages/ prefix");
   for (const [what, f] of [["homepage", "_site/index.html"], ["archive", "_site/archive/index.html"], ["feed", "_site/feed.xml"], ["JSON feed", "_site/feed.json"], ["collections hub", "_site/collections/index.html"]]) {
     assert.ok(!readFileSync(f, "utf8").includes("/fixture-about/"), `the ${what} lists the page as a post`);
   }
   assert.ok(readFileSync("_site/sitemap.xml", "utf8").includes("/fixture-about/"), "the sitemap omits the page");
+});
+
+check("/pages/ lists every built page by title with its summary, and the hub links to it with the count", () => {
+  // The operator's overview: the menu shows only what they chose, so this
+  // is the one place every page they have created can be found.
+  assert.ok(existsSync("_site/pages/index.html"), "/pages/ was not built");
+  const html = readFileSync("_site/pages/index.html", "utf8");
+  assert.ok(html.includes('<a href="/fixture-about/">About this site</a>'), "/pages/ does not list the sample page by title");
+  assert.ok(html.includes("A page about this site, the person behind it, and how to get in touch."), "/pages/ does not show the page's summary");
+  const hub = readFileSync("_site/collections/index.html", "utf8");
+  assert.match(hub, /<a href="\/pages\/">Pages<\/a>\s*<span class="collection-count">1<\/span>/, "the hub does not link to /pages/ with the page count");
+  assert.ok(!existsSync("_site/tags/page"), "tagging pages must not build a /tags/page/ tag page");
+  assert.ok(!readFileSync("_site/archive/index.html", "utf8").includes("/pages/"), "the archive is for posts, not the pages index");
 });
 
 check("a page whose slug is a route the theme already serves fails the build loudly", () => {
@@ -4314,6 +4327,16 @@ check("every post type has an index listing only its own posts, and the hub coun
     const indexPath = `_site/${segment}/index.html`;
     assert.ok(existsSync(indexPath), `the hub links /${segment}/ but no index was built there`);
     const html = readFileSync(indexPath, "utf8");
+
+    // Pages are not posts: /pages/ lists them as plain rows (no h-entry), and
+    // they live at /<slug>/, not under /pages/, so the per-type checks below
+    // do not apply. Its count still has to agree with what it lists.
+    if (segment === "pages") {
+      const list = /<ul class="collection-list">([\s\S]*?)<\/ul>/.exec(html)?.[1] ?? "";
+      const listed = (list.match(/<li>/g) || []).length;
+      assert.equal(listed, Number(claimed), `the hub claims ${claimed} pages but /pages/ lists ${listed}`);
+      continue;
+    }
 
     const entries = (html.match(/class="h-entry"/g) || []).length;
     assert.equal(

@@ -4,7 +4,7 @@ layout: layouts/pagealign.liquid
 permalink: /collections/
 eleventyExcludeFromCollections: true
 eleventyImport:
-  collections: ["post"]
+  collections: ["post", "page"]
 ---
 {%- comment %} The hub. Named "Collections" rather than "Interactions" because
    it covers every post type, not only the four response types — an interactions
@@ -20,5 +20,10 @@ eleventyImport:
 	<li>
 		<a href="/archive/">Archive</a>
 		<span class="collection-count">{{ collections.post.size }}</span>
+	</li>
+	{%- comment %} Pages are not posts: their own index, their own count. {% endcomment %}
+	<li>
+		<a href="/pages/">Pages</a>
+		<span class="collection-count">{{ collections.page.size }}</span>
 	</li>
 </ul>

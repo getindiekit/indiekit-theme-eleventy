@@ -1,0 +1,28 @@
+---
+title: Pages
+layout: layouts/pagealign.liquid
+permalink: /pages/
+eleventyExcludeFromCollections: true
+eleventyImport:
+  collections: ["page"]
+---
+{%- comment %} Every page the operator has created, whether or not it is in
+   the rail menu (site.json's `navigation` decides that). Pages live at
+   /<slug>/, so an index at /pages/ cannot collide with them; a page whose
+   slug is "pages" would, and Eleventy refuses that build. Alphabetical by
+   title: pages have no date to order by. {% endcomment -%}
+{%- assign pages = collections.page | sort: "data.title" -%}
+{%- if pages.size == 0 -%}
+<p>No pages yet. Create one from Indiekit's editor and it appears here.</p>
+{%- else -%}
+<ul class="collection-list">
+{%- for item in pages %}
+	<li>
+		<a href="{{ item.url }}">{{ item.data.title }}</a>
+		{%- if item.data.summary %}
+		<p>{{ item.data.summary }}</p>
+		{%- endif %}
+	</li>
+{%- endfor %}
+</ul>
+{%- endif -%}

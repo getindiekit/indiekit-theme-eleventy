@@ -130,6 +130,9 @@ export default {
 		// `description`; a page's summary (Indiekit's `summary` property) is that.
 		description: (data) => data.description || (isPage(data) ? data.summary : undefined),
 		tags: (data) => {
+			// Pages are tagged "page" (never "post"): collections.page feeds the
+			// /pages/ index and the hub's count, and nothing else reads it.
+			if (isPage(data)) return [...new Set([...(data.tags || []), "page"])];
 			const type = TYPES[dirOf(data)];
 			if (!type) return data.tags;
 			return [...new Set([...(data.tags || []), "post", type])];

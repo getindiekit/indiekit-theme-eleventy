@@ -71,6 +71,10 @@ index, and its `summary` becomes the page's meta description. A slug the
 theme already serves (`archive`, `search`, `media`, …) fails the build with a
 message naming the page.
 
+Every page is listed at `/pages/` by title with its summary, whether or not
+it is in the menu, and the Collections hub links there with the count. That
+is where an operator finds everything they have created.
+
 ### Menu
 
 The rail menu is Home, then the pages you list, then Collections and Search.
