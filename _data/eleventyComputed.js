@@ -47,7 +47,9 @@ const eventTime = (data, key) => {
         ? readFileSync(inputPath, "utf8").match(new RegExp(`^${key}:\\s*["']?([^"'\\n]+?)["']?\\s*$`, "m"))?.[1]
         : undefined;
   if (raw && hasExplicitOffset(raw)) {
-    const kept = DateTime.fromISO(raw.trim().replace(/^(\S+)\s+/, "$1T"), { setZone: true });
+    // YAML accepts "2026-09-02 18:00:00 +02:00"; Luxon wants the T and no
+    // space before the offset. Both rewrites, or the offset is silently lost.
+    const kept = DateTime.fromISO(raw.trim().replace(/^(\S+)\s+/, "$1T").replace(/\s+(?=[+-]\d|Z$)/, ""), { setZone: true });
     if (kept.isValid) return kept;
   }
   return resolveDate(data[key], inputPath, TIME_ZONE, key);
