@@ -72,11 +72,17 @@
 // `(await import(...)).default.TYPES`.
 const TYPES = {
 	articles: "article",
+	audio: "audio",
 	bookmarks: "bookmark",
+	events: "event",
+	jams: "jam",
 	likes: "like",
 	notes: "note",
 	photos: "photo",
 	replies: "reply",
+	reposts: "repost",
+	rsvps: "rsvp",
+	videos: "video",
 };
 
 // Pages — Indiekit's page post type (/about, /now, /uses): a titled,

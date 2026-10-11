@@ -1,0 +1,15 @@
+{%- comment %} Shaped like like.liquid: the substance is the track being shared.
+   A jam may carry words of its own; e-content appears only when it does. {% endcomment -%}
+{%- if lcp -%}
+<a class="u-url sr-only" href="{{ page.url }}">{{ title }}</a>
+{%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+{%- if jamOf %}{% assign jamUrl = jamOf.url | default: jamOf %}<p>Listening to <a class="u-jam-of" href="{{ jamUrl }}">{{ jamOf.name | default: jamUrl }}</a></p>{% endif %}
+{%- assign jamBody = content | strip %}
+{%- if jamBody != "" %}
+<div class="content-grid e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
+{%- endif %}
+{%- else -%}
+<a class="posts-link u-url" href="{{ page.url }}">{% if jamOf %}Listening to {{ jamOf.url | default: jamOf }}{% else %}Jam{% endif %}</a>
+{{ socialHtml }}
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | listingDate }}</time>{% endif %}
+{%- endif -%}

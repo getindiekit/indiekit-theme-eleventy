@@ -13,8 +13,8 @@ eleventyExcludeFromCollections: true
 Task 20. One OG card page per post (spec §A.1/§F.4), adapted to this
 theme's content/ input dir. Source paginates `collections.posts` with
 permalink "/opengraph{{ post.url }}" against a project-root input dir; this
-theme's six post-type directories already give output-relative permalinks
-(content/{articles,notes,bookmarks,likes,replies,photos}/<slug>.11tydata.js
+theme's post-type directories already give output-relative permalinks
+(content/content.11tydata.js
 —> "/articles/<slug>/" etc.), and permalinks are output-relative regardless
 of dir.input (spec §F.1), so the identical "/opengraph" + own-permalink
 pattern transfers unchanged: "/opengraph/articles/<slug>/",

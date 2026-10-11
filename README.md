@@ -47,17 +47,33 @@ post type:
 | Directory | Post type |
 |---|---|
 | `content/articles/` | article |
+| `content/audio/` | audio |
 | `content/bookmarks/` | bookmark |
+| `content/events/` | event |
+| `content/jams/` | jam |
 | `content/likes/` | like |
 | `content/notes/` | note |
 | `content/photos/` | photo |
 | `content/replies/` | reply |
+| `content/reposts/` | repost |
+| `content/rsvps/` | rsvp |
+| `content/videos/` | video |
+| `content/pages/` | page (see below) |
 
 Posts are typed by the directory they sit in, not by anything in the
 directory itself — `content/content.11tydata.js` derives layout, post type,
-tags and permalink from a post's own directory — so the six post
+tags and permalink from a post's own directory — so the twelve post
 directories hold nothing but posts, and a deployment can mount a content
 store over each one without hiding any of the theme's own files.
+
+`indiekit.config.js` loads the preset, the file-system store, the seven post
+types Indiekit does not load by default (repost, rsvp, event, jam, audio, video,
+page) and the Microsub and Webmention.io endpoints; the other six types are in
+Indiekit's own defaults, and listing a default again would install it twice.
+Syndicators switch on when their environment is set: Bluesky with
+`BLUESKY_HANDLE` and `BLUESKY_PASSWORD`, Mastodon with `MASTODON_URL`,
+`MASTODON_USER` and `MASTODON_ACCESS_TOKEN`, the Internet Archive with
+`INTERNET_ARCHIVE_ACCESS_KEY` and `INTERNET_ARCHIVE_SECRET_KEY`.
 
 ### Pages
 

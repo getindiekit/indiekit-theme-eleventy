@@ -24,7 +24,26 @@ import { resolveDate } from "../_11ty/dateResolver.js";
 // Same TIME_ZONE fallback as eleventy.config.js — see that file's comment.
 const TIME_ZONE = siteData.timezone || "utc";
 
+// "<Type> · <date>" labels are the post type capitalised, except where that
+// reads wrong.
+const LABELS = { rsvp: "RSVP" };
+
+// An event's `start`/`end` are unquoted timestamps, so js-yaml hands over
+// JS Dates exactly as it does for `date`; resolveDate re-reads the front-matter
+// line to keep an explicit offset. Returns a zone-aware ISO string or undefined.
+const eventTime = (data, key) => {
+  const parsed = resolveDate(data[key], data.page?.inputPath, TIME_ZONE, key);
+  return parsed ? parsed.setZone(TIME_ZONE) : undefined;
+};
+
 export default {
+  // An event's start and end as zone-aware ISO strings (templates feed them
+  // to isoInstant) and as display text with the time of day.
+  eventStart: (data) => eventTime(data, "start")?.toISO(),
+  eventEnd: (data) => eventTime(data, "end")?.toISO(),
+  eventStartText: (data) => eventTime(data, "start")?.toFormat("d MMMM yyyy, HH:mm"),
+  eventEndText: (data) => eventTime(data, "end")?.toFormat("d MMMM yyyy, HH:mm"),
+
   // Computed data is the only tier that outranks a `_data/*` global, so this
   // is what makes SITE_FIXTURE visible to templates at all. With no fixture
   // set, loadSiteConfig() returns _data/site.json verbatim and this is a
@@ -83,6 +102,12 @@ export default {
       like: "SocialMediaPosting",
       bookmark: "SocialMediaPosting",
       photo: "ImageObject",
+      audio: "SocialMediaPosting",
+      video: "SocialMediaPosting",
+      jam: "SocialMediaPosting",
+      repost: "SocialMediaPosting",
+      rsvp: "SocialMediaPosting",
+      event: "Event",
     };
 
     const ld = {
@@ -116,12 +141,20 @@ export default {
     }
 
     // What this post is a response to.
-    const target = data.inReplyTo || data.likeOf || data.bookmarkOf;
+    const target = data.inReplyTo || data.likeOf || data.bookmarkOf || data.repostOf || data.jamOf;
     if (target) {
       const targetUrl = typeof target === "string" ? target : target.url;
       if (targetUrl) {
         ld.sharedContent = { "@type": "CreativeWork", url: targetUrl };
       }
+    }
+
+    if (data.postType === "event") {
+      const start = eventTime(data, "start");
+      const end = eventTime(data, "end");
+      if (start) ld.startDate = start.toISO();
+      if (end) ld.endDate = end.toISO();
+      if (data.location) ld.location = { "@type": "Place", name: String(data.location) };
     }
 
     if (data.postType === "photo" && Array.isArray(data.photo) && data.photo[0]) {
@@ -138,7 +171,7 @@ export default {
       return data.title;
     }
 
-    const label = data.postType.charAt(0).toUpperCase() + data.postType.slice(1);
+    const label = LABELS[data.postType] || data.postType.charAt(0).toUpperCase() + data.postType.slice(1);
 
     // A draft only renders under --serve (eleventy.config.js drops drafts on
     // build). There the source marks it by appending " (Draft)" to data.title —

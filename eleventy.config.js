@@ -119,7 +119,7 @@ export default function (eleventyConfig) {
       // indexed. The per-type listing pages at /<type>/ are lists, not
       // content — the same reason /archive/ and the homepage are excluded;
       // indexing them puts a page of other posts' titles into the results.
-      glob: "{articles,bookmarks,likes,notes,photos,replies}/*/*.html",
+      glob: "{articles,audio,bookmarks,events,jams,likes,notes,photos,replies,reposts,rsvps,videos}/*/*.html",
     });
     await index.writeFiles({ outputPath: `${outputDir}/pagefind` });
     pagefindIndexed = true;

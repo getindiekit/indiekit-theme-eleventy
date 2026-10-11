@@ -43,7 +43,7 @@ Applications" in the source's own corpus. A short fixture title like "An
 example article" falls in that same default bucket in source too — the
 large rendering is faithful, not a leftover scoping bug; see
 task-visual-fix-report.md for the full evidence trail. {%- endcomment -%}
-<article class="h-entry">
+<article class="{% if postType == "event" %}h-event{% else %}h-entry{% endif %}">
   {%- comment %} Indiekit adaptation: the source opts INTO the smaller clamp
    per post (`smalltitle: true` in front matter, e.g. _posts/2008-05-10-*.md).
    Indiekit titles are written by a Micropub client, so no author will ever set
@@ -80,6 +80,12 @@ task-visual-fix-report.md for the full evidence trail. {%- endcomment -%}
     {% when "like" %}{% include "types/like.liquid" %}
     {% when "photo" %}{% include "types/photo.liquid" %}
     {% when "reply" %}{% include "types/reply.liquid" %}
+    {% when "audio" %}{% include "types/audio.liquid" %}
+    {% when "video" %}{% include "types/video.liquid" %}
+    {% when "event" %}{% include "types/event.liquid" %}
+    {% when "jam" %}{% include "types/jam.liquid" %}
+    {% when "repost" %}{% include "types/repost.liquid" %}
+    {% when "rsvp" %}{% include "types/rsvp.liquid" %}
     {% else %}{% include "types/note.liquid" %}
   {% endcase %}
   {%- comment %} Categories on the PERMALINK, not just the listing row. The

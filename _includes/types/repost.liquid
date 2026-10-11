@@ -1,0 +1,13 @@
+{%- comment %} Shaped like bookmark.liquid minus the title: a repost is a pointer
+   at someone else's post, with optional words of its own. {% endcomment -%}
+{%- if lcp -%}
+<a class="u-url sr-only" href="{{ page.url }}">{{ title }}</a>
+{%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+{%- if repostOf %}<p>Reposted</p>{% include "partials/link-preview.liquid", linkTarget: repostOf, linkClass: "u-repost-of" %}{% endif %}
+<div class="content-grid e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
+{%- else -%}
+{%- assign repostWords = content | strip_html | truncate: 70, false -%}
+<a class="posts-link u-url" href="{{ page.url }}">{{ repostWords | default: repostOf.url | default: repostOf }}</a>
+{{ socialHtml }}
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | listingDate }}</time>{% endif %}
+{%- endif -%}

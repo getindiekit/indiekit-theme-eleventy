@@ -1,0 +1,14 @@
+{%- comment %} Like audio.liquid. `poster` is the optional still shown before play. {% endcomment -%}
+{%- if lcp -%}
+<a class="u-url sr-only" href="{{ page.url }}">{{ title }}</a>
+{%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+{%- for clip in video %}
+<video controls class="u-video" src="{{ clip.url | default: clip }}"{% if poster %} poster="{{ poster }}"{% endif %}></video>
+{%- endfor %}
+<div class="content-grid e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
+{%- else -%}
+{%- assign videoWords = content | strip_html | truncate: 70, false -%}
+<a class="posts-link u-url" href="{{ page.url }}">{{ videoWords | default: "Video" }}</a>
+{{ socialHtml }}
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | listingDate }}</time>{% endif %}
+{%- endif -%}

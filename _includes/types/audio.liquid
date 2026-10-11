@@ -1,0 +1,16 @@
+{%- comment %} Same two shapes as every type partial (see note.liquid, photo.liquid):
+   lcp = the permalink page, unset = a listing row. Indiekit writes `audio` as
+   a list of URLs (a string, or {url, alt}); every one gets a player. {% endcomment -%}
+{%- if lcp -%}
+<a class="u-url sr-only" href="{{ page.url }}">{{ title }}</a>
+{%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+{%- for track in audio %}
+<audio controls class="u-audio" src="{{ track.url | default: track }}"></audio>
+{%- endfor %}
+<div class="content-grid e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
+{%- else -%}
+{%- assign audioWords = content | strip_html | truncate: 70, false -%}
+<a class="posts-link u-url" href="{{ page.url }}">{{ audioWords | default: "Audio" }}</a>
+{{ socialHtml }}
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | listingDate }}</time>{% endif %}
+{%- endif -%}

@@ -469,6 +469,11 @@ check("every class the markup emits has a rule in the compiled CSS", () => {
     "h-entry", "h-feed", "h-card", "e-content", "p-name", "p-author",
     "u-url", "u-photo", "u-like-of", "u-in-reply-to", "u-bookmark-of",
     "dt-published", "u-syndication",
+    // The six post types beyond Indiekit's defaults: h-event and its
+    // properties, the media and target properties of audio, video, jam,
+    // repost and rsvp. Semantic, like the rest of this list.
+    "h-event", "dt-start", "dt-end", "p-location", "p-rsvp",
+    "u-audio", "u-video", "u-jam-of", "u-repost-of",
     // p-category carries a post's Micropub `category` values. Semantic, like
     // the rest of this list — the visible styling comes from the source's own
     // `.tags .tag` rule (_theme-chrome.scss:49), which sits alongside it.
@@ -1385,8 +1390,9 @@ check("an event is an h-event on its permalink and in its listing row, never an 
   assert.match(page, /<article class="h-event">/, "the permalink wrapper is not h-event");
   assert.ok(!/<article class="h-entry"/.test(page), "the event permalink is also an h-entry");
   assert.match(page, /<h1 class="p-name /, "no p-name heading");
-  assert.match(page, /<time class="dt-start" datetime="2026-09-02T18:00:00\+02:00"/, "dt-start is not the declared start");
-  assert.match(page, /<time class="dt-end" datetime="2026-09-02T20:00:00\+02:00"/, "dt-end is not the declared end");
+  const instant = (cls) => Date.parse(new RegExp(`<time class="${cls}" datetime="([^"]+)"`).exec(page)?.[1]);
+  assert.equal(instant("dt-start"), Date.parse("2026-09-02T18:00:00+02:00"), "dt-start is not the declared start");
+  assert.equal(instant("dt-end"), Date.parse("2026-09-02T20:00:00+02:00"), "dt-end is not the declared end");
   assert.match(page, /<p class="p-location">[^<]*Brussels/, "no p-location");
   assert.match(page, /<a class="u-url" href="https:\/\/events\.indieweb\.org\/example"/, "the event url is not a u-url");
   const row = extractHEntryBlocks(readFileSync("_site/events/index.html", "utf8"), "li");
@@ -1441,9 +1447,9 @@ check("archive h-feed entries carry h-entry, not bare links", () => {
   // The check above would also pass if the listing were a plain <a> list
   // with no microformats at all — assert each entry is itself a valid
   // h-entry, one per post-tagged fixture (14: see the feed entry-count
-  // check above for why it's 8, not 6).
+  // check above for why it's 14).
   const html = readFileSync("_site/archive/index.html", "utf8");
-  const entryCount = (html.match(/class="h-entry"/g) || []).length;
+  const entryCount = (html.match(/class="h-(?:entry|event)"/g) || []).length;
   assert.equal(entryCount, 14, `expected 14 h-entry listing entries, found ${entryCount}`);
 });
 
@@ -3480,14 +3486,14 @@ check("each post type's OG card carries its own type-appropriate content, not an
   // The six types added for the rest of Indiekit's post types. Each card
   // names its type in the kicker and carries the post's own words or target.
   const audio = card("/audio/fixture-audio/");
-  assert.ok(audio.includes("Audio ·"), `audio card missing its kicker: ${audio}`);
+  assert.ok(audio.includes(">Audio<"), `audio card missing its kicker: ${audio}`);
   assert.ok(audio.includes("Field recording"), `audio card does not show its own words: ${audio}`);
   const video = card("/videos/fixture-video/");
-  assert.ok(video.includes("Video ·"), `video card missing its kicker: ${video}`);
+  assert.ok(video.includes(">Video<"), `video card missing its kicker: ${video}`);
   assert.ok(video.includes("Two seconds of test pattern"), `video card does not show its own words: ${video}`);
   const event = card("/events/fixture-event/");
   assert.ok(event.includes("Homebrew Website Club"), `event card missing its name: ${event}`);
-  assert.ok(event.includes("Event ·"), `event card missing its kicker: ${event}`);
+  assert.ok(event.includes(">Event<"), `event card missing its kicker: ${event}`);
   const jam = card("/jams/fixture-jam/");
   assert.ok(jam.includes("Listening to · example.com"), `jam card missing its kicker: ${jam}`);
   assert.ok(!/<h1/.test(jam), `jam card invented a headline: ${jam}`);
@@ -3495,7 +3501,7 @@ check("each post type's OG card carries its own type-appropriate content, not an
   assert.ok(repost.includes("Reposted · example.com"), `repost card missing its kicker: ${repost}`);
   assert.ok(repost.includes("worth passing on"), `repost card does not show its own words: ${repost}`);
   const rsvp = card("/rsvps/fixture-rsvp/");
-  assert.ok(rsvp.includes("RSVP yes · example"), `rsvp card missing its kicker: ${rsvp}`);
+  assert.ok(rsvp.includes("RSVP yes · events.indieweb.org"), `rsvp card missing its kicker: ${rsvp}`);
 
   // photo: still gets a card (archive consistency), captioned from its own
   // alt text, with the photo as the card's own background.
@@ -3907,7 +3913,7 @@ check("a post's Micropub categories become p-category on listing and permalink a
   // And a tag page must actually list its posts, not render an empty feed.
   for (const cat of permalinkCats) {
     const page = readFileSync(`_site${cat.href}index.html`, "utf8");
-    const entries = (page.match(/class="h-entry"/g) || []).length;
+    const entries = (page.match(/class="h-(?:entry|event)"/g) || []).length;
     assert.ok(entries > 0, `tag page ${cat.href} lists no posts`);
   }
 });
@@ -4161,9 +4167,11 @@ check("every SVG <use> reference resolves to a <symbol> defined on the same page
 });
 
 check("every listing row carries one post-type icon with a text label", () => {
-  const html = readFileSync("_site/index.html", "utf8");
-  const rows = [...html.matchAll(/<li class="h-entry" data-post-type="(\w+)">([\s\S]*?)<\/li>/g)];
-  assert.ok(rows.length >= 5, `only ${rows.length} listing rows found`);
+  // The archive, not the homepage: it lists every post, so all thirteen types'
+  // icons are checked (the homepage shows only the newest few).
+  const html = readFileSync("_site/archive/index.html", "utf8");
+  const rows = [...html.matchAll(/<li class="h-(?:entry|event)" data-post-type="(\w+)">([\s\S]*?)<\/li>/g)];
+  assert.equal(rows.length, 14, `expected 14 listing rows, found ${rows.length}`);
   const expected = { article: "file-lines", note: "comment", photo: "image", like: "heart", reply: "reply", bookmark: "bookmark", audio: "music", video: "video", event: "calendar", jam: "headphones", repost: "retweet", rsvp: "calendar-check" };
   for (const [, type, body] of rows) {
     assert.match(body, /<span class="post-type-icon" aria-hidden="true">/, `${type}: no icon wrapper`);
@@ -4605,7 +4613,7 @@ check("the JSON Feed is valid 1.1, omits titles on titleless posts, and carries 
   assert.ok(Array.isArray(feed.items) && feed.items.length > 0, "JSON Feed has no items");
   assert.ok(!("author" in feed), "JSON Feed uses the deprecated singular `author`; 1.1 wants `authors`");
 
-  const titled = new Set(["articles", "bookmarks"]);
+  const titled = new Set(["articles", "bookmarks", "events"]);
   for (const item of feed.items) {
     assert.ok(item.id, "an item has no id (the only required item field)");
     assert.match(item.id, /^https?:\/\//, `item id is not an absolute URL: ${item.id}`);
@@ -4759,7 +4767,7 @@ check("JSON-LD uses a type that fits each post, and invents no headlines", () =>
     "photos/fixture-photo": { type: "ImageObject", headline: false, shared: false, body: false },
     "audio/fixture-audio": { type: "SocialMediaPosting", headline: false, shared: false, body: true },
     "videos/fixture-video": { type: "SocialMediaPosting", headline: false, shared: false, body: true },
-    "events/fixture-event": { type: "Event", headline: true, shared: false, body: true },
+    "events/fixture-event": { type: "Event", headline: true, shared: false, body: false },
     "jams/fixture-jam": { type: "SocialMediaPosting", headline: false, shared: true, body: false },
     "reposts/fixture-repost": { type: "SocialMediaPosting", headline: false, shared: true, body: true },
     "rsvps/fixture-rsvp": { type: "SocialMediaPosting", headline: false, shared: true, body: true },

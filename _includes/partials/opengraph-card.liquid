@@ -33,20 +33,22 @@ would break out of style="..." into raw markup. headline below is escaped for
 the same reason — same defect class as _11ty/imageAvatarPlugin.js's
 escapeAttr fix. {% endcomment -%}
 <main class="og og-{{ type }}"{% if type == "photo" and photoUrl != "" %} style="--og-bgimage: url('{{ site.url }}{{ photoUrl | escape }}')"{% endif %}>
-{%- if type == "bookmark" or type == "like" or type == "reply" -%}
-	{%- assign kickerUrl = d.bookmarkOf | default: d.likeOf | default: d.inReplyTo -%}
-	<p class="og-kicker"><span class="og-box">{% case type %}{% when "bookmark" %}Bookmarked{% when "like" %}Liked{% when "reply" %}Reply to{% endcase %} · {{ kickerUrl | hostnameFromUrl }}</span></p>
+{%- if type == "bookmark" or type == "like" or type == "reply" or type == "jam" or type == "repost" or type == "rsvp" -%}
+	{%- assign kickerUrl = d.bookmarkOf | default: d.likeOf | default: d.inReplyTo | default: d.jamOf | default: d.repostOf -%}
+	<p class="og-kicker"><span class="og-box">{% case type %}{% when "bookmark" %}Bookmarked{% when "like" %}Liked{% when "reply" %}Reply to{% when "jam" %}Listening to{% when "repost" %}Reposted{% when "rsvp" %}RSVP {{ d.rsvp }}{% endcase %} · {{ kickerUrl | hostnameFromUrl }}</span></p>
+{%- elsif type == "audio" or type == "video" or type == "event" -%}
+	<p class="og-kicker"><span class="og-box">{{ type | capitalize }}</span></p>
 {%- endif -%}
 {%- assign headline = "" -%}
 {%- case type -%}
-	{%- when "article" -%}
+	{%- when "article", "event" -%}
 		{%- assign headline = d.title -%}
 	{%- when "bookmark" -%}
 		{%- comment %} eleventyComputed.js already resolves an untitled
 		bookmark's title to its bookmarkOf URL — exactly the "title, else
 		the URL" rule. {% endcomment -%}
 		{%- assign headline = d.title -%}
-	{%- when "note", "reply" -%}
+	{%- when "note", "reply", "audio", "video", "repost", "rsvp" -%}
 		{%- comment %} The post's own words, not the parent's (spec: reply
 		must show its OWN content, never inReplyTo's). entry.templateContent
 		is the rendered post body before any layout wraps it — same field

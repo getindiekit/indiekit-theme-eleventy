@@ -84,13 +84,18 @@ file its sprite symbol under the POST's url instead of the listing page's.
 {%- assign inReplyTo = post.data.inReplyTo -%}
 {%- assign photo = post.data.photo -%}
 {%- assign postType = post.data.postType -%}
+{%- assign rsvp = post.data.rsvp -%}
+{%- assign repostOf = post.data.repostOf -%}
+{%- assign jamOf = post.data.jamOf -%}
+{%- assign eventStart = post.data.eventStart -%}
+{%- assign eventStartText = post.data.eventStartText -%}
 {%- assign category = post.data.category -%}
-<li class="h-entry" data-post-type="{{ postType }}">
+<li class="{% if postType == "event" %}h-event{% else %}h-entry{% endif %}" data-post-type="{{ postType }}">
 	{%- comment %} One icon per type, muted, from the Font Awesome sprite the
 	   social counts already use. Shape was tried and rejected; colour was tried
 	   and rejected. An icon is legible without decoding. Pre-rendered by the
 	   caller — see this file's header comment. {% endcomment -%}
-	<span class="post-type-icon" aria-hidden="true">{{ postTypeIconHtml }}</span><span class="sr-only">{{ postType | capitalize }}</span>
+	<span class="post-type-icon" aria-hidden="true">{{ postTypeIconHtml }}</span><span class="sr-only">{% if postType == "rsvp" %}RSVP{% else %}{{ postType | capitalize }}{% endif %}</span>
 	{% include "partials/author-card.liquid" %}
 	{% case postType %}
 		{% when "article" %}{% include "types/article.liquid" %}
@@ -98,6 +103,12 @@ file its sprite symbol under the POST's url instead of the listing page's.
 		{% when "like" %}{% include "types/like.liquid" %}
 		{% when "photo" %}{% include "types/photo.liquid" %}
 		{% when "reply" %}{% include "types/reply.liquid" %}
+		{% when "audio" %}{% include "types/audio.liquid" %}
+		{% when "video" %}{% include "types/video.liquid" %}
+		{% when "event" %}{% include "types/event.liquid" %}
+		{% when "jam" %}{% include "types/jam.liquid" %}
+		{% when "repost" %}{% include "types/repost.liquid" %}
+		{% when "rsvp" %}{% include "types/rsvp.liquid" %}
 		{% else %}{% include "types/note.liquid" %}
 	{% endcase %}
 </li>

@@ -1,0 +1,24 @@
+{%- comment %} The one titled type that is not an h-entry: entry.liquid and
+   post-list-entry.liquid make the wrapper an h-event. The name is the page's
+   <h1 class="p-name"> (entry.liquid), or the listing anchor below.
+   eventStart/eventEnd/eventStartText/eventEndText are computed in
+   _data/eleventyComputed.js, which keeps the author's offset (an unquoted
+   YAML timestamp arrives as a JS Date). {% endcomment -%}
+{%- if lcp -%}
+<a class="u-url sr-only" href="{{ page.url }}">{{ title }}</a>
+{%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}
+<p><time class="dt-start" datetime="{{ eventStart }}">{{ eventStartText }}</time>
+{%- if eventEnd %} to <time class="dt-end" datetime="{{ eventEnd }}">{{ eventEndText }}</time>{% endif %}</p>
+{%- if location %}
+<p class="p-location">{{ location.name | default: location }}</p>
+{%- endif %}
+{%- if url %}
+<p><a class="u-url" href="{{ url }}">{{ url }}</a></p>
+{%- endif %}
+<div class="content-grid e-content"><heading-anchors selector="h2,h3">{{ content }}</heading-anchors></div>
+{%- else -%}
+<a class="posts-link p-name u-url" href="{{ page.url }}">{{ title }}</a>
+{%- if eventStart %}<time class="dt-start sr-only" datetime="{{ eventStart }}">{{ eventStartText }}</time>{% endif %}
+{{ socialHtml }}
+{%- if date %}<time class="date dt-published" datetime="{{ date | isoInstant }}">{{ date | listingDate }}</time>{% endif %}
+{%- endif -%}

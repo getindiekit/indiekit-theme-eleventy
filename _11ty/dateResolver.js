@@ -24,12 +24,14 @@ export const hasExplicitOffset = (isoString) =>
 // Date carries no record of whether the original string had an explicit
 // offset); pass undefined/a missing path to skip that lookup, which safely
 // falls through to the zone-less (keepLocalTime) treatment.
-export function resolveDate(dateValue, inputPath, timeZone) {
+// `key` names the front-matter line to re-read for a Date (default `date`);
+// an event's `start`/`end` are unquoted timestamps too and need the same rule.
+export function resolveDate(dateValue, inputPath, timeZone, key = "date") {
   let localDate;
 
   if (dateValue instanceof Date) {
     const raw = inputPath && existsSync(inputPath) ? readFileSync(inputPath, "utf8") : "";
-    const dateMatch = raw.match(/^date:\s*["']?([^"'\n]+?)["']?\s*$/m);
+    const dateMatch = raw.match(new RegExp(`^${key}:\\s*["']?([^"'\\n]+?)["']?\\s*$`, "m"));
 
     if (dateMatch && hasExplicitOffset(dateMatch[1])) {
       // Explicit offset/Z: js-yaml (or Date.parse, for a quoted string that

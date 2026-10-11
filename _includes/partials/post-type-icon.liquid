@@ -23,5 +23,11 @@ post-list-entry.liquid's callers.
 	{%- when "like" %}{% icon "far:heart" %}
 	{%- when "photo" %}{% icon "far:image" %}
 	{%- when "reply" %}{% icon "fas:reply" %}
+	{%- when "audio" %}{% icon "fas:music" %}
+	{%- when "video" %}{% icon "fas:video" %}
+	{%- when "event" %}{% icon "far:calendar" %}
+	{%- when "jam" %}{% icon "fas:headphones" %}
+	{%- when "repost" %}{% icon "fas:retweet" %}
+	{%- when "rsvp" %}{% icon "far:calendar-check" %}
 	{%- else %}{% icon "far:comment" %}
 {%- endcase -%}
