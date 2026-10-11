@@ -2,7 +2,7 @@
 //
 // Written as a JS template rather than through @11ty/eleventy-plugin-rss's
 // built-in `type: "json"` for one reason: that template always emits
-// `"title": "{{ post.data.title }}"`, and four of Indiekit's six post types
+// `"title": "{{ post.data.title }}"`, and nine of Indiekit's thirteen post types
 // have no title. They would carry eleventyComputed.js's synthetic
 // "<Type> · <date>" label — the same fabrication removed from p-name.
 //

@@ -3,7 +3,7 @@ layout: layouts/default.liquid
 tmpl: page
 ---
 {% comment %} Task 18 (§7.4): was layouts/base.liquid, which skips the rail/nav
-   AND the skip link (default.liquid:10-46) entirely — the six post-type
+   AND the skip link (default.liquid:10-46) entirely — the post-type
    permalink pages built through this layout had no skip link and no
    id="skiplink-content" target at all, only the homepage did. Routing
    through default.liquid instead of duplicating the skip link/main markup
@@ -50,7 +50,7 @@ task-visual-fix-report.md for the full evidence trail. {%- endcomment -%}
    that flag — and the 68-120px hero clamp renders a normal-length post title
    across three lines. Default to the smaller clamp and let a post opt OUT with
    `hugeTitle: true` if it ever wants the hero size. {% endcomment -%}
-  {%- comment %} Four of the six Indiekit post types are titleless by design.
+  {%- comment %} Nine of the thirteen Indiekit post types are titleless by design.
    _data/eleventyComputed.js synthesises a "<Type> · <date>" title for them so
    the Atom feed has a non-empty <title> — but rendering that as a hero heading
    puts "PHOTO · 30 AUG 2026" at the top of a photo post, which is noise.
@@ -119,7 +119,7 @@ task-visual-fix-report.md for the full evidence trail. {%- endcomment -%}
       into whichever class carries the correct column, since .nextprev-next is
       grid-column 1 (left) and .nextprev-prev is grid-column 2 (right).
    2. NO THUMBNAILS. The source's cells are OG-image screenshots via its
-      {% ogImageSource %} shortcode. Four of six Indiekit post types are
+      {% ogImageSource %} shortcode. Nine of thirteen Indiekit post types are
       titleless, and generating a per-neighbour image on every permalink is
       build cost for a nav affordance — the post's title (real, or
       eleventyComputed.js's "<Type> · <date>" label, which reads correctly AS a

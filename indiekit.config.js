@@ -19,6 +19,9 @@ const postType = (collection) => ({
 const { env } = process;
 const bluesky = env.BLUESKY_HANDLE && env.BLUESKY_PASSWORD;
 const mastodon = env.MASTODON_URL && env.MASTODON_USER && env.MASTODON_ACCESS_TOKEN;
+// Webmention.io's endpoint answers 401 on its admin page without a token, so it
+// is gated the same way.
+const webmentionIo = env.WEBMENTION_IO_TOKEN;
 const internetArchive = env.INTERNET_ARCHIVE_ACCESS_KEY && env.INTERNET_ARCHIVE_SECRET_KEY;
 
 // Runtime comes from the official image (ghcr.io/getindiekit/indiekit) or any
@@ -45,7 +48,7 @@ export default {
 		"@indiekit/post-type-video",
 		"@indiekit/post-type-page",
 		"@indiekit/endpoint-microsub",
-		"@indiekit/endpoint-webmention-io",
+		...(webmentionIo ? ["@indiekit/endpoint-webmention-io"] : []),
 		...(bluesky ? ["@indiekit/syndicator-bluesky"] : []),
 		...(mastodon ? ["@indiekit/syndicator-mastodon"] : []),
 		...(internetArchive ? ["@indiekit/syndicator-internet-archive"] : []),

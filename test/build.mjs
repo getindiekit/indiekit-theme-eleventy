@@ -275,6 +275,14 @@ check("every preloaded font resolves to a real file in _site", () => {
 // document) if the glob weren't scoped away from it.
 const PAGE_CSS_GLOB = "_site/_css/{initial,defer}.css";
 
+check("permalink media cannot overflow the column", () => {
+  const css = globSync(PAGE_CSS_GLOB).map((file) => readFileSync(file, "utf8")).join("\n");
+  const rule = (tag, prop) => [...css.matchAll(new RegExp(`\\b${tag}\\s*\\{[^}]*\\}`, "g"))].some((m) => prop.test(m[0]));
+  assert.ok(rule("video", /max-width\s*:\s*100%/), "no `video { max-width: 100% }` rule");
+  assert.ok(rule("video", /height\s*:\s*auto/), "no `video { height: auto }` rule — a sized video distorts");
+  assert.ok(rule("audio", /max-width\s*:\s*100%/), "no `audio { max-width: 100% }` rule");
+});
+
 check("compiled CSS sets a body font-family", () => {
   const css = globSync(PAGE_CSS_GLOB)
     .map((file) => readFileSync(file, "utf8"))
@@ -1364,6 +1372,10 @@ for (const [type, classes] of Object.entries(mf2)) {
     for (const c of classes) {
       assert.ok(html.includes(c), `missing ${c}`);
     }
+    // The wrapper class belongs on the <article> that starts the entry, not
+    // anywhere on the page.
+    const wanted = type === "events" ? "h-event" : "h-entry";
+    assert.match(html, new RegExp(`<article class="${wanted}"`), `the entry's <article> is not ${wanted}`);
 
     // IdAttributePlugin (eleventy.config.js) is otherwise untested — nothing
     // else in this suite fails if its registration is deleted. Assert its
@@ -1392,12 +1404,29 @@ check("an event is an h-event on its permalink and in its listing row, never an 
   assert.match(page, /<h1 class="p-name /, "no p-name heading");
   const instant = (cls) => Date.parse(new RegExp(`<time class="${cls}" datetime="([^"]+)"`).exec(page)?.[1]);
   assert.equal(instant("dt-start"), Date.parse("2026-09-02T18:00:00+02:00"), "dt-start is not the declared start");
+  assert.match(page, /<time class="dt-start" datetime="[^"]*\+02:00"/, "dt-start lost the author's +02:00 offset");
   assert.equal(instant("dt-end"), Date.parse("2026-09-02T20:00:00+02:00"), "dt-end is not the declared end");
   assert.match(page, /<p class="p-location">[^<]*Brussels/, "no p-location");
   assert.match(page, /<a class="u-url" href="https:\/\/events\.indieweb\.org\/example"/, "the event url is not a u-url");
-  const row = extractHEntryBlocks(readFileSync("_site/events/index.html", "utf8"), "li");
-  assert.equal(row.length, 1, "the events index does not list the event as one h-event row");
-  assert.match(row[0], /^<li class="h-event"/, "the listing row is not h-event");
+  const rows = extractHEntryBlocks(readFileSync("_site/events/index.html", "utf8"), "li");
+  assert.equal(rows.length, 2, "the events index does not list both events as h-event rows");
+  for (const row of rows) assert.match(row, /^<li class="h-event"/, "the listing row is not h-event");
+  assert.ok(rows.every((row) => /class="dt-start/.test(row)), "an event listing row carries no dt-start");
+  const archive = extractHEntryBlocks(readFileSync("_site/archive/index.html", "utf8"), "li").filter((r) => r.startsWith('<li class="h-event"'));
+  assert.equal(archive.length, 2, "the archive does not list both events as h-event rows");
+  assert.ok(archive.every((r) => /class="[^"]*\bdt-start\b/.test(r)), "an archive event row carries no dt-start");
+});
+
+check("an event with no end has no dt-end and no JSON-LD endDate", () => {
+  const page = readFileSync("_site/events/fixture-event-open-ended/index.html", "utf8");
+  assert.match(page, /<time class="dt-start" datetime="[^"]*-05:00"/, "dt-start was converted to the site zone instead of keeping the author's -05:00");
+  assert.ok(!/dt-end/.test(page), "an event with no end carries a dt-end");
+  const ld = JSON.parse(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(page)[1]);
+  assert.ok(ld.startDate, "open-ended event has no startDate");
+  assert.ok(!("endDate" in ld), "an event with no end carries a JSON-LD endDate");
+  assert.equal(ld.location.name, "Ghent", "an object location is not unwrapped to its name");
+  const first = JSON.parse(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(readFileSync("_site/events/fixture-event/index.html", "utf8"))[1]);
+  assert.equal(first.location.name, "Brussels", "a string location is not used as is");
 });
 
 check("jam, repost and rsvp carry their target and verb microformats", () => {
@@ -1415,6 +1444,8 @@ check("the event's JSON-LD carries its start and end", () => {
   const html = readFileSync("_site/events/fixture-event/index.html", "utf8");
   const ld = JSON.parse(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html)[1]);
   assert.equal(ld["@type"], "Event");
+  assert.equal(ld.name, "Homebrew Website Club", "an Event needs `name`");
+  assert.ok(!("headline" in ld), "an Event carries headline instead of name");
   assert.equal(Date.parse(ld.startDate), Date.parse("2026-09-02T18:00:00+02:00"));
   assert.equal(Date.parse(ld.endDate), Date.parse("2026-09-02T20:00:00+02:00"));
 });
@@ -1435,7 +1466,7 @@ check("the archive is an h-feed listing every post", () => {
   // fails, not just a listing that shows articles alone.
   const html = readFileSync("_site/archive/index.html", "utf8");
   assert.ok(/class="[^"]*\bh-feed\b/.test(html), "homepage is not marked up as an h-feed");
-  for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos", "audio", "videos", "events", "jams", "reposts", "rsvps"]) {
+  for (const type of Object.keys(contentDirectoryData.TYPES)) {
     assert.ok(
       new RegExp(`href="/${type}/[^"]+/"`).test(html),
       `homepage h-feed has no entry linking into /${type}/`,
@@ -1446,11 +1477,11 @@ check("the archive is an h-feed listing every post", () => {
 check("archive h-feed entries carry h-entry, not bare links", () => {
   // The check above would also pass if the listing were a plain <a> list
   // with no microformats at all — assert each entry is itself a valid
-  // h-entry, one per post-tagged fixture (14: see the feed entry-count
-  // check above for why it's 14).
+  // h-entry, one per post-tagged fixture (15: see the feed entry-count
+  // check above for why it's 15).
   const html = readFileSync("_site/archive/index.html", "utf8");
   const entryCount = (html.match(/class="h-(?:entry|event)"/g) || []).length;
-  assert.equal(entryCount, 14, `expected 14 h-entry listing entries, found ${entryCount}`);
+  assert.equal(entryCount, 15, `expected 15 h-entry listing entries, found ${entryCount}`);
 });
 
 check("archive h-feed lists posts newest first", () => {
@@ -1465,9 +1496,9 @@ check("archive h-feed lists posts newest first", () => {
   // u-url per entry to resolve (see task-s4-report.md). A bare `href="..."`
   // scan would double-count that entry; anchor on the class every entry's
   // *one* real permalink link always carries instead.
-  const hrefs = [...feedSection.matchAll(/<a\s+class="[^"]*\bu-url\b[^"]*"\s+href="(\/(?:articles|notes|bookmarks|likes|replies|photos|audio|videos|events|jams|reposts|rsvps)\/[^"]+\/)"/g)]
+  const hrefs = [...feedSection.matchAll(new RegExp(`<a\\s+class="[^"]*\\bu-url\\b[^"]*"\\s+href="(\\/(?:${Object.keys(contentDirectoryData.TYPES).join("|")})\\/[^"]+\\/)"`, "g"))]
     .map((m) => m[1]);
-  assert.equal(hrefs.length, 14, `expected 14 entry links inside the h-feed, found ${hrefs.length}`);
+  assert.equal(hrefs.length, 15, `expected 15 entry links inside the h-feed, found ${hrefs.length}`);
 
   const fixtures = [
     ["articles", "fixture-article"],
@@ -1481,6 +1512,7 @@ check("archive h-feed lists posts newest first", () => {
     ["audio", "fixture-audio"],
     ["videos", "fixture-video"],
     ["events", "fixture-event"],
+    ["events", "fixture-event-open-ended"],
     ["jams", "fixture-jam"],
     ["reposts", "fixture-repost"],
     ["rsvps", "fixture-rsvp"],
@@ -1521,6 +1553,7 @@ check("archive h-feed entry dates match the same instant as the post's own page"
     ["audio", "fixture-audio"],
     ["videos", "fixture-video"],
     ["events", "fixture-event"],
+    ["events", "fixture-event-open-ended"],
     ["jams", "fixture-jam"],
     ["reposts", "fixture-repost"],
     ["rsvps", "fixture-rsvp"],
@@ -1658,7 +1691,7 @@ check("every h-entry in the archive listing carries its own u-url", () => {
   // array. Pin the count to the known fixture total (see "h-feed entries
   // carry h-entry" above for why it's 8) so a broken extractor fails loudly
   // instead of silently checking nothing.
-  assert.equal(blocks.length, 14, `expected 14 h-entry blocks, found ${blocks.length}`);
+  assert.equal(blocks.length, 15, `expected 15 h-entry blocks, found ${blocks.length}`);
 
   const missing = blocks
     .map((block, i) => ({ i, hasUrl: /\bu-url\b/.test(block) }))
@@ -1681,7 +1714,7 @@ check("every post permalink carries tmpl-page and has exactly one <h1>; the home
   // legitimately carries neither tmpl-page nor this <h1> convention —
   // excluded by construction below (the per-type globs never reach it),
   // matching the established exemption used elsewhere in this suite.
-  const types = ["articles", "notes", "bookmarks", "likes", "replies", "photos", "audio", "videos", "events", "jams", "reposts", "rsvps"];
+  const types = Object.keys(contentDirectoryData.TYPES);
   let checkedPages = 0;
   for (const type of types) {
     // One directory deep: post permalinks are /<type>/<slug>/, while
@@ -1757,7 +1790,7 @@ check("p-name marks titled post types only — titleless types must not carry on
   const TITLED = new Set(["articles", "bookmarks", "events"]);
 
   const rows = extractHEntryBlocks(readFileSync("_site/archive/index.html", "utf8"), "li");
-  assert.equal(rows.length, 14, `expected 14 h-entry blocks in the feed, found ${rows.length}`);
+  assert.equal(rows.length, 15, `expected 15 h-entry blocks in the feed, found ${rows.length}`);
   for (const row of rows) {
     const href = /href="\/([a-z]+)\//.exec(row);
     assert.ok(href, `listing row has no typed permalink href: ${row.slice(0, 120)}`);
@@ -1781,7 +1814,7 @@ check("p-name marks titled post types only — titleless types must not carry on
     }
   }
 
-  for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos", "audio", "videos", "events", "jams", "reposts", "rsvps"]) {
+  for (const type of Object.keys(contentDirectoryData.TYPES)) {
     // One directory deep: post permalinks are /<type>/<slug>/, while
     // /<type>/index.html is that type's listing page (content/
     // collection-index.liquid). `**` would hand this check a listing and
@@ -1835,7 +1868,7 @@ check("the archive listing never embeds a full post body — no content-grid/e-c
   // e-content wrapper).
   const html = readFileSync("_site/archive/index.html", "utf8");
   const blocks = extractHEntryBlocks(html, "li");
-  assert.equal(blocks.length, 14, `expected 14 h-entry <li> blocks, found ${blocks.length}`);
+  assert.equal(blocks.length, 15, `expected 15 h-entry <li> blocks, found ${blocks.length}`);
   const withBody = blocks
     .map((block, i) => ({ i, hasBody: /\bcontent-grid\b/.test(block) || /\be-content\b/.test(block) }))
     .filter((b) => b.hasBody);
@@ -2132,8 +2165,8 @@ check("feed contains every post-tagged fixture, not just any entry", () => {
   // titleless-bookmark fallback.
   const xml = readFileSync("_site/feed.xml", "utf8");
   const entryCount = (xml.match(/<entry>/g) || []).length;
-  assert.equal(entryCount, 14, `expected 14 feed entries (one per post-type fixture, plus the untitled-bookmark fixture), got ${entryCount}`);
-  for (const type of ["articles", "notes", "bookmarks", "likes", "replies", "photos", "audio", "videos", "events", "jams", "reposts", "rsvps"]) {
+  assert.equal(entryCount, 15, `expected 15 feed entries (one per post-type fixture, plus the untitled-bookmark fixture), got ${entryCount}`);
+  for (const type of Object.keys(contentDirectoryData.TYPES)) {
     assert.ok(
       xml.includes(`http://localhost:8080/${type}/`),
       `feed missing an entry linking into /${type}/`,
@@ -2182,7 +2215,7 @@ check("every feed entry has a non-empty title", () => {
     .map((m) => m[1].trim())
     // the feed's own <title> (site name) is not an entry title
     .slice(1);
-  assert.equal(titles.length, 14, `expected 14 entry titles, found ${titles.length}`);
+  assert.equal(titles.length, 15, `expected 15 entry titles, found ${titles.length}`);
   for (const title of titles) {
     assert.ok(title.length > 0, "a feed entry has an empty <title>");
   }
@@ -2235,6 +2268,7 @@ check("feed and page timestamps round-trip to the exact source instant, not just
     ["audio", "fixture-audio"],
     ["videos", "fixture-video"],
     ["events", "fixture-event"],
+    ["events", "fixture-event-open-ended"],
     ["jams", "fixture-jam"],
     ["reposts", "fixture-repost"],
     ["rsvps", "fixture-rsvp"],
@@ -3198,12 +3232,14 @@ await checkAsync(
     // script was dead config and reading it validated a value that no longer
     // ran. Read the live one.
     const configSource = readFileSync("eleventy.config.js", "utf8");
-    const globMatch = /glob:\s*"([^"]+)"/.exec(configSource);
+    const globMatch = /glob:\s*`([^`]+)`/.exec(configSource);
     assert.ok(
       globMatch,
       "eleventy.config.js has no `glob:` scoping the Pagefind index",
     );
-    const glob = globMatch[1];
+    // The only interpolation is the TYPES directory list.
+    const glob = globMatch[1].replace("${Object.keys(contentDirectoryData.TYPES).join(\",\")}", Object.keys(contentDirectoryData.TYPES).join(","));
+    assert.ok(!glob.includes("$"), `unresolved interpolation in the pagefind glob: ${glob}`);
 
     const outputPath = "_site-pagefind-check";
     rmSync(outputPath, { recursive: true, force: true });
@@ -3228,7 +3264,7 @@ await checkAsync(
       // glob string itself, which would make this circular) — every
       // index.html actually built under one of the six post-type
       // directories, converted to the same clean-URL shape Pagefind reports.
-      const expectedUrls = globSync("_site/{articles,audio,bookmarks,events,jams,likes,notes,photos,replies,reposts,rsvps,videos}/*/index.html")
+      const expectedUrls = globSync(`_site/{${Object.keys(contentDirectoryData.TYPES).join(",")}}/*/index.html`)
         .map((f) => `/${f.replace(/^_site\//, "").replace(/index\.html$/, "")}`)
         .sort();
 
@@ -3501,7 +3537,7 @@ check("each post type's OG card carries its own type-appropriate content, not an
   assert.ok(repost.includes("Reposted · example.com"), `repost card missing its kicker: ${repost}`);
   assert.ok(repost.includes("worth passing on"), `repost card does not show its own words: ${repost}`);
   const rsvp = card("/rsvps/fixture-rsvp/");
-  assert.ok(rsvp.includes("RSVP yes · events.indieweb.org"), `rsvp card missing its kicker: ${rsvp}`);
+  assert.ok(rsvp.includes("RSVP Going · events.indieweb.org"), `rsvp card missing its kicker: ${rsvp}`);
 
   // photo: still gets a card (archive consistency), captioned from its own
   // alt text, with the photo as the card's own background.
@@ -4171,7 +4207,7 @@ check("every listing row carries one post-type icon with a text label", () => {
   // icons are checked (the homepage shows only the newest few).
   const html = readFileSync("_site/archive/index.html", "utf8");
   const rows = [...html.matchAll(/<li class="h-(?:entry|event)" data-post-type="(\w+)">([\s\S]*?)<\/li>/g)];
-  assert.equal(rows.length, 14, `expected 14 listing rows, found ${rows.length}`);
+  assert.equal(rows.length, 15, `expected 15 listing rows, found ${rows.length}`);
   const expected = { article: "file-lines", note: "comment", photo: "image", like: "heart", reply: "reply", bookmark: "bookmark", audio: "music", video: "video", event: "calendar", jam: "headphones", repost: "retweet", rsvp: "calendar-check" };
   for (const [, type, body] of rows) {
     assert.match(body, /<span class="post-type-icon" aria-hidden="true">/, `${type}: no icon wrapper`);
@@ -4767,7 +4803,7 @@ check("JSON-LD uses a type that fits each post, and invents no headlines", () =>
     "photos/fixture-photo": { type: "ImageObject", headline: false, shared: false, body: false },
     "audio/fixture-audio": { type: "SocialMediaPosting", headline: false, shared: false, body: true },
     "videos/fixture-video": { type: "SocialMediaPosting", headline: false, shared: false, body: true },
-    "events/fixture-event": { type: "Event", headline: true, shared: false, body: false },
+    "events/fixture-event": { type: "Event", headline: false, name: true, shared: false, body: false },
     "jams/fixture-jam": { type: "SocialMediaPosting", headline: false, shared: true, body: false },
     "reposts/fixture-repost": { type: "SocialMediaPosting", headline: false, shared: true, body: true },
     "rsvps/fixture-rsvp": { type: "SocialMediaPosting", headline: false, shared: true, body: true },
@@ -4794,6 +4830,7 @@ check("JSON-LD uses a type that fits each post, and invents no headlines", () =>
       want.headline,
       `${slug}: headline presence is wrong — a titleless type must not carry one`,
     );
+    assert.equal("name" in ld, Boolean(want.name), `${slug}: name presence is wrong`);
     if (want.headline) {
       assert.notEqual(
         ld.headline,
@@ -5620,7 +5657,6 @@ await checkAsync("indiekit.config.js declares one post type per rendered directo
     "@indiekit/post-type-video",
     "@indiekit/post-type-page",
     "@indiekit/endpoint-microsub",
-    "@indiekit/endpoint-webmention-io",
   ]);
   for (const name of ["audio", "event", "jam", "repost", "rsvp", "video"]) {
     assert.ok(config.publication.postTypes[name], `no publication.postTypes.${name}`);

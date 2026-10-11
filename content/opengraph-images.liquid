@@ -32,8 +32,8 @@ a deliberate property of this file rather than an accident of what its
 front matter happens to omit (plan Task 20 step 5).
 
 Pagefind: the built output lands under /opengraph/<type>/<slug>/, outside
-every one of the six directories package.json's search-index script scopes
-its --glob to. That glob is already an allow-list of exactly the six
+every one of the post-type directories package.json's search-index script scopes
+its --glob to. That glob is already an allow-list of exactly the
 post-type output directories (not this one), so it already excludes this
 page set with no changes needed — verified in test/build.mjs's "pagefind
 indexes only content pages" check, extended in this task to assert

@@ -19,7 +19,9 @@
 import { loadSiteConfig } from "../_11ty/siteConfig.js";
 
 const siteData = loadSiteConfig();
-import { resolveDate } from "../_11ty/dateResolver.js";
+import { existsSync, readFileSync } from "node:fs";
+import { DateTime } from "luxon";
+import { hasExplicitOffset, resolveDate } from "../_11ty/dateResolver.js";
 
 // Same TIME_ZONE fallback as eleventy.config.js — see that file's comment.
 const TIME_ZONE = siteData.timezone || "utc";
@@ -29,11 +31,26 @@ const TIME_ZONE = siteData.timezone || "utc";
 const LABELS = { rsvp: "RSVP" };
 
 // An event's `start`/`end` are unquoted timestamps, so js-yaml hands over
-// JS Dates exactly as it does for `date`; resolveDate re-reads the front-matter
-// line to keep an explicit offset. Returns a zone-aware ISO string or undefined.
+// JS Dates exactly as it does for `date`. The author's own offset is kept (an
+// event happens where it happens, not in the site's zone): the raw
+// front-matter line is re-read and parsed with its offset. A zone-less value
+// falls back to resolveDate's wall-clock-in-site-zone reading. Returns a
+// Luxon DateTime, or undefined when the key is unset — resolveDate would
+// otherwise fall through to the file's `published:` line.
 const eventTime = (data, key) => {
-  const parsed = resolveDate(data[key], data.page?.inputPath, TIME_ZONE, key);
-  return parsed ? parsed.setZone(TIME_ZONE) : undefined;
+  if (!data[key]) return undefined;
+  const inputPath = data.page?.inputPath;
+  const raw =
+    typeof data[key] === "string"
+      ? data[key]
+      : inputPath && existsSync(inputPath)
+        ? readFileSync(inputPath, "utf8").match(new RegExp(`^${key}:\\s*["']?([^"'\\n]+?)["']?\\s*$`, "m"))?.[1]
+        : undefined;
+  if (raw && hasExplicitOffset(raw)) {
+    const kept = DateTime.fromISO(raw.trim().replace(/^(\S+)\s+/, "$1T"), { setZone: true });
+    if (kept.isValid) return kept;
+  }
+  return resolveDate(data[key], inputPath, TIME_ZONE, key);
 };
 
 export default {
@@ -126,8 +143,9 @@ export default {
     }
     // Only a real one. title_isReal is stamped from RAW front matter before the
     // synthetic label exists.
+    // An Event takes `name` (required by schema.org) instead of `headline`.
     if (data.title_isReal && data.title) {
-      ld.headline = data.title;
+      ld[data.postType === "event" ? "name" : "headline"] = data.title;
     }
     if (data.summary) {
       ld.description = data.summary;
@@ -154,7 +172,8 @@ export default {
       const end = eventTime(data, "end");
       if (start) ld.startDate = start.toISO();
       if (end) ld.endDate = end.toISO();
-      if (data.location) ld.location = { "@type": "Place", name: String(data.location) };
+      const place = data.location?.name || data.location;
+      if (place) ld.location = { "@type": "Place", name: String(place) };
     }
 
     if (data.postType === "photo" && Array.isArray(data.photo) && data.photo[0]) {
@@ -175,7 +194,7 @@ export default {
 
     // A draft only renders under --serve (eleventy.config.js drops drafts on
     // build). There the source marks it by appending " (Draft)" to data.title —
-    // but four of the six Indiekit post types are titleless by design, so that
+    // but nine of the thirteen Indiekit post types are titleless by design, so that
     // guard skips them and a titleless draft would render with no indication it
     // is one. Fold the marker into the synthetic title instead, so every draft
     // is visibly a draft in the one mode that shows them.

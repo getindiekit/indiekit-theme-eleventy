@@ -3,6 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { DateTime } from "luxon";
 import { resolveDate } from "./_11ty/dateResolver.js";
+import contentDirectoryData from "./content/content.11tydata.js";
 import { loadSiteConfig } from "./_11ty/siteConfig.js";
 import pluginSass from "./_11ty/sassPlugin.js";
 import pluginSyntaxHighlight from "./_11ty/syntaxHighlightPlugin.js";
@@ -99,7 +100,7 @@ export default function (eleventyConfig) {
   // Running it from eleventy.after means every build, including a dev
   // server's first build, produces a working search page.
   //
-  // Scoped to the six post-type directories so OG cards, the search page
+  // Scoped to the post-type directories (content.11tydata.js TYPES) so OG cards, the search page
   // itself and the homepage never enter the index.
   eleventyConfig.on("eleventy.after", async (hookArgs) => {
     const { runMode } = hookArgs;
@@ -119,7 +120,7 @@ export default function (eleventyConfig) {
       // indexed. The per-type listing pages at /<type>/ are lists, not
       // content — the same reason /archive/ and the homepage are excluded;
       // indexing them puts a page of other posts' titles into the results.
-      glob: "{articles,audio,bookmarks,events,jams,likes,notes,photos,replies,reposts,rsvps,videos}/*/*.html",
+      glob: `{${Object.keys(contentDirectoryData.TYPES).join(",")}}/*/*.html`,
     });
     await index.writeFiles({ outputPath: `${outputDir}/pagefind` });
     pagefindIndexed = true;
@@ -551,6 +552,11 @@ export default function (eleventyConfig) {
     const parsed = resolveDate(dateValue, this.page?.inputPath, TIME_ZONE);
     return parsed ? parsed.setZone(TIME_ZONE).toFormat("d MMMM yyyy") : "";
   });
+
+  // The label an RSVP's yes/no/maybe/interested value shows as (rsvp.liquid
+  // and the OG card kicker share it).
+  const RSVP_LABELS = { yes: "Going", no: "Not going", maybe: "Might go", interested: "Interested" };
+  eleventyConfig.addLiquidFilter("rsvpLabel", (value) => RSVP_LABELS[value] || "RSVP");
 
   // Listing rows get a SHORT date, because it sits in a fixed non-wrapping
   // column beside the dotted leader (sass/_theme-posts.scss). humanDate's

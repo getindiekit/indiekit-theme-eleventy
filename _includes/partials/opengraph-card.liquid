@@ -9,7 +9,7 @@ exact trap _includes/partials/post-list-entry.liquid's own comment documents
 and fixes with the identical `page: post` pattern; this reuses it rather
 than re-deriving it.
 
-Card content per post type (spec §F.6, plan Task 20 step 3): four of six
+Card content per post type (spec §F.6, plan Task 20 step 3): nine of thirteen
 Indiekit post types have no title, so a title-centric card is wrong for the
 majority. `d.title` is used ONLY for article/bookmark below — for
 note/reply it deliberately is not: _data/eleventyComputed.js already
@@ -35,7 +35,7 @@ escapeAttr fix. {% endcomment -%}
 <main class="og og-{{ type }}"{% if type == "photo" and photoUrl != "" %} style="--og-bgimage: url('{{ site.url }}{{ photoUrl | escape }}')"{% endif %}>
 {%- if type == "bookmark" or type == "like" or type == "reply" or type == "jam" or type == "repost" or type == "rsvp" -%}
 	{%- assign kickerUrl = d.bookmarkOf | default: d.likeOf | default: d.inReplyTo | default: d.jamOf | default: d.repostOf -%}
-	<p class="og-kicker"><span class="og-box">{% case type %}{% when "bookmark" %}Bookmarked{% when "like" %}Liked{% when "reply" %}Reply to{% when "jam" %}Listening to{% when "repost" %}Reposted{% when "rsvp" %}RSVP {{ d.rsvp }}{% endcase %} · {{ kickerUrl | hostnameFromUrl }}</span></p>
+	<p class="og-kicker"><span class="og-box">{% case type %}{% when "bookmark" %}Bookmarked{% when "like" %}Liked{% when "reply" %}Reply to{% when "jam" %}Listening to{% when "repost" %}Reposted{% when "rsvp" %}RSVP {{ d.rsvp | rsvpLabel }}{% endcase %} · {{ kickerUrl | hostnameFromUrl }}</span></p>
 {%- elsif type == "audio" or type == "video" or type == "event" -%}
 	<p class="og-kicker"><span class="og-box">{{ type | capitalize }}</span></p>
 {%- endif -%}

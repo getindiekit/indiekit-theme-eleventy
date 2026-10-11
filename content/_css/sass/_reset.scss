@@ -29,6 +29,12 @@ video {
 	max-width: 100%;
 	border: none;
 }
+video {
+	height: auto;
+}
+audio {
+	max-width: 100%;
+}
 img[width][height] {
 	height: auto;
 }

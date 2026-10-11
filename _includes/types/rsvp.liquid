@@ -1,11 +1,5 @@
 {%- comment %} Shaped like reply.liquid. `rsvp` is yes, no, maybe or interested. {% endcomment -%}
-{%- case rsvp -%}
-	{%- when "yes" %}{% assign rsvpText = "Going" %}
-	{%- when "no" %}{% assign rsvpText = "Not going" %}
-	{%- when "maybe" %}{% assign rsvpText = "Might go" %}
-	{%- when "interested" %}{% assign rsvpText = "Interested" %}
-	{%- else %}{% assign rsvpText = "RSVP" %}
-{%- endcase -%}
+{%- assign rsvpText = rsvp | rsvpLabel -%}
 {%- if lcp -%}
 <a class="u-url sr-only" href="{{ page.url }}">{{ title }}</a>
 {%- if date %}<time class="dt-published" datetime="{{ date | isoInstant }}">{{ date | humanDate }}</time>{% endif %}

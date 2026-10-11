@@ -2,7 +2,7 @@
 Adapted from /home/rmdes/zachleat.com/_includes/post-list-entry.html. That
 source is title-centric (year subheads with sparklines, popularity ranking,
 og-image previews) built for a single post shape that always has a title.
-None of that applies here: four of Indiekit's six post types (note, bookmark,
+None of that applies here: nine of Indiekit's thirteen post types (note, bookmark,
 like, reply) are titleless by IndieWeb design and are the majority of what
 gets published, not an edge case — a listing built around headlines would
 silently drop or blank them (the same mistake that produced empty <title>
@@ -31,7 +31,7 @@ e-content div, images, everything) into the feed row. Both were wrong:
    content wrapper for that reason), not a listing one.
 
 The adaptation this needs, that a straight copy of the source can't give it:
-four of six Indiekit post types have no title, so a pure link list reading
+nine of thirteen Indiekit post types have no title, so a pure link list reading
 "Reply · 30 Aug 2026" / "Note · 30 Aug 2026" (eleventyComputed.js's Atom-feed
 fallback label, needed there because @11ty/eleventy-plugin-rss requires a
 non-empty atom:title) is useless right next to a `<time>` showing the same
