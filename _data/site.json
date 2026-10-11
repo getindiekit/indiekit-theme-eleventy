@@ -3,6 +3,7 @@
   "url": "http://localhost:8080",
   "indiekit": "",
   "description": "A reference Eleventy theme for Indiekit.",
+  "navigation": [],
   "theme": {
     "primary": "#9435f4",
     "secondary": "#f0a000",
@@ -15,9 +16,16 @@
       "mono": "Consolas, Monaco"
     },
     "shape": "sharp",
-    "rail": { "side": "end", "width": "14rem" },
+    "rail": {
+      "side": "end",
+      "width": "14rem"
+    },
     "measure": "31em",
-    "signature": { "spectrum": true, "leader": true, "anchors": true }
+    "signature": {
+      "spectrum": true,
+      "leader": true,
+      "anchors": true
+    }
   },
   "author": {
     "name": "",

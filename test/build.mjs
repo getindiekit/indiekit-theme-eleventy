@@ -5509,6 +5509,74 @@ check("THEME_SAMPLE_POSTS=0 builds without the fixture posts, and the default bu
   }
 });
 
+// The rail menu lists only what site.json's `navigation` names, in that
+// order. Pages exist whether or not they are listed: an operator keeps a page
+// out of the menu on purpose as often as in it.
+const navFixture = (name, body) => {
+  const path = `test/fixtures/.nav-${name}.json`;
+  writeFileSync(path, JSON.stringify(body));
+  return path;
+};
+const railLinks = (html) => {
+  const nav = /<ul class="list-flush tags-rail-links" id="site-nav">([\s\S]*?)<\/ul>/.exec(html);
+  assert.ok(nav, "no rail menu in the page");
+  return [...nav[1].matchAll(/<a href="([^"]*)"([^>]*)>([^<]*)<\/a>/g)].map((m) => ({ href: m[1], active: /class="active"/.test(m[2]), text: m[3] }));
+};
+
+check("no page is in the rail menu unless site.json navigation lists it", () => {
+  const links = railLinks(readFileSync("_site/index.html", "utf8"));
+  assert.deepEqual(links.map((l) => l.href), ["/", "/collections/", "/search/"], "the default menu is not Home, Collections, Search");
+  assert.ok(!links.some((l) => l.href === "/fixture-about/"), "the sample page crept into the menu unasked");
+});
+
+check("site.json navigation puts the listed pages in the rail, in order, titled, after Home", () => {
+  const outDir = "_site-nav-check";
+  const fixture = navFixture("list", { navigation: ["/fixture-about"] });
+  try {
+    const { html } = buildWithFixture(fixture, outDir);
+    const links = railLinks(html);
+    assert.deepEqual(links.map((l) => [l.href, l.text]), [["/", "Home"], ["/fixture-about/", "About this site"], ["/collections/", "Collections"], ["/search/", "Search"]], "menu order or labels are wrong (note: /fixture-about without a trailing slash must be normalised)");
+    const onPage = railLinks(readFileSync(`${outDir}/fixture-about/index.html`, "utf8"));
+    assert.ok(onPage.find((l) => l.href === "/fixture-about/").active, "the page's own menu entry is not marked active");
+    assert.ok(!onPage.find((l) => l.href === "/").active, "Home is marked active on another page");
+  } finally {
+    rmSync(fixture, { force: true });
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+check("a navigation entry that is not a page fails the build naming it; a non-list fails naming the key", () => {
+  const outDir = "_site-nav-bad-check";
+  for (const [name, body, expect] of [["missing", { navigation: ["/nowhere/"] }, /navigation: \/nowhere\/ is not a page/], ["shape", { navigation: "/fixture-about/" }, /navigation: expected a list of paths/]]) {
+    const fixture = navFixture(name, body);
+    let stderr = "";
+    try {
+      execFileSync(process.execPath, ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+        { stdio: "pipe", env: { ...process.env, SITE_FIXTURE: fixture, NPM_DOWNLOADS_OFFLINE: "1" } });
+      assert.fail(`the build succeeded with navigation ${JSON.stringify(body.navigation)}`);
+    } catch (error) {
+      stderr = String(error.stderr ?? error.message);
+    } finally {
+      rmSync(fixture, { force: true });
+      rmSync(outDir, { recursive: true, force: true });
+    }
+    assert.match(stderr, expect, `the failure for ${name} does not say what is wrong`);
+  }
+});
+
+check("a built page that is not in the menu is named once in the build output, so the choice is visible", () => {
+  const outDir = "_site-nav-hint-check";
+  try {
+    const out = execFileSync(process.execPath, ["node_modules/.bin/eleventy", `--output=${outDir}`, "--quiet"],
+      { stdio: "pipe", env: { ...process.env, NPM_DOWNLOADS_OFFLINE: "1" } }).toString();
+    const lines = out.split("\n").filter((l) => l.includes("/fixture-about/"));
+    assert.equal(lines.length, 1, `expected exactly one line naming /fixture-about/, got ${lines.length}`);
+    assert.match(lines[0], /navigation/, "the hint does not say which site.json key adds the page");
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
 check("the Micropub endpoint links are emitted only when site.indiekit is set, and INDIEKIT_URL overrides it", () => {
   assert.ok(!/rel="micropub"/.test(defaults.html), "the neutral default advertises a micropub endpoint");
   const outDir = "_site-endpoints-check";

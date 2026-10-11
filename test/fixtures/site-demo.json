@@ -18,5 +18,8 @@
       "https://example.social/@ada",
       "https://bsky.app/profile/example.com"
     ]
-  }
+  },
+  "navigation": [
+    "/fixture-about/"
+  ]
 }

@@ -71,6 +71,23 @@ index, and its `summary` becomes the page's meta description. A slug the
 theme already serves (`archive`, `search`, `media`, …) fails the build with a
 message naming the page.
 
+### Menu
+
+The rail menu is Home, then the pages you list, then Collections and Search.
+Nothing is listed by default: creating a page does not put it in the menu,
+and a page can stay out of the menu on purpose. To list pages, name their
+paths in `site.json`, in the order you want:
+
+```json
+"navigation": ["/about/", "/now/"]
+```
+
+Each entry must be a page Indiekit has written to `content/pages/`; a path
+that is not one, or a draft, fails the build with a message naming it, so
+the menu can never hold a dead link. The label is the page's title. Every
+build prints one line naming the pages that exist but are not listed, so
+the choice is visible either way.
+
 Eleventy's input directory is `content/`; the built site is written to
 `_site/`.
 
@@ -85,6 +102,7 @@ Every key:
 | `url` | The site's canonical, publicly reachable URL (no trailing slash). Used for feed links, canonical URLs, and to decide whether OG screenshot cards can run (see below). |
 | `indiekit` | URL of your Indiekit server, no trailing slash (e.g. `https://indiekit.example.com`, or your site's own URL when Indiekit is proxied under it). When set, the homepage advertises the Micropub, authorization and token endpoints so clients can find it. Also settable as `INDIEKIT_URL`. Empty by default. |
 | `description` | Default site/page description, used as a fallback for OG/Twitter meta. |
+| `navigation` | The pages in the rail menu, in order, as a list of paths (`["/about/", "/now/"]`). Empty by default: a page is never in the menu unless listed here. See [Menu](#menu). |
 | `author.name`, `author.url` | Site owner identity. `author.url` also renders a `rel="me"` link for IndieAuth. |
 | `timezone` | An IANA timezone name (e.g. `Europe/Brussels`). All dates render in this zone, regardless of what timezone the build machine is in, so a build is reproducible no matter where it runs. Falls back to UTC if unset. |
 | `theme.primary`, `theme.secondary`, `theme.surface` | Six-digit hex. Every colour on the site is derived from these three; contrast is enforced, so a pale primary is darkened until links pass 4.5:1. Also settable as `INDIEKIT_COLOR_PRIMARY` / `_SECONDARY` / `_SURFACE`. |

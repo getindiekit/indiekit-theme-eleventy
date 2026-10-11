@@ -183,6 +183,17 @@ export function loadSiteConfig() {
 		);
 	}
 
+	// The rail menu: a list of page paths, in menu order. Nothing is listed by
+	// default; a page exists whether or not it is in the menu. Paths are
+	// normalised to /slug/ so "/about" and "/about/" mean the same page.
+	// Whether each path is a real page is checked where the pages are read
+	// (_data/navigation.js), not here.
+	const navigation = config.navigation ?? [];
+	if (!Array.isArray(navigation) || !navigation.every((p) => typeof p === "string" && p.trim())) {
+		failTopLevel("navigation", `expected a list of paths like ["/about/", "/now/"], got ${JSON.stringify(config.navigation)}`);
+	}
+	config = merge(config, { navigation: navigation.map((p) => `/${p.trim().replace(/^\/+|\/+$/g, "")}/`) });
+
 	// Only cache once validation has passed, so a throw here does not poison a
 	// later call — with `cached` set before validating, a second
 	// loadSiteConfig() after a failed build would return the invalid config
