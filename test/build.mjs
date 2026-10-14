@@ -5683,6 +5683,18 @@ await checkAsync("indiekit.config.js declares one post type per rendered directo
   assert.match(readFileSync("eleventy.config.js", "utf8"), /"content\/media":\s*"\/media"/, "uploads are not passthrough-copied to /media");
 });
 
+await checkAsync("INDIEKIT_LOCALE pins the admin interface language; unset, the browser decides", async () => {
+  // A fresh evaluation each time: ESM caches by URL, so a query string busts it.
+  const fresh = async (locale) => {
+    const before = process.env.INDIEKIT_LOCALE;
+    if (locale === undefined) delete process.env.INDIEKIT_LOCALE; else process.env.INDIEKIT_LOCALE = locale;
+    try { return (await import(`../indiekit.config.js?locale=${locale ?? "unset"}-${Date.now()}`)).default; }
+    finally { if (before === undefined) delete process.env.INDIEKIT_LOCALE; else process.env.INDIEKIT_LOCALE = before; }
+  };
+  assert.equal((await fresh(undefined)).application?.locale, undefined, "an unset INDIEKIT_LOCALE must not pin a language");
+  assert.equal((await fresh("de")).application.locale, "de", "INDIEKIT_LOCALE=de must set application.locale");
+});
+
 check("THEME_SAMPLE_POSTS=0 builds without the fixture posts, and the default build keeps them", () => {
   const outDir = "_site-nosamples-check";
   try {

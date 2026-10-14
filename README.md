@@ -71,7 +71,8 @@ types Indiekit does not load by default (repost, rsvp, event, jam, audio, video,
 page) and the Microsub endpoint; the other six types are in Indiekit's own
 defaults, and listing a default again would install it twice. The Webmention.io
 endpoint switches on with `WEBMENTION_IO_TOKEN` (without it its admin page
-answers 401). Syndicators switch on when their environment is set: Bluesky with
+answers 401). `INDIEKIT_LOCALE` (e.g. `en`) pins the admin interface's
+language; unset, Indiekit follows the browser. Syndicators switch on when their environment is set: Bluesky with
 `BLUESKY_HANDLE` and `BLUESKY_PASSWORD`, Mastodon with `MASTODON_URL`,
 `MASTODON_USER` and `MASTODON_ACCESS_TOKEN`, the Internet Archive with
 `INTERNET_ARCHIVE_ACCESS_KEY` and `INTERNET_ARCHIVE_SECRET_KEY`.
